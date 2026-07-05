@@ -1,0 +1,130 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Default fallbacks / Cozy Cyberpunk initial variables */
+  --bg: oklch(0.18 0.018 45);
+  --bg-sunken: oklch(0.14 0.015 42);
+  --bg-elevated: oklch(0.22 0.020 47);
+  --card: oklch(0.23 0.022 48);
+  --card-soft: oklch(0.26 0.024 50);
+  --fg: oklch(0.96 0.020 80);
+  --fg-muted: oklch(0.74 0.025 70);
+  --fg-subtle: oklch(0.56 0.022 60);
+  --border: oklch(0.32 0.025 55);
+  --border-strong: oklch(0.42 0.035 60);
+  --hairline: oklch(0.28 0.022 50);
+  --amber: oklch(0.82 0.165 70);
+  --pink: oklch(0.76 0.180 350);
+  --neon: oklch(0.86 0.200 145);
+  --cyan: oklch(0.82 0.130 200);
+  --shadow-card: 0 0 0 1px var(--hairline), 0 12px 28px -20px rgba(0,0,0,0.6);
+
+  /* Mapping to layout variables used in App */
+  --text: var(--fg-muted);
+  --text-h: var(--fg);
+  --code-bg: var(--bg-sunken);
+  --accent: var(--amber);
+  --accent-bg: color-mix(in oklch, var(--accent) 10%, transparent);
+  --accent-border: color-mix(in oklch, var(--accent) 50%, transparent);
+  --social-bg: color-mix(in oklch, var(--card) 60%, transparent);
+  --shadow: var(--shadow-card);
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+
+  /* Shadcn dynamic theme mappings */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card-foreground: var(--fg);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--fg);
+  --primary: var(--amber);
+  --primary-foreground: var(--bg);
+  --secondary: var(--card-soft);
+  --secondary-foreground: var(--fg);
+  --muted: var(--bg-sunken);
+  --muted-foreground: var(--fg-muted);
+  --accent-foreground: var(--fg);
+  --destructive: var(--danger);
+  --input: var(--border);
+  --ring: var(--border-strong);
+  --radius: 0.625rem;
+
+  --sidebar: var(--bg-elevated);
+  --sidebar-foreground: var(--fg);
+  --sidebar-primary: var(--amber);
+  --sidebar-primary-foreground: var(--bg);
+  --sidebar-accent: var(--card-soft);
+  --sidebar-accent-foreground: var(--fg);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--border-strong);
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-border: var(--border);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
