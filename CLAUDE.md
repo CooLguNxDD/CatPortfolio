@@ -14,7 +14,7 @@
 3. New dependencies → add to Tech Stack below.
 4. Use the `@/` alias for cross-directory imports; relative imports within a directory.
 5. Lint before committing: `npm run lint`; tests: `npm run test`
-6. **Layout contract rules:** unknown block type = skipped, never crashes (registry is the whitelist). `layout.json` must pass `LayoutSchema` — validation fails loud at load. New block type = new Zod schema member + new reviewed component + registry entry + tests. Never auto-deploy unreviewed generated layout — the commit is the gate.
+6. **Layout contract rules:** unknown block type = skipped, never crashes (registry is the whitelist). `layout.json` must pass `LayoutSchema` — validation fails loud at load. New block type = new Zod schema member + new reviewed component + registry entry + tests. Never auto-deploy unreviewed generated layout — the commit is the gate. The layout contract is mirrored server-side in `OpenCatTunnelProject/utils/ui_layout_schema.py` — any `schema.ts` change must update both files together.
 
 ## Project Structure
 
@@ -51,6 +51,8 @@ CatPortfolio/
 │   └── components/
 │       ├── ThemeProvider.tsx # Injects theme CSS vars on document root
 │       └── ui/               # shadcn: button.tsx, card.tsx
+├── scripts/
+│   └── gen-layout.ts         # Fetches OCT /portfolio/layout, validates with LayoutSchema, writes layout.json (never in CI)
 ├── .github/workflows/deploy.yml  # Pages: build → 404.html fallback → deploy (no generation!)
 ├── public/                   # favicon.svg
 ├── index.html                # HTML shell
@@ -65,6 +67,9 @@ npm run test      # Vitest (content + registry tests)
 npm run build     # Type-check + production build
 npm run lint      # Lint with oxlint
 npm run preview   # Preview production build at /CatPortfolio/
+npm run gen:layout [-- --audience=<recruiter|hiring-manager|peer|default>]
+                  # Fetch layout from local OCT (requires OCT_URL, default http://localhost:10000)
+                  # Output must be reviewed and committed — never runs in CI
 ```
 
 ## Tech Stack
@@ -84,6 +89,7 @@ npm run preview   # Preview production build at /CatPortfolio/
 | Diagrams | mermaid (lazy chunk, archDiagram block) |
 | Tests | Vitest |
 | Linter | oxlint |
+| Layout generation | tsx script → OCT `/portfolio/layout` |
 | Deploy | GitHub Pages via Actions (SPA 404 fallback) |
 
 ## Deployment Notes
