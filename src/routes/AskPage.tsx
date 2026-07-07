@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { loadBaked, loadLiveWithStatus } from "@/content/loadLayout"
 import { LayoutRenderer } from "@/render/LayoutRenderer"
 import { cn } from "@/lib/utils"
+import { ChatPanel } from "@/components/chat/ChatPanel"
 
 export function AskPage() {
   const { data } = useQuery({
@@ -24,6 +25,7 @@ export function AskPage() {
           {isLive ? "live" : `snapshot · ${data.layout.meta.generatedAt}`}
         </span>
       </div>
+      <ChatPanel />
       <LayoutRenderer layout={data.layout} />
     </div>
   )
