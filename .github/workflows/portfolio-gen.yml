@@ -1,0 +1,87 @@
+# Headless portfolio generation via Claude Code. Produces a PR — never pushes
+# to main, never touches deploy.yml. Deploy still fires only on merge to main.
+#
+# Required secrets:
+#   ANTHROPIC_API_KEY  — Claude API key
+#   OCT_REPO_TOKEN     — read-only PAT for CooLguNxDD/Weltel-Mcp-Full (plugin source);
+#                        omit the token line if that repo is public.
+name: portfolio-gen
+
+on:
+  workflow_dispatch:
+    inputs:
+      brief:
+        description: "Generation brief (what should change)"
+        required: true
+        type: string
+      audience:
+        description: "Target audience"
+        default: "default"
+        type: choice
+        options: [default, recruiter, hiring-manager, peer]
+  repository_dispatch:
+    types: [portfolio-gen]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: portfolio-gen
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Canonical plugin source — no vendored copy in this repo.
+      - uses: actions/checkout@v4
+        with:
+          repository: CooLguNxDD/Weltel-Mcp-Full
+          token: ${{ secrets.OCT_REPO_TOKEN }}
+          path: oct
+          sparse-checkout: |
+            claude-plugins/portfolio-gen
+            .claude-plugin
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Untrusted inputs (brief/audience) are passed via env so they are not
+          # interpolated into the workflow YAML expression surface. The agent
+          # reads $BRIEF / $AUDIENCE from the step environment.
+          prompt: |
+            /portfolio-gen "$BRIEF" audience="$AUDIENCE"
+
+            Environment notes for this run:
+            - BRIEF and AUDIENCE are set as step env vars ($BRIEF, $AUDIENCE).
+            - The OCT MCP server is NOT reachable in CI — use the committed
+              design/ files and src/content/layout.json as context. Do not fail
+              on unreachable OCT.
+            - Read design/sources.yaml and resolve external sources:
+              - kind: github -> use "gh api repos/{ref}" + "gh api repos/{ref}/readme -H 'Accept: application/vnd.github.raw+json'" (using GITHUB_TOKEN/GH_TOKEN)
+              - kind: url / gdoc -> use WebFetch tool
+              - kind: notion / search -> skip and note in the PR body (Notion unsupported offline; Search skipped)
+            - Create branch portfolio-gen/${{ github.run_id }} from the current
+              HEAD, commit there, push it, and open a PR against main with gh.
+            - NEVER push to main. NEVER edit .github/workflows/deploy.yml.
+            - The full gate (npm run compile:layout && npm run lint &&
+              npm run test && npm run build) must be green before the PR.
+          claude_args: |
+            --plugin-dir ./oct/claude-plugins/portfolio-gen
+            --allowedTools "Bash(npm run:*),Bash(npm ci),Bash(git:*),Bash(gh pr:*),Bash(gh api:*),WebFetch,Read,Write,Edit,Glob,Grep"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRIEF: ${{ github.event.inputs.brief || github.event.client_payload.brief }}
+          AUDIENCE: ${{ github.event.inputs.audience || github.event.client_payload.audience || 'default' }}

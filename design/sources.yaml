@@ -1,0 +1,46 @@
+version: 1
+# External context sources for the portfolio generation pipeline.
+# Each entry is resolved by the agent via OCT's fetch_external_context MCP tool
+# (or a CI fallback) before composing layout copy. Sources are context, not
+# verbatim paste material.
+#
+# Fields:
+#   id       — unique within this file (required)
+#   kind     — github | url | notion | gdoc | search
+#   ref      — kind-specific reference:
+#                github  : "owner/repo"
+#                url     : HTTPS URL
+#                notion  : page ID or notion.so URL
+#                gdoc    : doc ID or docs.google.com URL
+#                search  : query string
+#   use      — (github only) list of facets to fetch; default [meta, readme]
+#   project  — optional slug of the PortfolioProject this source is linked to
+sources:
+  - id: catportfolio-repo
+    kind: github
+    ref: CooLguNxDD/CatPortfolio
+    use: [meta, readme]
+    project: catportfolio
+
+  - id: oct-repo
+    kind: github
+    ref: CooLguNxDD/Weltel-Mcp-Full
+    use: [meta]
+
+  # Examples of other kinds (uncomment and fill in to activate):
+  # - id: design-doc
+  #   kind: gdoc
+  #   ref: <google-doc-id-or-url>
+  #
+  # - id: project-notes
+  #   kind: notion
+  #   ref: <notion-page-id-or-url>
+  #   project: some-project-slug
+  #
+  # - id: related-article
+  #   kind: url
+  #   ref: https://example.com/article
+  #
+  # - id: market-search
+  #   kind: search
+  #   ref: "TypeScript full stack portfolio 2026 trends"
