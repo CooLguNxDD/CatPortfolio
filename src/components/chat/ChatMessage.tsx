@@ -1,4 +1,3 @@
-import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -9,98 +8,73 @@ export interface Message {
   isError?: boolean;
 }
 
+// Destructure `node` (react-markdown AST) so it is not spread onto DOM elements.
 const mdComponents = {
-  h2(props: React.ComponentPropsWithoutRef<"h2">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    return <h2 className="text-lg font-semibold text-(--fg) mt-4 mb-2" {...rest} />;
+  h2({ node: _node, ...props }: any) {
+    return <h2 className="text-lg font-semibold text-(--fg) mt-4 mb-2" {...props} />;
   },
-  h3(props: React.ComponentPropsWithoutRef<"h3">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    return <h3 className="text-base font-semibold text-(--fg) mt-3 mb-1.5" {...rest} />;
+  h3({ node: _node, ...props }: any) {
+    return <h3 className="text-base font-semibold text-(--fg) mt-3 mb-1.5" {...props} />;
   },
-  p(props: React.ComponentPropsWithoutRef<"p">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    return <p className="text-sm text-(--fg-muted) leading-relaxed mb-3 last:mb-0" {...rest} />;
+  p({ node: _node, ...props }: any) {
+    return <p className="text-sm text-(--fg-muted) leading-relaxed mb-3 last:mb-0" {...props} />;
   },
-  ul(props: React.ComponentPropsWithoutRef<"ul">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    return <ul className="list-disc list-inside space-y-1 mb-3 text-xs text-(--fg-muted)" {...rest} />;
+  ul({ node: _node, ...props }: any) {
+    return <ul className="list-disc list-inside space-y-1 mb-3 text-xs text-(--fg-muted)" {...props} />;
   },
-  ol(props: React.ComponentPropsWithoutRef<"ol">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    return <ol className="list-decimal list-inside space-y-1 mb-3 text-xs text-(--fg-muted)" {...rest} />;
+  ol({ node: _node, ...props }: any) {
+    return <ol className="list-decimal list-inside space-y-1 mb-3 text-xs text-(--fg-muted)" {...props} />;
   },
-  li(props: React.ComponentPropsWithoutRef<"li">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    return <li className="pl-0.5" {...rest} />;
+  li({ node: _node, ...props }: any) {
+    return <li className="pl-0.5" {...props} />;
   },
-  a(props: React.ComponentPropsWithoutRef<"a">) {
-    const rest = { ...props } as any;
-    delete rest.node;
+  a({ node: _node, ...props }: any) {
     return (
       <a
         target="_blank"
         rel="noreferrer"
         className="text-(--amber) underline underline-offset-4 hover:opacity-80 transition-opacity"
-        {...rest}
+        {...props}
       />
     );
   },
-  table(props: React.ComponentPropsWithoutRef<"table">) {
-    const rest = { ...props } as any;
-    delete rest.node;
+  table({ node: _node, ...props }: any) {
     return (
       <div className="overflow-x-auto my-4 w-full border border-(--hairline) rounded-lg">
-        <table className="w-full border-collapse text-left text-xs" {...rest} />
+        <table className="w-full border-collapse text-left text-xs" {...props} />
       </div>
     );
   },
-  thead(props: React.ComponentPropsWithoutRef<"thead">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    return <thead className="bg-(--bg-sunken) border-b border-(--hairline)" {...rest} />;
+  thead({ node: _node, ...props }: any) {
+    return <thead className="bg-(--bg-sunken) border-b border-(--hairline)" {...props} />;
   },
-  th(props: React.ComponentPropsWithoutRef<"th">) {
-    const rest = { ...props } as any;
-    delete rest.node;
+  th({ node: _node, ...props }: any) {
     return (
       <th
         className="border-r border-(--hairline) last:border-r-0 p-2 font-mono text-[10px] uppercase tracking-wider text-(--fg-subtle)"
-        {...rest}
+        {...props}
       />
     );
   },
-  tr(props: React.ComponentPropsWithoutRef<"tr">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    return <tr className="border-b border-(--hairline) last:border-b-0 hover:bg-(--bg-sunken)/30 transition-colors" {...rest} />;
+  tr({ node: _node, ...props }: any) {
+    return <tr className="border-b border-(--hairline) last:border-b-0 hover:bg-(--bg-sunken)/30 transition-colors" {...props} />;
   },
-  td(props: React.ComponentPropsWithoutRef<"td">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    return <td className="border-r border-(--hairline) last:border-r-0 p-2 text-xs text-(--fg-muted)" {...rest} />;
+  td({ node: _node, ...props }: any) {
+    return <td className="border-r border-(--hairline) last:border-r-0 p-2 text-xs text-(--fg-muted)" {...props} />;
   },
-  code(props: React.ComponentPropsWithoutRef<"code">) {
-    const rest = { ...props } as any;
-    delete rest.node;
-    const isInline = !rest.className;
+  code({ node: _node, ...props }: any) {
+    const isInline = !props.className;
     if (isInline) {
       return (
         <code
           className="font-mono text-xs bg-(--bg-sunken) px-1 py-0.5 rounded text-(--fg) border border-(--hairline)"
-          {...rest}
+          {...props}
         />
       );
     }
     return (
       <pre className="overflow-x-auto bg-(--bg-sunken) p-3 rounded-lg border border-(--hairline) my-3 font-mono text-xs text-(--fg)">
-        <code {...rest} />
+        <code {...props} />
       </pre>
     );
   },

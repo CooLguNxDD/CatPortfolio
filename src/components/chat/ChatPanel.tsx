@@ -10,7 +10,7 @@ export function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
-  const sessionId = useRef<string>(crypto.randomUUID());
+  const [sessionId] = useState(() => crypto.randomUUID());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const { data: tools, isSuccess } = useQuery({
@@ -25,12 +25,8 @@ export function ChatPanel() {
 
   const isOnline = isSuccess && !!tools;
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, pending]);
 
   const handleSend = async () => {
@@ -43,7 +39,7 @@ export function ChatPanel() {
     setMessages((prev) => [...prev, { role: "user", markdown: userMessageText }]);
 
     try {
-      const result = await askOct(userMessageText, sessionId.current);
+      const result = await askOct(userMessageText, sessionId);
       if (result.ok) {
         setMessages((prev) => [...prev, { role: "assistant", markdown: result.markdown }]);
       } else {

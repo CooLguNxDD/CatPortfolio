@@ -52,6 +52,26 @@ describe("SourcesSchema validation", () => {
     }
   });
 
+  it("rejects github refs with leading/trailing . or - in a segment", () => {
+    for (const ref of ["-owner/repo", "owner/-repo", ".owner/repo", "owner/repo.", "owner-/repo"]) {
+      const result = SourcesSchema.safeParse({
+        version: 1,
+        sources: [{ id: "bad-gh", kind: "github", ref }],
+      });
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it("accepts valid github owner/repo refs", () => {
+    for (const ref of ["a/b", "CooLguNxDD/CatPortfolio", "org-name/repo_name", "o.r/r-e_p.o"]) {
+      const result = SourcesSchema.safeParse({
+        version: 1,
+        sources: [{ id: "ok-gh", kind: "github", ref }],
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
   it("rejects invalid url format", () => {
     const invalidYaml = {
       version: 1,

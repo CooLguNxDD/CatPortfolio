@@ -58,10 +58,14 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Untrusted inputs (brief/audience) are passed via env so they are not
+          # interpolated into the workflow YAML expression surface. The agent
+          # reads $BRIEF / $AUDIENCE from the step environment.
           prompt: |
-            /portfolio-gen ${{ github.event.inputs.brief || github.event.client_payload.brief }} audience=${{ github.event.inputs.audience || github.event.client_payload.audience || 'default' }}
+            /portfolio-gen "$BRIEF" audience="$AUDIENCE"
 
             Environment notes for this run:
+            - BRIEF and AUDIENCE are set as step env vars ($BRIEF, $AUDIENCE).
             - The OCT MCP server is NOT reachable in CI — use the committed
               design/ files and src/content/layout.json as context. Do not fail
               on unreachable OCT.
@@ -79,3 +83,5 @@ jobs:
             --allowedTools "Bash(npm run:*),Bash(npm ci),Bash(git:*),Bash(gh pr:*),Bash(gh api:*),WebFetch,Read,Write,Edit,Glob,Grep"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRIEF: ${{ github.event.inputs.brief || github.event.client_payload.brief }}
+          AUDIENCE: ${{ github.event.inputs.audience || github.event.client_payload.audience || 'default' }}

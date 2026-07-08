@@ -16,8 +16,9 @@ export interface OctToolResult {
 export class OctClient {
   private url: string;
   private client: Client | null = null;
-  private transport: StreamableHTTPClientTransport | null = null;
   private _initializeResult: any = null;
+  /** Serializes concurrent connect() calls; only set while a connect is in flight. */
+  private connectPromise: Promise<void> | null = null;
 
   constructor(url: string) {
     this.url = url;
@@ -25,9 +26,19 @@ export class OctClient {
 
   async connect(): Promise<void> {
     if (this.client) return;
+    if (this.connectPromise) return this.connectPromise;
 
-    this.transport = new StreamableHTTPClientTransport(new URL(this.url));
-    this.client = new Client(
+    this.connectPromise = this.doConnect();
+    try {
+      await this.connectPromise;
+    } finally {
+      this.connectPromise = null;
+    }
+  }
+
+  private async doConnect(): Promise<void> {
+    const transport = new StreamableHTTPClientTransport(new URL(this.url));
+    const client = new Client(
       {
         name: "cat-portfolio-client",
         version: "1.0.0",
@@ -37,12 +48,25 @@ export class OctClient {
       }
     );
 
-    await this.client.connect(this.transport);
-    this._initializeResult = {
-      serverCapabilities: this.client.getServerCapabilities(),
-      serverVersion: this.client.getServerVersion(),
-      instructions: this.client.getInstructions(),
-    };
+    try {
+      await client.connect(transport);
+      // Assign only after connect succeeds so isConnected() is never half-true.
+      this.client = client;
+      this._initializeResult = {
+        serverCapabilities: client.getServerCapabilities(),
+        serverVersion: client.getServerVersion(),
+        instructions: client.getInstructions(),
+      };
+    } catch (err) {
+      this.client = null;
+      this._initializeResult = null;
+      try {
+        await client.close();
+      } catch {
+        // ignore cleanup failures
+      }
+      throw err;
+    }
   }
 
   async close(): Promise<void> {
@@ -54,8 +78,8 @@ export class OctClient {
       }
     }
     this.client = null;
-    this.transport = null;
     this._initializeResult = null;
+    this.connectPromise = null;
   }
 
   async [Symbol.asyncDispose](): Promise<void> {
@@ -93,20 +117,23 @@ export class OctClient {
     if (!this.client) {
       throw new Error("client_not_connected");
     }
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      let callPromise = this.client.callTool({
+      const callPromise = this.client.callTool({
         name,
         arguments: args,
       });
 
+      let res: Awaited<ReturnType<Client["callTool"]>>;
       if (opts?.timeoutMs) {
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("timeout")), opts.timeoutMs)
-        );
-        callPromise = Promise.race([callPromise, timeoutPromise]);
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("timeout")), opts.timeoutMs);
+        });
+        res = await Promise.race([callPromise, timeoutPromise]);
+      } else {
+        res = await callPromise;
       }
 
-      const res = await callPromise;
       const isError = !!res.isError;
       const content = (res.content as ContentBlock[]) || [];
 
@@ -128,6 +155,8 @@ export class OctClient {
     } catch (err) {
       resetSharedClient();
       throw err;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
     }
   }
 }

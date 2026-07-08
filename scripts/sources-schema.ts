@@ -11,10 +11,13 @@ import { z } from "zod";
 const GithubSourceSchema = z.object({
   id: z.string().min(1, "id is required"),
   kind: z.literal("github"),
-  /** "owner/repo" format */
+  /** "owner/repo" format — no leading/trailing `.` or `-` in either segment */
   ref: z
     .string()
-    .regex(/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/, 'github ref must be "owner/repo"'),
+    .regex(
+      /^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?\/[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/,
+      'github ref must be "owner/repo"',
+    ),
   use: z.array(z.string()).optional(),
   project: z.string().optional(),
 });
