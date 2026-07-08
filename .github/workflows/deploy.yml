@@ -34,7 +34,9 @@ jobs:
         run: npm run build
 
       - name: Copy index.html to 404.html (SPA deep-link fallback)
-        run: cp dist/index.html dist/404.html
+        run: |
+          test -f dist/index.html || { echo "dist/index.html missing after build" >&2; exit 1; }
+          cp dist/index.html dist/404.html
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3

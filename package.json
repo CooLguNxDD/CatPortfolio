@@ -9,10 +9,13 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "gen:layout": "tsx scripts/gen-layout.ts"
+    "gen:layout": "tsx scripts/gen-layout.ts",
+    "compile:layout": "tsx scripts/compile-layout.ts",
+    "check:layout": "tsx scripts/compile-layout.ts --check"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@tailwindcss/vite": "^4.3.2",
     "@tanstack/react-query": "^5.101.2",
     "@tanstack/react-router": "^1.170.17",
@@ -42,6 +45,7 @@
     "tsx": "^4.19.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "yaml": "^2.9.0"
   }
 }

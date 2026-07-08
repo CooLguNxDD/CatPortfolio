@@ -1,0 +1,118 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { cn } from "@/lib/utils";
+
+export interface Message {
+  role: "user" | "assistant";
+  markdown: string;
+  isError?: boolean;
+}
+
+// Destructure `node` (react-markdown AST) so it is not spread onto DOM elements.
+const mdComponents = {
+  h2({ node: _node, ...props }: any) {
+    return <h2 className="text-lg font-semibold text-(--fg) mt-4 mb-2" {...props} />;
+  },
+  h3({ node: _node, ...props }: any) {
+    return <h3 className="text-base font-semibold text-(--fg) mt-3 mb-1.5" {...props} />;
+  },
+  p({ node: _node, ...props }: any) {
+    return <p className="text-sm text-(--fg-muted) leading-relaxed mb-3 last:mb-0" {...props} />;
+  },
+  ul({ node: _node, ...props }: any) {
+    return <ul className="list-disc list-inside space-y-1 mb-3 text-xs text-(--fg-muted)" {...props} />;
+  },
+  ol({ node: _node, ...props }: any) {
+    return <ol className="list-decimal list-inside space-y-1 mb-3 text-xs text-(--fg-muted)" {...props} />;
+  },
+  li({ node: _node, ...props }: any) {
+    return <li className="pl-0.5" {...props} />;
+  },
+  a({ node: _node, ...props }: any) {
+    return (
+      <a
+        target="_blank"
+        rel="noreferrer"
+        className="text-(--amber) underline underline-offset-4 hover:opacity-80 transition-opacity"
+        {...props}
+      />
+    );
+  },
+  table({ node: _node, ...props }: any) {
+    return (
+      <div className="overflow-x-auto my-4 w-full border border-(--hairline) rounded-lg">
+        <table className="w-full border-collapse text-left text-xs" {...props} />
+      </div>
+    );
+  },
+  thead({ node: _node, ...props }: any) {
+    return <thead className="bg-(--bg-sunken) border-b border-(--hairline)" {...props} />;
+  },
+  th({ node: _node, ...props }: any) {
+    return (
+      <th
+        className="border-r border-(--hairline) last:border-r-0 p-2 font-mono text-[10px] uppercase tracking-wider text-(--fg-subtle)"
+        {...props}
+      />
+    );
+  },
+  tr({ node: _node, ...props }: any) {
+    return <tr className="border-b border-(--hairline) last:border-b-0 hover:bg-(--bg-sunken)/30 transition-colors" {...props} />;
+  },
+  td({ node: _node, ...props }: any) {
+    return <td className="border-r border-(--hairline) last:border-r-0 p-2 text-xs text-(--fg-muted)" {...props} />;
+  },
+  code({ node: _node, ...props }: any) {
+    const isInline = !props.className;
+    if (isInline) {
+      return (
+        <code
+          className="font-mono text-xs bg-(--bg-sunken) px-1 py-0.5 rounded text-(--fg) border border-(--hairline)"
+          {...props}
+        />
+      );
+    }
+    return (
+      <pre className="overflow-x-auto bg-(--bg-sunken) p-3 rounded-lg border border-(--hairline) my-3 font-mono text-xs text-(--fg)">
+        <code {...props} />
+      </pre>
+    );
+  },
+};
+
+export function ChatMessage({ role, markdown, isError }: Message) {
+  const isUser = role === "user";
+
+  return (
+    <div
+      className={cn(
+        "flex w-full gap-3 py-4 first:pt-0 border-b border-(--hairline) last:border-0",
+        isUser ? "justify-end" : "justify-start"
+      )}
+    >
+      <div
+        className={cn(
+          "max-w-[85%] rounded-2xl px-4 py-3 shadow-xs transition-all duration-300",
+          isUser
+            ? "bg-linear-to-br from-(--amber) to-orange-500 text-white rounded-tr-none font-medium selection:bg-orange-800"
+            : isError
+            ? "bg-red-500/10 border border-red-500/30 text-red-500 rounded-tl-none"
+            : "bg-(--bg-sunken) border border-(--hairline) rounded-tl-none text-(--fg)"
+        )}
+      >
+        <div className="text-xs font-mono opacity-60 mb-1">
+          {isUser ? "You" : "Andrew's AI"}
+        </div>
+        {isUser ? (
+          <div className="text-sm whitespace-pre-wrap select-text selection:text-white">{markdown}</div>
+        ) : (
+          <div className="select-text prose-sm">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+              {markdown}
+            </ReactMarkdown>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

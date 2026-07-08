@@ -1,0 +1,132 @@
+# Source of truth for the portfolio layout.
+# Edit this file (human or agent), then run: npm run compile:layout
+# CI verifies sync via: npm run check:layout — never generates.
+#
+# Extra keys vs LayoutSchema:
+#   theme:              compile-time only — selects the default theme id
+#                       (validated against src/themes/*.theme.json, not emitted)
+#   meta.generatedAt:   "auto" → compile stamps the current ISO time
+#                       (--check resolves it to the committed value)
+
+version: 1
+theme: cozy
+meta:
+  audience: default
+  generatedAt: "2026-07-04T00:00:00Z"
+
+blocks:
+  - type: hero
+    id: h1
+    props:
+      name: Andrew (the cat)
+      tagline: Postgres-first systems, agent infra, OpenCat Tunnel
+      pitch: One MCP server with agent intelligence baked in.
+      links:
+        - label: GitHub
+          href: https://github.com/CooLguNxDD
+        - label: OpenCat Tunnel
+          href: https://github.com/CooLguNxDD
+
+  - type: statStrip
+    id: s1
+    props:
+      stats:
+        - label: tools narrowed per query
+          value: 144 → 2–3
+        - label: context reduction
+          value: ~98.7%
+        - label: plugins
+          value: 5+
+
+  - type: projectGrid
+    id: p1
+    props:
+      projects:
+        - id: oct
+          name: OpenCat Tunnel
+          summary: >-
+            Healthcare MCP server with a LangGraph agent, OAuth 2.0 layer,
+            semantic tool routing over pgvector, and a VS Code tunnel
+            extension.
+          tags: [MCP, pgvector, LangGraph, OAuth]
+          metrics:
+            - label: plugins
+              value: 5+
+            - label: tools
+              value: "144"
+          links:
+            - label: repo
+              href: https://github.com/CooLguNxDD
+        - id: cat-portfolio
+          name: Cat Portfolio
+          summary: >-
+            This site. A static React SPA that renders itself from an
+            agent-generated, Zod-validated layout spec — the graph grows, the
+            page re-renders.
+          tags: [React, Zod, self-rendering]
+          metrics:
+            - label: block types
+              value: "7"
+          links:
+            - label: repo
+              href: https://github.com/CooLguNxDD/CatPortfolio
+
+  - type: starStory
+    id: st1
+    props:
+      situation: MCP clients needed authenticated access to healthcare tools
+      task: add a standards-compliant OAuth 2.0 layer without breaking stdio transport
+      action: >-
+        implemented authorization-code + PKCE flow with scoped JWTs and a
+        step-up elevation gate
+      result: >-
+        every tool call is scope-checked, tokens are short-lived, and the VS
+        Code extension connects with terminal:host scope
+      tags: [oauth, pkce]
+
+  - type: archDiagram
+    id: a1
+    props:
+      title: Two loops, one static page
+      kind: mermaid
+      source: |-
+        flowchart LR
+          oct[OCT emit_layout] --> layout[layout.json]
+          layout --> gate[commit gate]
+          gate --> action[GitHub Action]
+          action --> pages[Pages]
+          spa[SPA] --> live[live OCT]
+          live --> fallback[fallback]
+          fallback --> baked[baked snapshot]
+
+  - type: codeSnippet
+    id: c1
+    props:
+      lang: ts
+      caption: The mandatory fallback — live OCT is the cherry, never the dependency.
+      code: |-
+        try {
+          const res = await fetch(`${base}/portfolio/layout?audience=${audience}`,
+            { signal: AbortSignal.timeout(4000) });
+          if (!res.ok) throw new Error(String(res.status));
+          return { layout: LayoutSchema.parse(await res.json()), source: "live" };
+        } catch {
+          return { layout: loadBaked(), source: "snapshot" };
+        }
+
+  - type: prose
+    id: pr1
+    props:
+      markdown: |-
+        ## How this page builds itself
+
+        This static React SPA dynamically adapts to its underlying layout specification. By using Zod validation at runtime, the layout components are safely rendered based on a declarative configuration tree.
+
+        - Validates the layout specification at runtime using Zod.
+        - Fetches updates asynchronously with automatic fallback.
+        - Preserves offline-first capability through baked snapshot.
+
+        | Loop | Gate |
+        | --- | --- |
+        | Static Loop | Commit Gate |
+        | Live Loop | Fetch Timeout |

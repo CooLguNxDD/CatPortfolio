@@ -1,11 +1,18 @@
-// Layout generation script — NEVER runs in CI. The commit is the gate.
+// Seed a layout draft from OCT's deterministic composer — NEVER runs in CI.
+// Fetches ${OCT_URL}/portfolio/layout, validates, writes design/layout.yaml
+// (the source of truth), then compiles it to src/content/layout.json.
+// The commit is still the gate: review the diff before committing.
 // Run manually: npm run gen:layout [-- --audience=<recruiter|hiring-manager|peer|default>]
-// Requires a local OCT backend at OCT_URL (default: http://localhost:10000).
 
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { parse, stringify } from "yaml";
 import { ZodError } from "zod";
 import { LayoutSchema } from "../src/content/schema.js";
+import { compileLayout, readThemeIds } from "./compile-layout.js";
+
+/** Repo root — independent of process.cwd() so scripts work from any directory. */
+const ROOT = resolve(import.meta.dirname, "..");
 
 const base =
   process.env.OCT_URL ?? process.env.VITE_OCT_URL ?? "http://localhost:10000";
@@ -45,15 +52,39 @@ async function main() {
     process.exit(1);
   }
 
-  const outPath = resolve(process.cwd(), "src/content/layout.json");
-  writeFileSync(outPath, JSON.stringify(parsed, null, 2) + "\n", "utf-8");
+  // Preserve the current theme selection from the existing yaml, if any.
+  const yamlPath = resolve(ROOT, "design/layout.yaml");
+  let theme = "cozy";
+  try {
+    const existing = parse(readFileSync(yamlPath, "utf-8"));
+    if (
+      typeof existing === "object" &&
+      existing !== null &&
+      !Array.isArray(existing) &&
+      typeof (existing as { theme?: unknown }).theme === "string"
+    ) {
+      theme = (existing as { theme: string }).theme;
+    }
+  } catch {
+    /* no existing yaml — use default */
+  }
 
-  const blockCount = parsed.blocks.length;
-  console.log(`✓ Wrote ${outPath}`);
-  console.log(`  audience: ${audience} | blocks: ${blockCount}`);
-  console.log(
-    `  Review the diff before committing: git diff src/content/layout.json`,
-  );
+  const yamlText =
+    "# Draft seeded from OCT's composer via npm run gen:layout.\n" +
+    "# Review, edit, then: npm run compile:layout\n" +
+    stringify({ version: parsed.version, theme, meta: parsed.meta, blocks: parsed.blocks });
+  writeFileSync(yamlPath, yamlText, "utf-8");
+
+  const { layout } = compileLayout(yamlText, {
+    themeIds: readThemeIds(resolve(ROOT, "src/themes")),
+  });
+  const jsonPath = resolve(ROOT, "src/content/layout.json");
+  writeFileSync(jsonPath, JSON.stringify(layout, null, 2) + "\n", "utf-8");
+
+  console.log(`✓ Wrote ${yamlPath}`);
+  console.log(`✓ Wrote ${jsonPath}`);
+  console.log(`  audience: ${audience} | blocks: ${layout.blocks.length}`);
+  console.log(`  Review the diff before committing: git diff design/ src/content/`);
 }
 
 main().catch((err) => {
