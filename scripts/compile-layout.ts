@@ -79,11 +79,14 @@ function printError(err: unknown) {
   }
 }
 
+/** Repo root — independent of process.cwd() so scripts work from any directory. */
+const ROOT = resolve(import.meta.dirname, "..");
+
 function main() {
   const check = process.argv.includes("--check");
-  const yamlPath = resolve(process.cwd(), "design/layout.yaml");
-  const jsonPath = resolve(process.cwd(), "src/content/layout.json");
-  const themesDir = resolve(process.cwd(), "src/themes");
+  const yamlPath = resolve(ROOT, "design/layout.yaml");
+  const jsonPath = resolve(ROOT, "src/content/layout.json");
+  const themesDir = resolve(ROOT, "src/themes");
 
   const yamlText = readFileSync(yamlPath, "utf-8");
 

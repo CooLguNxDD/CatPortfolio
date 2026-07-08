@@ -6,10 +6,13 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { stringify } from "yaml";
+import { parse, stringify } from "yaml";
 import { ZodError } from "zod";
 import { LayoutSchema } from "../src/content/schema.js";
 import { compileLayout, readThemeIds } from "./compile-layout.js";
+
+/** Repo root — independent of process.cwd() so scripts work from any directory. */
+const ROOT = resolve(import.meta.dirname, "..");
 
 const base =
   process.env.OCT_URL ?? process.env.VITE_OCT_URL ?? "http://localhost:10000";
@@ -50,12 +53,18 @@ async function main() {
   }
 
   // Preserve the current theme selection from the existing yaml, if any.
-  const yamlPath = resolve(process.cwd(), "design/layout.yaml");
+  const yamlPath = resolve(ROOT, "design/layout.yaml");
   let theme = "cozy";
   try {
-    const existing = readFileSync(yamlPath, "utf-8");
-    const m = existing.match(/^theme:\s*(\S+)\s*$/m);
-    if (m) theme = m[1];
+    const existing = parse(readFileSync(yamlPath, "utf-8"));
+    if (
+      typeof existing === "object" &&
+      existing !== null &&
+      !Array.isArray(existing) &&
+      typeof (existing as { theme?: unknown }).theme === "string"
+    ) {
+      theme = (existing as { theme: string }).theme;
+    }
   } catch {
     /* no existing yaml — use default */
   }
@@ -67,9 +76,9 @@ async function main() {
   writeFileSync(yamlPath, yamlText, "utf-8");
 
   const { layout } = compileLayout(yamlText, {
-    themeIds: readThemeIds(resolve(process.cwd(), "src/themes")),
+    themeIds: readThemeIds(resolve(ROOT, "src/themes")),
   });
-  const jsonPath = resolve(process.cwd(), "src/content/layout.json");
+  const jsonPath = resolve(ROOT, "src/content/layout.json");
   writeFileSync(jsonPath, JSON.stringify(layout, null, 2) + "\n", "utf-8");
 
   console.log(`✓ Wrote ${yamlPath}`);
