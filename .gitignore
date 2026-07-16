@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Docker env (real /mcp API key + backend URL) — see .env.example
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

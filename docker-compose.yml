@@ -8,8 +8,12 @@ services:
     restart: unless-stopped
     ports:
       - "8080:80"             # access the site at http://localhost:8080
+    env_file:
+      - .env                  # gitignored; see .env.example (OCT_BASE_URL, OCT_API_KEY)
     environment:
       - NODE_ENV=production
+      - OCT_BASE_URL=${OCT_BASE_URL:-}
+      - OCT_API_KEY=${OCT_API_KEY:-}
 
   # ── Optional: local dev server (hot-reload, no build step) ──────────────────
   catportfolio-dev:

@@ -5,7 +5,11 @@
 - Personal portfolio site built with React 19, Vite 8, and TypeScript 6
 - **Self-rendering SPA:** the page renders from a Zod-validated `src/content/layout.json` block spec through a whitelisted block registry (7 block types). The layout grows; the code doesn't change.
 - **Layout source of truth is `design/layout.yaml`** — compiled to `layout.json` via `npm run compile:layout`; CI verifies sync with `npm run check:layout` (never generates). `design/design.md` is the design contract agents read.
-- Entry: `src/main.tsx` → `src/router.tsx` (TanStack Router) → `src/App.tsx` shell → routes `/` (baked layout) and `/ask` (live layout with static fallback)
+- Entry: `src/main.tsx` → `src/router.tsx` (TanStack Router) → `src/App.tsx` shell → routes `/` (baked layout, or a job-specific baked layout via `?j=<short_id>` — "bake & send", see below) and `/ask` (live layout with static fallback)
+- **Runtime backend config:** `src/config/runtimeConfig.ts` fetches `public/config.json` (unhashed, patchable post-deploy without a rebuild) at startup for the OCT backend base URL — GitHub Pages has no build-time env injection. Falls back to `VITE_OCT_URL`, then `""`. Gated in `src/main.tsx` before first render; `src/api/octClient.ts::octBaseUrl()` prefers it, falling back to the build-time env var if not yet loaded.
+- **`?j=` job-specific pre-baked layout:** the `/` route's `validateSearch` accepts an optional `j` (job short id, minted server-side by the OpenCat backend's "bake & send" pipeline — see `Weltel-Mcp-Full/CLAUDE.md`). `src/content/loadLayout.ts::loadJobLayout(jobId)` fetches `GET /api/portfolio/public/layout/{jobId}` from the OCT backend and falls back to the baked snapshot on any failure — never hard-fails, since this backs a public HR-facing resume link. `src/routes/HomePage.tsx` renders the baked-only path byte-for-byte unchanged when `j` is absent.
+- **Chat-driven live layout re-render (`/ask`):** `ChatPanel.tsx` fires `src/content/loadLayout.ts::loadLayoutForQuery(userMessage)` alongside (not blocking) each chat turn — a fast, public REST call (`GET /api/portfolio/public/layout-for-query?query=...`, no MCP round-trip) that deterministically infers audience from the chat text server-side. On a `"live"` result it writes directly into the `["layout","default"]` TanStack Query cache (`queryClient.setQueryData`) so `AskPage`'s `LayoutRenderer` updates immediately without an invalidate/refetch. `src/api/harness.ts`/`octClient.ts` (the existing `run_graph` chat path) are untouched — the chat reply and the layout re-render are two independent calls, not one parsed out of the other.
+- **Job-search agent live status:** `src/api/agentStatus.ts::fetchAgentStatus` polls the public, privacy-safe `GET /api/portfolio/public/agent-status` (never applicant PII — just `{job_id, status, updated_at}`); `src/components/AgentStatusPill.tsx` (TanStack Query `refetchInterval: 8000`) renders it, mounted in `AskPage.tsx`. No SSE — polling only, by design (see backend CLAUDE.md).
 - Deployed to GitHub Pages (project page, `base: "/CatPortfolio/"`) via `.github/workflows/deploy.yml`
 
 ## Dev Rules
@@ -25,13 +29,15 @@
 CatPortfolio/
 ├── src/
 │   ├── main.tsx              # React root: ThemeProvider > QueryClientProvider > RouterProvider
-│   ├── router.tsx            # Code-based TanStack Router (basepath = BASE_URL), routes / and /ask
+│   ├── router.tsx            # Code-based TanStack Router (basepath = BASE_URL), routes / (validateSearch: ?j=<jobId>) and /ask
+│   ├── config/
+│   │   └── runtimeConfig.ts  # Fetches public/config.json at startup for the OCT backend base URL (GH Pages runtime config)
 │   ├── App.tsx               # Root layout shell: sticky header, nav, theme switcher, Outlet, footer
 │   ├── index.css             # Tailwind v4 CSS-first config + OKLCH design tokens + shadcn bridge
 │   ├── content/
 │   │   ├── schema.ts         # Zod LayoutSchema — the block contract (7-type discriminated union)
 │   │   ├── layout.json       # Baked layout spec (committed, gated) — must pass LayoutSchema
-│   │   ├── loadLayout.ts     # loadBaked (sync, fail-loud) + loadLiveWithStatus (4s timeout → snapshot fallback)
+│   │   ├── loadLayout.ts     # loadBaked (sync, fail-loud) + loadLiveWithStatus (4s timeout → snapshot fallback) + loadJobLayout(jobId) ("bake & send") + loadLayoutForQuery(query) (chat fast path)
 │   │   └── __tests__/        # Fixture parse, whitelist rejection, fallback tests
 │   ├── render/
 │   │   ├── registry.ts       # type → component map; `satisfies` enforces whitelist completeness
