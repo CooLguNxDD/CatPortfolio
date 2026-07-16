@@ -2,7 +2,7 @@ import { getSharedClient, resetSharedClient, type OctToolResult } from "./octCli
 import { wrapMessage } from "./instructions.ts";
 
 export type AskResult =
-  | { ok: true; markdown: string }
+  | { ok: true; markdown: string; raw?: unknown }
   | {
       ok: false;
       error: string;
@@ -10,6 +10,20 @@ export type AskResult =
       retryAfter?: number;
     };
 
+/** True when an object looks like a tool-result payload, not chat prose. */
+function looksLikeToolPayload(obj: Record<string, unknown>): boolean {
+  return (
+    "layout" in obj ||
+    "steps_executed" in obj ||
+    "step_results" in obj ||
+    Array.isArray(obj.data)
+  );
+}
+
+/**
+ * Pull markdown from a run_graph envelope.
+ * Never dumps raw tool-result JSON (layout / steps) into the chat bubble.
+ */
 export function extractMarkdown(result: OctToolResult): string {
   const data = result.data;
   if (!data) return "";
@@ -18,14 +32,29 @@ export function extractMarkdown(result: OctToolResult): string {
 
   if (typeof data === "object" && data !== null) {
     const obj = data as Record<string, any>;
+    // Prefer summary/message when present (stable chat text).
+    if (typeof obj.summary === "string" && obj.summary.trim()) {
+      return obj.summary;
+    }
+    if (typeof obj.message === "string" && obj.message.trim()) {
+      return obj.message;
+    }
     if (obj.response) {
       const resp = obj.response;
-      if (typeof resp === "object" && resp !== null && resp.message) {
-        const msg = resp.message;
-        if (typeof msg === "object" && msg !== null && msg.data !== undefined) {
-          extracted = msg.data;
-        } else if (typeof msg === "string") {
-          extracted = msg;
+      if (typeof resp === "object" && resp !== null) {
+        if (typeof resp.summary === "string" && resp.summary.trim()) {
+          return resp.summary;
+        }
+        if (typeof resp.message === "string" && resp.message.trim()) {
+          return resp.message;
+        }
+        if (resp.message) {
+          const msg = resp.message;
+          if (typeof msg === "object" && msg !== null && msg.data !== undefined) {
+            extracted = msg.data;
+          } else if (typeof msg === "string") {
+            extracted = msg;
+          }
         }
       } else if (typeof resp === "string") {
         extracted = resp;
@@ -37,9 +66,30 @@ export function extractMarkdown(result: OctToolResult): string {
     return extracted;
   }
   if (typeof extracted === "object" && extracted !== null) {
+    const obj = extracted as Record<string, unknown>;
+    if (looksLikeToolPayload(obj)) {
+      if (typeof obj.summary === "string" && (obj.summary as string).trim()) {
+        return obj.summary as string;
+      }
+      if (typeof obj.message === "string" && (obj.message as string).trim()) {
+        return obj.message as string;
+      }
+      return "Done.";
+    }
     return `\`\`\`json\n${JSON.stringify(extracted, null, 2)}\n\`\`\``;
   }
   return String(extracted);
+}
+
+/** Best-effort layout from run_graph carry (agentic emit_layout path). */
+export function extractCarryLayout(data: unknown): unknown | null {
+  if (!data || typeof data !== "object") return null;
+  const obj = data as Record<string, any>;
+  const carry = obj?.response?.carry ?? obj?.carry ?? null;
+  if (carry && typeof carry === "object" && carry.layout && typeof carry.layout === "object") {
+    return carry.layout;
+  }
+  return null;
 }
 
 async function performCall(userMessage: string, sessionId: string): Promise<OctToolResult> {
@@ -78,7 +128,7 @@ export async function askOct(userMessage: string, sessionId: string): Promise<As
       const errMsg = textBlock?.text || "Unknown tool error";
       return { ok: false, error: errMsg, kind: "tool_error" };
     }
-    return { ok: true, markdown: extractMarkdown(result) };
+    return { ok: true, markdown: extractMarkdown(result), raw: result.data };
   } catch (err: any) {
     const msg = String(err?.message || err);
 
@@ -109,7 +159,7 @@ export async function askOct(userMessage: string, sessionId: string): Promise<As
         const errMsg = textBlock?.text || "Unknown tool error";
         return { ok: false, error: errMsg, kind: "tool_error" };
       }
-      return { ok: true, markdown: extractMarkdown(result) };
+      return { ok: true, markdown: extractMarkdown(result), raw: result.data };
     } catch (retryErr: any) {
       const retryMsg = String(retryErr?.message || retryErr);
 

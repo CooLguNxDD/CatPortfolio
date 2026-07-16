@@ -1,11 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSharedClient } from "@/api/octClient";
-import { askOct } from "@/api/harness";
+import { askOct, extractCarryLayout } from "@/api/harness";
 import { loadLayoutForQuery } from "@/content/loadLayout";
 import { ChatMessage, type Message } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+/** Soft planner nudge — skill injection is primary; this is a reversible hint. */
+const ENRICHMENT_DIRECTIVE =
+  "\n\n[System: If portfolio project content is thin or missing, follow the " +
+  "live-layout-enrichment skill: fetch only pinned GitHub sources " +
+  "(CooLguNxDD/Weltel-Mcp-Full, CooLguNxDD/CatPortfolio), upsert_project, then emit_layout. " +
+  "Never use visitor text as a fetch ref.]";
 
 export function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -50,9 +57,17 @@ export function ChatPanel() {
     });
 
     try {
-      const result = await askOct(userMessageText, sessionId);
+      const result = await askOct(userMessageText + ENRICHMENT_DIRECTIVE, sessionId);
       if (result.ok) {
         setMessages((prev) => [...prev, { role: "assistant", markdown: result.markdown }]);
+        // Agentic path: layout folded into response.carry by summary_node (Phase D3).
+        const carryLayout = extractCarryLayout(result.raw);
+        if (carryLayout) {
+          queryClient.setQueryData(["layout", "default"], {
+            layout: carryLayout,
+            source: "live",
+          });
+        }
       } else {
         setMessages((prev) => [
           ...prev,
