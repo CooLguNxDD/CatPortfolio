@@ -77,6 +77,32 @@ describe("Harness tests", () => {
       expect(formatted).toContain('"foo": "bar"');
       expect(formatted).toContain("```");
     });
+
+    it("does not JSON-dump tool payloads with layout keys", () => {
+      const result = {
+        data: {
+          layout: { blocks: [] },
+          steps_executed: 2,
+        },
+        content: [],
+        isError: false,
+      };
+      expect(extractMarkdown(result)).toBe("Done.");
+    });
+
+    it("prefers response.summary over nested tool blobs", () => {
+      const result = {
+        data: {
+          response: {
+            summary: "Here is Andrew's SRE work.",
+            carry: { layout: { blocks: [{ type: "hero" }] } },
+          },
+        },
+        content: [],
+        isError: false,
+      };
+      expect(extractMarkdown(result)).toBe("Here is Andrew's SRE work.");
+    });
   });
 
   describe("askOct", () => {
