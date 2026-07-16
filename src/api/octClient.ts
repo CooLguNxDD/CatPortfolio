@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { getOctBaseUrl, getMcpApiKey } from "../config/runtimeConfig";
 
 export interface ContentBlock {
   type: string;
@@ -37,7 +38,16 @@ export class OctClient {
   }
 
   private async doConnect(): Promise<void> {
-    const transport = new StreamableHTTPClientTransport(new URL(this.url));
+    let apiKey = "";
+    try {
+      apiKey = getMcpApiKey();
+    } catch {
+      // runtime config not loaded yet — fall back to no auth header (dev convenience)
+    }
+    const transport = new StreamableHTTPClientTransport(
+      new URL(this.url),
+      apiKey ? { requestInit: { headers: { Authorization: `Bearer ${apiKey}` } } } : undefined
+    );
     const client = new Client(
       {
         name: "cat-portfolio-client",
@@ -162,6 +172,13 @@ export class OctClient {
 }
 
 export function octBaseUrl(): string | undefined {
+  try {
+    const runtime = getOctBaseUrl();
+    if (runtime) return runtime;
+  } catch {
+    // runtime config not loaded yet (e.g. tests, or main.tsx hasn't awaited it) —
+    // fall back to the build-time env var for dev convenience.
+  }
   return import.meta.env.VITE_OCT_URL as string | undefined;
 }
 

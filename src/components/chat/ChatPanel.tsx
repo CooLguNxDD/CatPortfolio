@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSharedClient } from "@/api/octClient";
 import { askOct } from "@/api/harness";
+import { loadLayoutForQuery } from "@/content/loadLayout";
 import { ChatMessage, type Message } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,7 @@ export function ChatPanel() {
   const [pending, setPending] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: tools, isSuccess } = useQuery({
     queryKey: ["oct", "tools"],
@@ -38,6 +40,15 @@ export function ChatPanel() {
 
     setMessages((prev) => [...prev, { role: "user", markdown: userMessageText }]);
 
+    // Fast, independent path: re-render the portfolio to match the chat intent.
+    // loadLayoutForQuery never throws — it falls back to the current snapshot
+    // on any failure, so a bad/slow layout fetch never breaks the chat reply.
+    const layoutPromise = loadLayoutForQuery(userMessageText).then((result) => {
+      if (result.source === "live") {
+        queryClient.setQueryData(["layout", "default"], result);
+      }
+    });
+
     try {
       const result = await askOct(userMessageText, sessionId);
       if (result.ok) {
@@ -62,6 +73,7 @@ export function ChatPanel() {
         },
       ]);
     } finally {
+      await layoutPromise;
       setPending(false);
     }
   };
