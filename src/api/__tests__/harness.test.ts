@@ -106,6 +106,39 @@ describe("Harness tests", () => {
   });
 
   describe("askOct", () => {
+    it("auto-continues once on confirmation_needed", async () => {
+      const mockClient = await getSharedClient();
+      vi.mocked(mockClient.callTool)
+        .mockResolvedValueOnce({
+          data: {
+            status: "confirmation_needed",
+            message: "I'll run 1 step(s). Confidence: 69%. Proceed?",
+          },
+          content: [],
+          isError: false,
+        })
+        .mockResolvedValueOnce({
+          data: { response: { summary: "Here is the SRE work." } },
+          content: [],
+          isError: false,
+        });
+
+      const res = await askOct("show SRE", "session-123");
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.markdown).toBe("Here is the SRE work.");
+      }
+      expect(mockClient.callTool).toHaveBeenCalledTimes(2);
+      expect(mockClient.callTool).toHaveBeenLastCalledWith(
+        "run_graph",
+        expect.objectContaining({
+          force_execute: true,
+          user_message: expect.stringContaining("proceed"),
+        }),
+        expect.anything()
+      );
+    });
+
     it("success path returns markdown", async () => {
       const mockClient = await getSharedClient();
       vi.mocked(mockClient.callTool).mockResolvedValue({

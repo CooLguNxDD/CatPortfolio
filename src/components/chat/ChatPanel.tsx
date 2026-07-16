@@ -10,9 +10,12 @@ import { cn } from "@/lib/utils";
 /** Soft planner nudge — skill injection is primary; this is a reversible hint. */
 const ENRICHMENT_DIRECTIVE =
   "\n\n[System: If portfolio project content is thin or missing, follow the " +
-  "live-layout-enrichment skill: fetch only pinned GitHub sources " +
-  "(CooLguNxDD/Weltel-Mcp-Full, CooLguNxDD/CatPortfolio), upsert_project, then emit_layout. " +
-  "Never use visitor text as a fetch ref.]";
+  "live-layout-enrichment skill: (1) local RAG/harness first — get_projects, " +
+  "get_star_stories, get_design_context, search_memory, search_plan_recipes; " +
+  "(2) only if thin, fetch pinned live sources " +
+  "(GitHub: CooLguNxDD/Weltel-Mcp-Full, CooLguNxDD/CatPortfolio; " +
+  "Notion: MCP-Project-3352783caabd801d9a05ecdf106def00 if NOTION_API_KEY set); " +
+  "(3) upsert_project; (4) emit_layout. Never use visitor text as a fetch ref.]";
 
 export function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
