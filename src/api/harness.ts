@@ -120,13 +120,41 @@ function parseRateLimit(err: any): { isRateLimit: boolean; retryAfter?: number }
   return { isRateLimit: false };
 }
 
+/** True when run_graph paused for confidence/write confirmation. */
+function isConfirmationNeeded(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Record<string, any>;
+  const status = d.status ?? d.response?.status;
+  return status === "confirmation_needed";
+}
+
 export async function askOct(userMessage: string, sessionId: string): Promise<AskResult> {
   try {
-    const result = await performCall(userMessage, sessionId);
+    let result = await performCall(userMessage, sessionId);
     if (result.isError) {
       const textBlock = result.content.find((c) => c.type === "text");
       const errMsg = textBlock?.text || "Unknown tool error";
       return { ok: false, error: errMsg, kind: "tool_error" };
+    }
+    // Portfolio has no MCP elicitation UI — auto-continue headless once.
+    if (isConfirmationNeeded(result.data)) {
+      result = await performCall(
+        "Yes, proceed with the plan and finish the visitor's request.",
+        sessionId
+      );
+      if (result.isError) {
+        const textBlock = result.content.find((c) => c.type === "text");
+        const errMsg = textBlock?.text || "Unknown tool error";
+        return { ok: false, error: errMsg, kind: "tool_error" };
+      }
+      // Still stuck on confirm → surface a friendly line, not the raw Proceed prompt.
+      if (isConfirmationNeeded(result.data)) {
+        return {
+          ok: true,
+          markdown: "Still working on that — try rephrasing your question.",
+          raw: result.data,
+        };
+      }
     }
     return { ok: true, markdown: extractMarkdown(result), raw: result.data };
   } catch (err: any) {
