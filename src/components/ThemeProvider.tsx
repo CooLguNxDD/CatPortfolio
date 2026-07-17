@@ -10,6 +10,9 @@ import { usePreferencesStore } from "@/store"
 import { themeRegistry, DEFAULT_THEME_ID } from "@/themes/registry"
 import { ThemeContext } from "@/themes/theme-context"
 
+/** Stable context value — registry is module-level and never changes. */
+const CONTEXT_VALUE = { registry: themeRegistry }
+
 /**
  * Renders the theme provider component wrapping ReactNode children.
  * Runs an effect to apply CSS variables from the selected theme to the root element.
@@ -29,7 +32,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [themeId])
 
   return (
-    <ThemeContext.Provider value={{ registry: themeRegistry }}>
+    <ThemeContext.Provider value={CONTEXT_VALUE}>
       {children}
     </ThemeContext.Provider>
   )
