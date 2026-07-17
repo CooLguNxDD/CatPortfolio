@@ -1,0 +1,10 @@
+# Force LF for shell scripts — CRLF breaks shebangs inside Linux containers
+*.sh text eol=lf
+
+# Dockerfile and nginx config — keep LF
+Dockerfile text eol=lf
+nginx.conf text eol=lf
+docker-entrypoint.sh text eol=lf
+
+# Everything else: normalize to LF on commit
+* text=auto
