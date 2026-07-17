@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { wrapMessage, CHAT_INSTRUCTIONS } from "../instructions";
-import { extractMarkdown, askOct, extractCarryLayout, extractCarryTheme } from "../harness";
+import {
+  extractMarkdown,
+  askOct,
+  extractCarryLayout,
+  extractCarryTheme,
+  extractCliMeta,
+} from "../harness";
 import { getSharedClient, resetSharedClient } from "../octClient";
 import { getAskTimeoutMs } from "../../config/runtimeConfig";
 
@@ -99,6 +105,46 @@ describe("Harness tests", () => {
       expect(extractMarkdown(result)).toBe("Done.");
     });
 
+    it("prefers message from oneshot CLI envelope", () => {
+      const result = {
+        data: {
+          status: "ok",
+          message: "oneshot agent answer",
+          meta: { cli: { agent: "claude", provider: "claude-cli" } },
+        },
+        content: [],
+        isError: false,
+      };
+      expect(extractMarkdown(result)).toBe("oneshot agent answer");
+    });
+  });
+
+  describe("extractCliMeta", () => {
+    it("reads meta.cli from oneshot envelope", () => {
+      expect(
+        extractCliMeta({
+          status: "ok",
+          message: "hi",
+          meta: { cli: { agent: "claude", provider: "claude-cli", model: "sonnet" } },
+        })
+      ).toEqual({ agent: "claude", provider: "claude-cli", model: "sonnet" });
+    });
+
+    it("reads nested response.meta.cli", () => {
+      expect(
+        extractCliMeta({
+          response: { meta: { cli: { agent: "agy", provider: "agy-cli" } } },
+        })
+      ).toEqual({ agent: "agy", provider: "agy-cli", model: null });
+    });
+
+    it("returns null when cli meta is absent", () => {
+      expect(extractCliMeta({ status: "ok", message: "plain" })).toBeNull();
+      expect(extractCliMeta(null)).toBeNull();
+    });
+  });
+
+  describe("extractMarkdown (carry-aware)", () => {
     it("prefers response.summary over nested tool blobs", () => {
       const result = {
         data: {
@@ -247,6 +293,30 @@ describe("Harness tests", () => {
         }),
         { timeoutMs: getAskTimeoutMs() }
       );
+    });
+
+    it("surfaces oneshot cli meta on success", async () => {
+      const mockClient = await getSharedClient();
+      vi.mocked(mockClient.callTool).mockResolvedValue({
+        data: {
+          status: "ok",
+          message: "cli answer",
+          meta: { cli: { agent: "claude", provider: "claude-cli", model: "sonnet" } },
+        },
+        content: [],
+        isError: false,
+      });
+
+      const res = await askOct("question", "session-123");
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.markdown).toBe("cli answer");
+        expect(res.cli).toEqual({
+          agent: "claude",
+          provider: "claude-cli",
+          model: "sonnet",
+        });
+      }
     });
 
     it("passes configurable askTimeoutMs to callTool", async () => {

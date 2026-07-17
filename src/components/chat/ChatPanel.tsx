@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSharedClient } from "@/api/octClient";
-import { askOct, extractCarryLayout, extractCarryTheme } from "@/api/harness";
+import {
+  askOct,
+  extractCarryLayout,
+  extractCarryTheme,
+  type CliMeta,
+} from "@/api/harness";
 import { loadLayoutForQuery } from "@/content/loadLayout";
 import { ChatMessage, type Message } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
@@ -20,10 +25,20 @@ const ENRICHMENT_DIRECTIVE =
   "(3) upsert_project; (4) emit_layout. " +
   "Creative/vibe redesign requests → follow layout-design-builder skill (design_layout).]";
 
+/** Label for the one-shot CLI pill (mirrors OpenCat admin McpMode). */
+function oneShotPillLabel(cli: CliMeta): string {
+  const agent = (cli.agent || "").toLowerCase();
+  if (agent === "agy" || cli.provider === "agy-cli") return "one-shot cli · agy";
+  if (agent === "claude" || cli.provider === "claude-cli") return "one-shot cli · claude";
+  return `one-shot cli · ${cli.agent}`;
+}
+
 export function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  /** Set when the last successful turn ran via OpenCat oneshot CLI short-circuit. */
+  const [cliMeta, setCliMeta] = useState<CliMeta | null>(null);
   const [sessionId] = useState(() => crypto.randomUUID());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
@@ -63,9 +78,12 @@ export function ChatPanel() {
     try {
       const result = await askOct(userMessageText + ENRICHMENT_DIRECTIVE, sessionId);
       if (result.ok) {
+        if (result.cli) setCliMeta(result.cli);
         setMessages((prev) => [...prev, { role: "assistant", markdown: result.markdown }]);
         // Agentic path: summary_node folds layout into response.carry (and
         // response.layout). Prefer this over the REST fast path.
+        // Note: oneshot CLI envelopes only guarantee message/meta.cli — layout
+        // carry is best-effort; REST fast path remains the layout fallback.
         const carryLayout = extractCarryLayout(result.raw);
         if (carryLayout) {
           queryClient.setQueryData(["layout", "default"], {
@@ -138,7 +156,7 @@ export function ChatPanel() {
 
       {/* Header / Connection Status */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-(--hairline)">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-xl font-bold text-(--fg) tracking-tight">Ask Portfolio</h2>
           <div
             className={cn(
@@ -153,6 +171,15 @@ export function ChatPanel() {
             />
             {isOnline ? `oct online · ${tools.length} tools` : "oct offline — chat disabled"}
           </div>
+          {cliMeta && (
+            <div
+              className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium flex items-center gap-1.5 border uppercase tracking-wider bg-(--neon)/10 text-(--neon) border-(--neon)/30"
+              title="OpenCat core LLM is a headless CLI provider — this turn ran as a single CLI agent spawn instead of the node-by-node GOAP graph."
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-(--neon) animate-pulse" />
+              {oneShotPillLabel(cliMeta)}
+            </div>
+          )}
         </div>
 
         {/* Collapsible Tool List */}
@@ -199,10 +226,15 @@ export function ChatPanel() {
         )}
         {pending && (
           <div className="flex w-full justify-start py-4">
-            <div className="bg-(--bg-sunken) border border-(--hairline) rounded-2xl rounded-tl-none px-4 py-3 shadow-xs text-(--fg) flex items-center gap-1.5">
+            <div className="bg-(--bg-sunken) border border-(--hairline) rounded-2xl rounded-tl-none px-4 py-3 shadow-xs text-(--fg) flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce [animation-delay:-0.3s]" />
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce [animation-delay:-0.15s]" />
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce" />
+              {cliMeta && (
+                <span className="ml-1 text-[11px] font-mono text-(--fg-muted)">
+                  {oneShotPillLabel(cliMeta)} working…
+                </span>
+              )}
             </div>
           </div>
         )}
