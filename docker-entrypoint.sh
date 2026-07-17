@@ -7,11 +7,14 @@ set -eu
 CONFIG_PATH="/usr/share/nginx/html/config.json"
 OCT_BASE_URL="${OCT_BASE_URL:-}"
 OCT_API_KEY="${OCT_API_KEY:-}"
+# Client-side budget for Andrew's AI (run_graph); default 120s.
+OCT_ASK_TIMEOUT_MS="${OCT_ASK_TIMEOUT_MS:-120000}"
 
 cat > "$CONFIG_PATH" <<EOF
 {
   "octBaseUrl": "${OCT_BASE_URL}",
-  "mcpApiKey": "${OCT_API_KEY}"
+  "mcpApiKey": "${OCT_API_KEY}",
+  "askTimeoutMs": ${OCT_ASK_TIMEOUT_MS}
 }
 EOF
 

@@ -1,3 +1,4 @@
 {
-  "octBaseUrl": "http://localhost:10000"
+  "octBaseUrl": "http://localhost:10000",
+  "askTimeoutMs": 120000
 }

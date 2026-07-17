@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { wrapMessage, CHAT_INSTRUCTIONS } from "../instructions";
 import { extractMarkdown, askOct } from "../harness";
 import { getSharedClient, resetSharedClient } from "../octClient";
+import { getAskTimeoutMs } from "../../config/runtimeConfig";
 
 vi.mock("../octClient", () => {
   const mockClient = {
@@ -16,6 +17,14 @@ vi.mock("../octClient", () => {
     getSharedClient: vi.fn().mockResolvedValue(mockClient),
     resetSharedClient: vi.fn(),
     octBaseUrl: vi.fn().mockReturnValue("http://localhost:10000"),
+  };
+});
+
+vi.mock("../../config/runtimeConfig", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../config/runtimeConfig")>();
+  return {
+    ...actual,
+    getAskTimeoutMs: vi.fn().mockReturnValue(120_000),
   };
 });
 
@@ -159,7 +168,24 @@ describe("Harness tests", () => {
           session_id: "session-123",
           force_execute: true,
         }),
-        expect.any(Object)
+        { timeoutMs: getAskTimeoutMs() }
+      );
+    });
+
+    it("passes configurable askTimeoutMs to callTool", async () => {
+      vi.mocked(getAskTimeoutMs).mockReturnValue(300_000);
+      const mockClient = await getSharedClient();
+      vi.mocked(mockClient.callTool).mockResolvedValue({
+        data: "ok",
+        content: [],
+        isError: false,
+      });
+
+      await askOct("question", "session-123");
+      expect(mockClient.callTool).toHaveBeenCalledWith(
+        "run_graph",
+        expect.any(Object),
+        { timeoutMs: 300_000 }
       );
     });
 
