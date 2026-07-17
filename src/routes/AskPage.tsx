@@ -10,7 +10,11 @@ export function AskPage() {
     queryKey: ["layout", "default"],
     queryFn: () => loadLiveWithStatus("default"),
     retry: false,
-    staleTime: 60_000,
+    // Infinity + no refocus refetch: once an agent-designed layout (via
+    // ChatPanel's setQueryData) lands in cache, a background refetch must
+    // never silently overwrite it with the deterministic default layout.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
     placeholderData: { layout: loadBaked(), source: "snapshot" as const },
   })
 
