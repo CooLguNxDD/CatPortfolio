@@ -1,3 +1,4 @@
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -80,7 +81,7 @@ const mdComponents = {
   },
 };
 
-export function ChatMessage({ role, markdown, isError }: Message) {
+export const ChatMessage = memo(function ChatMessage({ role, markdown, isError }: Message) {
   const isUser = role === "user";
 
   return (
@@ -115,4 +116,4 @@ export function ChatMessage({ role, markdown, isError }: Message) {
       </div>
     </div>
   );
-}
+});

@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { getOctBaseUrl, getMcpApiKey } from "../config/runtimeConfig";
 
 export interface ContentBlock {
   type: string;
@@ -37,7 +38,16 @@ export class OctClient {
   }
 
   private async doConnect(): Promise<void> {
-    const transport = new StreamableHTTPClientTransport(new URL(this.url));
+    let apiKey = "";
+    try {
+      apiKey = getMcpApiKey();
+    } catch {
+      // runtime config not loaded yet — fall back to no auth header (dev convenience)
+    }
+    const transport = new StreamableHTTPClientTransport(
+      new URL(this.url),
+      apiKey ? { requestInit: { headers: { Authorization: `Bearer ${apiKey}` } } } : undefined
+    );
     const client = new Client(
       {
         name: "cat-portfolio-client",
@@ -70,6 +80,14 @@ export class OctClient {
   }
 
   async close(): Promise<void> {
+    // Await in-flight connect so we don't leak a client that resolves after close.
+    if (this.connectPromise) {
+      try {
+        await this.connectPromise;
+      } catch {
+        // ignore connect failure — still clear state below
+      }
+    }
     if (this.client) {
       try {
         await this.client.close();
@@ -117,22 +135,29 @@ export class OctClient {
     if (!this.client) {
       throw new Error("client_not_connected");
     }
-    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const callPromise = this.client.callTool({
-        name,
-        arguments: args,
-      });
-
-      let res: Awaited<ReturnType<Client["callTool"]>>;
-      if (opts?.timeoutMs) {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error("timeout")), opts.timeoutMs);
-        });
-        res = await Promise.race([callPromise, timeoutPromise]);
-      } else {
-        res = await callPromise;
-      }
+      // MCP SDK default is 60s (DEFAULT_REQUEST_TIMEOUT_MSEC). Agent turns often
+      // exceed that; pass an explicit idle timeout and reset it on server progress
+      // keepalives (~15s). Providing onprogress is required so the client sends a
+      // progressToken — without it the server skips keepalives and the 60s wall hits.
+      // See OpenCat admin mcpClient + core_graph/node/helpers/mcp_ctx.py.
+      const timeoutMs = opts?.timeoutMs;
+      const res = await this.client.callTool(
+        { name, arguments: args },
+        undefined,
+        timeoutMs
+          ? {
+              timeout: timeoutMs,
+              resetTimeoutOnProgress: true,
+              // Registers progressToken even when we don't surface events in the UI.
+              onprogress: () => {},
+            }
+          : {
+              // Still register progress so keepalives can extend the SDK default.
+              resetTimeoutOnProgress: true,
+              onprogress: () => {},
+            }
+      );
 
       const isError = !!res.isError;
       const content = (res.content as ContentBlock[]) || [];
@@ -143,6 +168,7 @@ export class OctClient {
         try {
           data = JSON.parse(textBlock.text);
         } catch {
+          console.warn("[octClient] tool text not JSON, using raw text");
           data = textBlock.text;
         }
       }
@@ -155,13 +181,18 @@ export class OctClient {
     } catch (err) {
       resetSharedClient();
       throw err;
-    } finally {
-      if (timer !== undefined) clearTimeout(timer);
     }
   }
 }
 
 export function octBaseUrl(): string | undefined {
+  try {
+    const runtime = getOctBaseUrl();
+    if (runtime) return runtime;
+  } catch {
+    // runtime config not loaded yet (e.g. tests, or main.tsx hasn't awaited it) —
+    // fall back to the build-time env var for dev convenience.
+  }
   return import.meta.env.VITE_OCT_URL as string | undefined;
 }
 

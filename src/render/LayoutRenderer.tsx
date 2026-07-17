@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "motion/react";
 import type { Layout } from "@/content/schema";
 import { REGISTRY } from "./registry";
 import type { Block, BlockType } from "./registry";
+import { BlockErrorBoundary } from "./BlockErrorBoundary";
 
 export function LayoutRenderer({ layout }: { layout: Layout }) {
   const reduced = useReducedMotion();
@@ -20,7 +21,9 @@ export function LayoutRenderer({ layout }: { layout: Layout }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, delay: i * 0.04, ease: [0.16, 1, 0.3, 1] }}
           >
-            <Block {...block.props} />
+            <BlockErrorBoundary blockId={block.id}>
+              <Block {...block.props} />
+            </BlockErrorBoundary>
           </motion.section>
         );
       })}
