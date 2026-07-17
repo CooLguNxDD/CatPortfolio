@@ -13,11 +13,14 @@ export async function loadLiveWithStatus(audience: string):
   const base = import.meta.env.VITE_OCT_URL as string | undefined;
   if (!base) return { layout: loadBaked(), source: "snapshot" };
   try {
-    const res = await fetch(`${base}/portfolio/layout?audience=${audience}`,
-      { signal: AbortSignal.timeout(4000) });
+    const res = await fetch(
+      `${base}/portfolio/layout?audience=${encodeURIComponent(audience)}`,
+      { signal: AbortSignal.timeout(4000) }
+    );
     if (!res.ok) throw new Error(String(res.status));
     return { layout: LayoutSchema.parse(await res.json()), source: "live" };
-  } catch {
+  } catch (err) {
+    console.warn("[loadLayout] live layout failed, using snapshot:", err);
     return { layout: loadBaked(), source: "snapshot" };
   }
 }
