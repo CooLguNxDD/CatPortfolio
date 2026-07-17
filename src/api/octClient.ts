@@ -127,22 +127,29 @@ export class OctClient {
     if (!this.client) {
       throw new Error("client_not_connected");
     }
-    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const callPromise = this.client.callTool({
-        name,
-        arguments: args,
-      });
-
-      let res: Awaited<ReturnType<Client["callTool"]>>;
-      if (opts?.timeoutMs) {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error("timeout")), opts.timeoutMs);
-        });
-        res = await Promise.race([callPromise, timeoutPromise]);
-      } else {
-        res = await callPromise;
-      }
+      // MCP SDK default is 60s (DEFAULT_REQUEST_TIMEOUT_MSEC). Agent turns often
+      // exceed that; pass an explicit idle timeout and reset it on server progress
+      // keepalives (~15s). Providing onprogress is required so the client sends a
+      // progressToken — without it the server skips keepalives and the 60s wall hits.
+      // See OpenCat admin mcpClient + core_graph/node/helpers/mcp_ctx.py.
+      const timeoutMs = opts?.timeoutMs;
+      const res = await this.client.callTool(
+        { name, arguments: args },
+        undefined,
+        timeoutMs
+          ? {
+              timeout: timeoutMs,
+              resetTimeoutOnProgress: true,
+              // Registers progressToken even when we don't surface events in the UI.
+              onprogress: () => {},
+            }
+          : {
+              // Still register progress so keepalives can extend the SDK default.
+              resetTimeoutOnProgress: true,
+              onprogress: () => {},
+            }
+      );
 
       const isError = !!res.isError;
       const content = (res.content as ContentBlock[]) || [];
@@ -165,8 +172,6 @@ export class OctClient {
     } catch (err) {
       resetSharedClient();
       throw err;
-    } finally {
-      if (timer !== undefined) clearTimeout(timer);
     }
   }
 }

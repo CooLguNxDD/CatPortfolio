@@ -24,7 +24,7 @@ vi.mock("../../config/runtimeConfig", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../config/runtimeConfig")>();
   return {
     ...actual,
-    getAskTimeoutMs: vi.fn().mockReturnValue(120_000),
+    getAskTimeoutMs: vi.fn().mockReturnValue(600_000),
   };
 });
 

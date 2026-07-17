@@ -95,8 +95,8 @@ export function extractCarryLayout(data: unknown): unknown | null {
 
 async function performCall(userMessage: string, sessionId: string): Promise<OctToolResult> {
   const client = await getSharedClient();
-  // Wall-clock budget from runtime config (public/config.json askTimeoutMs).
-  // Default 120s — agent + tool turns often exceed the old hard-coded 30s.
+  // Idle budget from runtime config (public/config.json askTimeoutMs).
+  // Passed through to MCP SDK RequestOptions; server keepalives reset the window.
   return await client.callTool(
     "run_graph",
     {
