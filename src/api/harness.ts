@@ -1,6 +1,7 @@
 import { getSharedClient, resetSharedClient, type OctToolResult } from "./octClient.ts";
 import { getAskTimeoutMs } from "../config/runtimeConfig.ts";
 import { wrapMessage } from "./instructions.ts";
+import { LayoutSchema, type Layout } from "../content/schema.ts";
 
 export type AskResult =
   | { ok: true; markdown: string; raw?: unknown }
@@ -82,15 +83,71 @@ export function extractMarkdown(result: OctToolResult): string {
   return String(extracted);
 }
 
-/** Best-effort layout from run_graph carry (agentic emit_layout path). */
-export function extractCarryLayout(data: unknown): unknown | null {
+/** Pull a candidate layout object from common run_graph envelope shapes. */
+function findLayoutCandidate(data: unknown): unknown | null {
   if (!data || typeof data !== "object") return null;
   const obj = data as Record<string, any>;
-  const carry = obj?.response?.carry ?? obj?.carry ?? null;
-  if (carry && typeof carry === "object" && carry.layout && typeof carry.layout === "object") {
-    return carry.layout;
+
+  const candidates: unknown[] = [
+    obj?.response?.carry?.layout,
+    obj?.carry?.layout,
+    obj?.response?.layout,
+    obj?.layout,
+    obj?.response?.working_memory?.layout,
+    obj?.working_memory?.layout,
+  ];
+
+  // Multi-step envelopes sometimes park tool results under data / step_results.
+  const bags = [obj?.data, obj?.step_results, obj?.response?.step_results, obj?.response?.data];
+  for (const bag of bags) {
+    if (Array.isArray(bag)) {
+      for (let i = bag.length - 1; i >= 0; i--) {
+        const entry = bag[i];
+        if (!entry || typeof entry !== "object") continue;
+        const e = entry as Record<string, unknown>;
+        candidates.push(e.layout, (e.response as any)?.layout, (e.data as any)?.layout);
+        // Bare layout object parked as the step result itself.
+        if ((e as any).version === 1 && Array.isArray((e as any).blocks)) {
+          candidates.push(e);
+        }
+      }
+    } else if (bag && typeof bag === "object") {
+      const b = bag as Record<string, unknown>;
+      candidates.push(b.layout);
+    }
+  }
+
+  for (const c of candidates) {
+    if (c && typeof c === "object" && !Array.isArray(c)) {
+      return c;
+    }
   }
   return null;
+}
+
+/**
+ * Best-effort layout from run_graph carry (agentic emit_layout / design_layout path).
+ * Validates with LayoutSchema before returning — malformed agent JSON is dropped.
+ */
+export function extractCarryLayout(data: unknown): Layout | null {
+  const candidate = findLayoutCandidate(data);
+  if (!candidate) return null;
+  const parsed = LayoutSchema.safeParse(candidate);
+  if (!parsed.success) {
+    // Surface why the agentic layout was dropped (silent null is hard to debug).
+    console.warn(
+      "[extractCarryLayout] layout failed LayoutSchema validation:",
+      parsed.error.issues.slice(0, 5)
+    );
+    return null;
+  }
+  return parsed.data;
+}
+
+/** Theme id from a validated carry layout, if present. */
+export function extractCarryTheme(layout: Layout | null | undefined): string | null {
+  const theme = layout?.meta?.theme;
+  return typeof theme === "string" && theme.trim() ? theme.trim() : null;
 }
 
 async function performCall(userMessage: string, sessionId: string): Promise<OctToolResult> {

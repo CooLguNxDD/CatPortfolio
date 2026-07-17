@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { wrapMessage, CHAT_INSTRUCTIONS } from "../instructions";
-import { extractMarkdown, askOct } from "../harness";
+import { extractMarkdown, askOct, extractCarryLayout, extractCarryTheme } from "../harness";
 import { getSharedClient, resetSharedClient } from "../octClient";
 import { getAskTimeoutMs } from "../../config/runtimeConfig";
 
@@ -111,6 +111,83 @@ describe("Harness tests", () => {
         isError: false,
       };
       expect(extractMarkdown(result)).toBe("Here is Andrew's SRE work.");
+    });
+  });
+
+  describe("extractCarryLayout", () => {
+    const validLayout = {
+      version: 1 as const,
+      meta: {
+        audience: "peer" as const,
+        generatedAt: "2026-01-01T00:00:00Z",
+        theme: "neon",
+      },
+      blocks: [
+        {
+          type: "hero" as const,
+          id: "hero-1",
+          props: { name: "Andrew", tagline: "systems" },
+        },
+      ],
+    };
+
+    it("returns validated layout from response.carry", () => {
+      const layout = extractCarryLayout({
+        response: { carry: { layout: validLayout } },
+      });
+      expect(layout).not.toBeNull();
+      expect(layout?.meta.theme).toBe("neon");
+      expect(layout?.blocks[0]?.type).toBe("hero");
+      expect(extractCarryTheme(layout)).toBe("neon");
+    });
+
+    it("returns validated layout from top-level carry", () => {
+      const layout = extractCarryLayout({ carry: { layout: validLayout } });
+      expect(layout?.version).toBe(1);
+    });
+
+    it("drops malformed carry (bad block / wrong version)", () => {
+      expect(
+        extractCarryLayout({
+          carry: {
+            layout: {
+              version: 2,
+              meta: { audience: "default", generatedAt: "x" },
+              blocks: [],
+            },
+          },
+        })
+      ).toBeNull();
+
+      expect(
+        extractCarryLayout({
+          carry: {
+            layout: {
+              version: 1,
+              meta: { audience: "default", generatedAt: "x" },
+              blocks: [{ type: "hero", id: "h", props: {} }],
+            },
+          },
+        })
+      ).toBeNull();
+    });
+
+    it("returns null when carry is missing", () => {
+      expect(extractCarryLayout({})).toBeNull();
+      expect(extractCarryLayout(null)).toBeNull();
+      expect(extractCarryTheme(null)).toBeNull();
+    });
+
+    it("finds layout at response.layout top-level (summary mirror)", () => {
+      const layout = extractCarryLayout({ response: { layout: validLayout } });
+      expect(layout?.meta.theme).toBe("neon");
+    });
+
+    it("finds layout nested under step_results tool envelopes", () => {
+      const layout = extractCarryLayout({
+        step_results: [{ status: "ok", layout: validLayout }],
+      });
+      expect(layout?.blocks[0]?.type).toBe("hero");
     });
   });
 

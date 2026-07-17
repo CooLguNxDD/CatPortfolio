@@ -33,7 +33,9 @@ export const LayoutSchema = z.object({
   version: z.literal(1),
   meta: z.object({
     audience: z.enum(["recruiter", "hiring-manager", "peer", "default"]).default("default"),
-    generatedAt: z.string() }),
+    generatedAt: z.string(),
+    /** Optional vibe from design_layout; renderer applies only registered themes. */
+    theme: z.string().optional() }),
   blocks: z.array(z.discriminatedUnion("type",
     [Hero, ProjectGrid, StatStrip, StarStory, ArchDiagram, CodeSnippet, Prose])),
 });

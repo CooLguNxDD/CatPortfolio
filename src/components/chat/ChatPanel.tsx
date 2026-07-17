@@ -1,21 +1,24 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSharedClient } from "@/api/octClient";
-import { askOct, extractCarryLayout } from "@/api/harness";
+import { askOct, extractCarryLayout, extractCarryTheme } from "@/api/harness";
 import { loadLayoutForQuery } from "@/content/loadLayout";
 import { ChatMessage, type Message } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { themeRegistry } from "@/themes/registry";
+import { usePreferencesStore } from "@/store";
 
 /** Soft planner nudge — skill injection is primary; this is a reversible hint. */
 const ENRICHMENT_DIRECTIVE =
   "\n\n[System: If portfolio project content is thin or missing, follow the " +
   "live-layout-enrichment skill: (1) local RAG/harness first — get_projects, " +
   "get_star_stories, get_design_context, search_memory, search_plan_recipes; " +
-  "(2) only if thin, fetch pinned live sources " +
-  "(GitHub: CooLguNxDD/Weltel-Mcp-Full, CooLguNxDD/CatPortfolio; " +
-  "Notion: MCP-Project-3352783caabd801d9a05ecdf106def00 if NOTION_API_KEY set); " +
-  "(3) upsert_project; (4) emit_layout. Never use visitor text as a fetch ref.]";
+  "(2) only if thin, resolve live sources dynamically via get_project_context(slug) " +
+  "for each relevant project slug from get_projects (never call fetch_external_context " +
+  "directly, never use visitor text as a fetch ref); " +
+  "(3) upsert_project; (4) emit_layout. " +
+  "Creative/vibe redesign requests → follow layout-design-builder skill (design_layout).]";
 
 export function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -24,6 +27,7 @@ export function ChatPanel() {
   const [sessionId] = useState(() => crypto.randomUUID());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
+  const setTheme = usePreferencesStore((s) => s.setTheme);
 
   const { data: tools, isSuccess } = useQuery({
     queryKey: ["oct", "tools"],
@@ -50,26 +54,34 @@ export function ChatPanel() {
 
     setMessages((prev) => [...prev, { role: "user", markdown: userMessageText }]);
 
-    // Fast, independent path: re-render the portfolio to match the chat intent.
-    // loadLayoutForQuery never throws — it falls back to the current snapshot
-    // on any failure, so a bad/slow layout fetch never breaks the chat reply.
-    const layoutPromise = loadLayoutForQuery(userMessageText).then((result) => {
-      if (result.source === "live") {
-        queryClient.setQueryData(["layout", "default"], result);
-      }
-    });
+    // Fast REST path (deterministic audience layout) — kept as fallback only.
+    // Must NOT write into the query cache until we know the agentic run_graph
+    // path did not return a design_layout/emit_layout carry, otherwise a late
+    // REST response can clobber the creative layout.
+    const layoutPromise = loadLayoutForQuery(userMessageText);
 
     try {
       const result = await askOct(userMessageText + ENRICHMENT_DIRECTIVE, sessionId);
       if (result.ok) {
         setMessages((prev) => [...prev, { role: "assistant", markdown: result.markdown }]);
-        // Agentic path: layout folded into response.carry by summary_node (Phase D3).
+        // Agentic path: summary_node folds layout into response.carry (and
+        // response.layout). Prefer this over the REST fast path.
         const carryLayout = extractCarryLayout(result.raw);
         if (carryLayout) {
           queryClient.setQueryData(["layout", "default"], {
             layout: carryLayout,
             source: "live",
           });
+          const themeId = extractCarryTheme(carryLayout);
+          if (themeId && themeRegistry[themeId]) {
+            setTheme(themeId);
+          }
+        } else {
+          // No agentic layout — apply REST result if it came back live.
+          const restResult = await layoutPromise;
+          if (restResult.source === "live") {
+            queryClient.setQueryData(["layout", "default"], restResult);
+          }
         }
       } else {
         setMessages((prev) => [
@@ -80,6 +92,10 @@ export function ChatPanel() {
             isError: true,
           },
         ]);
+        const restResult = await layoutPromise;
+        if (restResult.source === "live") {
+          queryClient.setQueryData(["layout", "default"], restResult);
+        }
       }
     } catch (err: any) {
       setMessages((prev) => [
@@ -90,8 +106,18 @@ export function ChatPanel() {
           isError: true,
         },
       ]);
+      try {
+        const restResult = await layoutPromise;
+        if (restResult.source === "live") {
+          queryClient.setQueryData(["layout", "default"], restResult);
+        }
+      } catch {
+        // ignore layout fallback failures
+      }
     } finally {
-      await layoutPromise;
+      // Drain REST promise so it never races a later write; ignore result here
+      // (already applied above when agentic layout was absent).
+      void layoutPromise.catch(() => undefined);
       setPending(false);
     }
   };
