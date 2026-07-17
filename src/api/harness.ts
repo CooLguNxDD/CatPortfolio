@@ -3,14 +3,43 @@ import { getAskTimeoutMs } from "../config/runtimeConfig.ts";
 import { wrapMessage } from "./instructions.ts";
 import { LayoutSchema, type Layout } from "../content/schema.ts";
 
+/**
+ * Present when OpenCat short-circuited the turn to a single headless CLI agent
+ * spawn (core LLM provider claude-cli / agy-cli → oneshot). Mirrors the
+ * admin playground "one-shot cli" pill payload under response.meta.cli.
+ */
+export type CliMeta = {
+  agent: string;
+  provider?: string;
+  model?: string | null;
+};
+
 export type AskResult =
-  | { ok: true; markdown: string; raw?: unknown }
+  | { ok: true; markdown: string; raw?: unknown; cli?: CliMeta | null }
   | {
       ok: false;
       error: string;
       kind: "offline" | "rate_limited" | "tool_error" | "timeout";
       retryAfter?: number;
     };
+
+/** Pull oneshot CLI metadata from a run_graph envelope, if present. */
+export function extractCliMeta(data: unknown): CliMeta | null {
+  if (!data || typeof data !== "object") return null;
+  const obj = data as Record<string, any>;
+  const candidates = [obj?.meta?.cli, obj?.response?.meta?.cli, obj?.cli];
+  for (const c of candidates) {
+    if (!c || typeof c !== "object") continue;
+    const agent = typeof c.agent === "string" ? c.agent.trim() : "";
+    if (!agent) continue;
+    return {
+      agent,
+      provider: typeof c.provider === "string" ? c.provider : undefined,
+      model: typeof c.model === "string" ? c.model : null,
+    };
+  }
+  return null;
+}
 
 /** True when an object looks like a tool-result payload, not chat prose. */
 function looksLikeToolPayload(obj: Record<string, unknown>): boolean {
@@ -213,10 +242,16 @@ export async function askOct(userMessage: string, sessionId: string): Promise<As
           ok: true,
           markdown: "Still working on that — try rephrasing your question.",
           raw: result.data,
+          cli: extractCliMeta(result.data),
         };
       }
     }
-    return { ok: true, markdown: extractMarkdown(result), raw: result.data };
+    return {
+      ok: true,
+      markdown: extractMarkdown(result),
+      raw: result.data,
+      cli: extractCliMeta(result.data),
+    };
   } catch (err: any) {
     const msg = String(err?.message || err);
 
@@ -247,7 +282,12 @@ export async function askOct(userMessage: string, sessionId: string): Promise<As
         const errMsg = textBlock?.text || "Unknown tool error";
         return { ok: false, error: errMsg, kind: "tool_error" };
       }
-      return { ok: true, markdown: extractMarkdown(result), raw: result.data };
+      return {
+        ok: true,
+        markdown: extractMarkdown(result),
+        raw: result.data,
+        cli: extractCliMeta(result.data),
+      };
     } catch (retryErr: any) {
       const retryMsg = String(retryErr?.message || retryErr);
 
