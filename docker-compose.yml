@@ -14,7 +14,7 @@ services:
       - NODE_ENV=production
       - OCT_BASE_URL=${OCT_BASE_URL:-}
       - OCT_API_KEY=${OCT_API_KEY:-}
-      - OCT_ASK_TIMEOUT_MS=${OCT_ASK_TIMEOUT_MS:-120000}
+      - OCT_ASK_TIMEOUT_MS=${OCT_ASK_TIMEOUT_MS:-600000}
 
   # ── Optional: local dev server (hot-reload, no build step) ──────────────────
   catportfolio-dev:

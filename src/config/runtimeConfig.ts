@@ -13,16 +13,21 @@ export interface RuntimeConfig {
    */
   mcpApiKey: string;
   /**
-   * Client-side wall-clock budget for a single Andrew's AI (`run_graph`) call.
-   * Agent turns routinely exceed 30s (tool use + LLM); keep this generous.
+   * Per-idle-window timeout (ms) for a single Andrew's AI (`run_graph`) call.
+   * Passed to the MCP SDK as RequestOptions.timeout with resetTimeoutOnProgress.
+   * Server keepalives (~15s) reset this window during long LLM/tool phases —
+   * so this is not a hard wall-clock total, it is the max silence before abort.
    * Patchable via public/config.json without a rebuild.
    */
   askTimeoutMs: number;
 }
 
 const FETCH_TIMEOUT_MS = 2000;
-/** Default client timeout for askOct / run_graph — 2 minutes. */
-export const DEFAULT_ASK_TIMEOUT_MS = 120_000;
+/**
+ * Default idle timeout for askOct / run_graph.
+ * Matches OpenCat admin MCP_TOOL_TIMEOUT_MS (10 min); keepalives reset the clock.
+ */
+export const DEFAULT_ASK_TIMEOUT_MS = 600_000;
 
 let cached: RuntimeConfig | null = null;
 let loadPromise: Promise<RuntimeConfig> | null = null;
