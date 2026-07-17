@@ -80,6 +80,14 @@ export class OctClient {
   }
 
   async close(): Promise<void> {
+    // Await in-flight connect so we don't leak a client that resolves after close.
+    if (this.connectPromise) {
+      try {
+        await this.connectPromise;
+      } catch {
+        // ignore connect failure — still clear state below
+      }
+    }
     if (this.client) {
       try {
         await this.client.close();
@@ -160,6 +168,7 @@ export class OctClient {
         try {
           data = JSON.parse(textBlock.text);
         } catch {
+          console.warn("[octClient] tool text not JSON, using raw text");
           data = textBlock.text;
         }
       }

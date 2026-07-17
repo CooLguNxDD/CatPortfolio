@@ -43,6 +43,7 @@ CatPortfolio/
 │   ├── render/
 │   │   ├── registry.ts       # type → component map; `satisfies` enforces whitelist completeness
 │   │   ├── LayoutRenderer.tsx# Spec → components; unknown block = skip; motion/react animations
+│   │   ├── BlockErrorBoundary.tsx # Per-block error boundary (isolates throw → null)
 │   │   └── __tests__/        # Registry ↔ schema drift test
 │   ├── blocks/               # The 7 whitelisted block components + barrel
 │   │   ├── Hero.tsx  ProjectGrid.tsx  StatStrip.tsx  StarStory.tsx

@@ -123,6 +123,8 @@ export function ChatPanel() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // IME composition: Enter that finalizes a CJK candidate must not send.
+    if (e.nativeEvent.isComposing) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -176,7 +178,12 @@ export function ChatPanel() {
       </div>
 
       {/* Chat Messages Log */}
-      <div className="min-h-48 max-h-[450px] overflow-y-auto pr-2 space-y-2 select-text">
+      <div
+        className="min-h-48 max-h-[450px] overflow-y-auto pr-2 space-y-2 select-text"
+        role="log"
+        aria-live="polite"
+        aria-atomic="false"
+      >
         {messages.length === 0 ? (
           <div className="h-48 flex flex-col items-center justify-center text-center p-4">
             <p className="text-sm text-(--fg-muted) max-w-sm">
@@ -208,6 +215,7 @@ export function ChatPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          aria-label="Ask about Andrew's projects or experience"
           placeholder={
             isOnline ? "Ask about Andrew's projects or experience..." : "Chat is disabled because OCT is offline..."
           }
