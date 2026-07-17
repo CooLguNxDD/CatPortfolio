@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { loadRuntimeConfig, getOctBaseUrl, getMcpApiKey, resetRuntimeConfig } from "../runtimeConfig";
+import {
+  loadRuntimeConfig,
+  getOctBaseUrl,
+  getMcpApiKey,
+  getAskTimeoutMs,
+  resetRuntimeConfig,
+  DEFAULT_ASK_TIMEOUT_MS,
+} from "../runtimeConfig";
 
 describe("runtimeConfig", () => {
   const originalFetch = globalThis.fetch;
@@ -77,6 +84,53 @@ describe("runtimeConfig", () => {
 
   it("getMcpApiKey throws before loadRuntimeConfig resolves", () => {
     expect(() => getMcpApiKey()).toThrow("runtime_config_not_loaded");
+  });
+
+  it("resolves askTimeoutMs from a successful /config.json fetch", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ octBaseUrl: "https://api.example.com", askTimeoutMs: 300000 }),
+    }) as unknown as typeof fetch;
+
+    const config = await loadRuntimeConfig();
+    expect(config.askTimeoutMs).toBe(300000);
+    expect(getAskTimeoutMs()).toBe(300000);
+  });
+
+  it("falls back to DEFAULT_ASK_TIMEOUT_MS when config omits askTimeoutMs", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ octBaseUrl: "https://api.example.com" }),
+    }) as unknown as typeof fetch;
+
+    const config = await loadRuntimeConfig();
+    expect(config.askTimeoutMs).toBe(DEFAULT_ASK_TIMEOUT_MS);
+    expect(getAskTimeoutMs()).toBe(DEFAULT_ASK_TIMEOUT_MS);
+  });
+
+  it("falls back to VITE_ASK_TIMEOUT_MS when config omits askTimeoutMs", async () => {
+    vi.stubEnv("VITE_ASK_TIMEOUT_MS", "180000");
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ octBaseUrl: "https://api.example.com" }),
+    }) as unknown as typeof fetch;
+
+    const config = await loadRuntimeConfig();
+    expect(config.askTimeoutMs).toBe(180000);
+  });
+
+  it("ignores invalid askTimeoutMs and uses the fallback", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ octBaseUrl: "https://api.example.com", askTimeoutMs: -5 }),
+    }) as unknown as typeof fetch;
+
+    const config = await loadRuntimeConfig();
+    expect(config.askTimeoutMs).toBe(DEFAULT_ASK_TIMEOUT_MS);
+  });
+
+  it("getAskTimeoutMs returns default before loadRuntimeConfig resolves", () => {
+    expect(getAskTimeoutMs()).toBe(DEFAULT_ASK_TIMEOUT_MS);
   });
 
   it("caches the result across repeated loadRuntimeConfig calls", async () => {

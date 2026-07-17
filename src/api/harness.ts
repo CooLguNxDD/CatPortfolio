@@ -1,4 +1,5 @@
 import { getSharedClient, resetSharedClient, type OctToolResult } from "./octClient.ts";
+import { getAskTimeoutMs } from "../config/runtimeConfig.ts";
 import { wrapMessage } from "./instructions.ts";
 
 export type AskResult =
@@ -94,6 +95,8 @@ export function extractCarryLayout(data: unknown): unknown | null {
 
 async function performCall(userMessage: string, sessionId: string): Promise<OctToolResult> {
   const client = await getSharedClient();
+  // Wall-clock budget from runtime config (public/config.json askTimeoutMs).
+  // Default 120s — agent + tool turns often exceed the old hard-coded 30s.
   return await client.callTool(
     "run_graph",
     {
@@ -101,7 +104,7 @@ async function performCall(userMessage: string, sessionId: string): Promise<OctT
       session_id: sessionId,
       force_execute: true,
     },
-    { timeoutMs: 30000 }
+    { timeoutMs: getAskTimeoutMs() }
   );
 }
 

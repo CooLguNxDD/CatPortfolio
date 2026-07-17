@@ -12,17 +12,41 @@ export interface RuntimeConfig {
    * keeps that acceptable.
    */
   mcpApiKey: string;
+  /**
+   * Client-side wall-clock budget for a single Andrew's AI (`run_graph`) call.
+   * Agent turns routinely exceed 30s (tool use + LLM); keep this generous.
+   * Patchable via public/config.json without a rebuild.
+   */
+  askTimeoutMs: number;
 }
 
 const FETCH_TIMEOUT_MS = 2000;
+/** Default client timeout for askOct / run_graph — 2 minutes. */
+export const DEFAULT_ASK_TIMEOUT_MS = 120_000;
 
 let cached: RuntimeConfig | null = null;
 let loadPromise: Promise<RuntimeConfig> | null = null;
+
+/** Parse a positive finite timeout from config/env; otherwise return fallback. */
+function parseTimeoutMs(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.floor(value);
+  }
+  if (typeof value === "string" && value.trim()) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  }
+  return fallback;
+}
 
 function envFallback(): RuntimeConfig {
   return {
     octBaseUrl: (import.meta.env.VITE_OCT_URL as string | undefined) ?? "",
     mcpApiKey: (import.meta.env.VITE_OCT_API_KEY as string | undefined) ?? "",
+    askTimeoutMs: parseTimeoutMs(
+      import.meta.env.VITE_ASK_TIMEOUT_MS as string | undefined,
+      DEFAULT_ASK_TIMEOUT_MS
+    ),
   };
 }
 
@@ -30,7 +54,8 @@ function envFallback(): RuntimeConfig {
  * Fetches /config.json (unhashed, patchable post-deploy without a rebuild —
  * see public/config.json) to discover the OCT backend base URL + API key at
  * runtime, since GitHub Pages static hosting has no build-time env injection.
- * Falls back to VITE_OCT_URL/VITE_OCT_API_KEY, then "", on any fetch/parse failure.
+ * Falls back to VITE_OCT_URL/VITE_OCT_API_KEY/VITE_ASK_TIMEOUT_MS, then defaults,
+ * on any fetch/parse failure.
  */
 export function loadRuntimeConfig(): Promise<RuntimeConfig> {
   if (loadPromise) return loadPromise;
@@ -45,6 +70,10 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
           typeof json?.octBaseUrl === "string" && json.octBaseUrl ? json.octBaseUrl : fallback.octBaseUrl,
         mcpApiKey:
           typeof json?.mcpApiKey === "string" && json.mcpApiKey ? json.mcpApiKey : fallback.mcpApiKey,
+        askTimeoutMs:
+          json?.askTimeoutMs !== undefined
+            ? parseTimeoutMs(json.askTimeoutMs, fallback.askTimeoutMs)
+            : fallback.askTimeoutMs,
       };
     } catch {
       cached = envFallback();
@@ -68,6 +97,19 @@ export function getMcpApiKey(): string {
     throw new Error("runtime_config_not_loaded");
   }
   return cached.mcpApiKey;
+}
+
+/**
+ * Returns the client timeout for Andrew's AI ask turns.
+ * Safe before loadRuntimeConfig resolves — falls back to DEFAULT_ASK_TIMEOUT_MS
+ * (and VITE_ASK_TIMEOUT_MS when set) so harness tests and early callers don't throw.
+ */
+export function getAskTimeoutMs(): number {
+  if (cached) return cached.askTimeoutMs;
+  return parseTimeoutMs(
+    import.meta.env.VITE_ASK_TIMEOUT_MS as string | undefined,
+    DEFAULT_ASK_TIMEOUT_MS
+  );
 }
 
 /** Test-only: clears cached state so loadRuntimeConfig() re-fetches. */
