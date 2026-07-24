@@ -52,7 +52,7 @@ function App() {
       </main>
 
       <footer className="py-6 text-center text-xs font-mono text-(--fg-muted) border-t border-(--hairline) max-w-4xl mx-auto w-full px-4">
-        built from layout.json · rendered by a 7-block whitelist · {new Date().getFullYear()}
+        schema-driven blocks · GenUI layout.json · {new Date().getFullYear()}
       </footer>
     </div>
   )

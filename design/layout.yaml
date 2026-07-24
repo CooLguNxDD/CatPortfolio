@@ -45,7 +45,7 @@ blocks:
         - id: oct
           name: OpenCat Tunnel
           summary: >-
-            Healthcare MCP server with a LangGraph agent, OAuth 2.0 layer,
+            Agentic MCP server with a LangGraph agent, OAuth 2.0 layer,
             semantic tool routing over pgvector, and a VS Code tunnel
             extension.
           tags: [MCP, pgvector, LangGraph, OAuth]

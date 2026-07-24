@@ -129,7 +129,7 @@ function NodeView({ node }: { node: CompositeNodeType }) {
 export function Composite(props: PropsOf<"composite">) {
   const layout = props.layout;
   return (
-    <section className="rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card) p-[var(--pad-card)]">
+    <section className="rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card) p-[var(--pad-card)] shadow-[var(--shadow-card)] transition-[transform,border-color] duration-200 hover:-translate-y-0.5 hover:border-(--amber)/35">
       {props.title ? (
         <h3 className="mb-3 text-sm font-medium text-(--fg)">{props.title}</h3>
       ) : null}
