@@ -398,6 +398,10 @@ export const LayoutSchema = z.object({
       .transform((v) => sanitizeThemeOverrides(v)),
     /** Aggregated citations from agentically-composed blocks (build_layout_block). */
     sources: z.array(LayoutSource).optional(),
+    /** GenUI / scoped compose signals (optional; omit on plain snapshots). */
+    mode: z.string().optional(),
+    curationLabel: z.string().optional(),
+    scopedProjectCount: z.number().int().optional(),
   }),
   blocks: z.array(
     z.discriminatedUnion("type", [

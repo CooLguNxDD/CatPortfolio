@@ -6,6 +6,9 @@ import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AgentStatusPill } from "@/components/AgentStatusPill"
 
 function sourceLabel(data: LayoutLoadResult): string {
+  const mode = data.layout?.meta?.mode
+  if (mode === "scoped") return "live · scoped GenUI"
+  if (mode === "template") return "live · template"
   switch (data.source) {
     case "fragments":
       return data.fragments?.length
@@ -14,7 +17,7 @@ function sourceLabel(data: LayoutLoadResult): string {
     case "bake":
       return data.shortId ? `bake · j=${data.shortId}` : "bake"
     case "live":
-      return "live"
+      return mode ? `live · ${mode}` : "live"
     default:
       return `snapshot · ${data.layout.meta.generatedAt}`
   }
@@ -37,7 +40,7 @@ export function AskPage() {
   const isLive = data.source !== "snapshot"
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10 space-y-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-10 space-y-10">
       <div className="flex flex-wrap items-center gap-2">
         <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono inline-flex items-center gap-2 w-fit">
           <span

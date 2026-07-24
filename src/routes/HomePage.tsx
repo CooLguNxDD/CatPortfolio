@@ -3,10 +3,9 @@ import { useSearch } from "@tanstack/react-router"
 import { loadBaked, loadJobLayout } from "@/content/loadLayout"
 import { LayoutRenderer } from "@/render/LayoutRenderer"
 
-const bakedLayout = loadBaked()
-
 export function HomePage() {
   const { j } = useSearch({ from: "/" })
+  const bakedLayout = loadBaked()
 
   const { data } = useQuery({
     queryKey: ["job-layout", j],
@@ -25,3 +24,4 @@ export function HomePage() {
     </div>
   )
 }
+// Trigger Vite HMR re-evaluation of baked layout.json

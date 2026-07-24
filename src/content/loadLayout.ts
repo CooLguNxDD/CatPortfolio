@@ -26,8 +26,13 @@ function parseLayoutPayload(json: unknown): LayoutLoadResult | null {
     const parsed = LayoutSchema.safeParse(obj.layout);
     if (!parsed.success) return null;
     const mode = typeof obj.mode === "string" ? obj.mode : "";
+    // Prefer mode stamped on layout.meta (scoped GenUI); envelope mode is fallback.
+    const metaMode =
+      parsed.data.meta && typeof parsed.data.meta.mode === "string"
+        ? parsed.data.meta.mode
+        : mode;
     const source: LayoutSource =
-      mode === "fragments" ? "fragments" : "live";
+      metaMode === "fragments" || mode === "fragments" ? "fragments" : "live";
     return {
       layout: parsed.data,
       source,
@@ -65,7 +70,7 @@ export async function loadLiveWithStatus(audience: string): Promise<LayoutLoadRe
 
 /**
  * Fast, public path for Ask-mode chat-driven layout re-render.
- * Backend now fragment-composes + live-enriches; returns envelope or bare layout.
+ * Backend scoped GenUI compose (compose_scoped_layout); returns envelope or bare layout.
  */
 export async function loadLayoutForQuery(
   query: string,
