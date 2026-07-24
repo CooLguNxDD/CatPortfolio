@@ -66,10 +66,13 @@ blocks:
           tags: [React, Zod, self-rendering]
           metrics:
             - label: block types
-              value: "7"
+              value: "14"
           links:
             - label: repo
               href: https://github.com/CooLguNxDD/CatPortfolio
+
+  # Fragment entry (expanded from design/fragments.json at compile time)
+  - fragment: cta.quickActions
 
   - type: starStory
     id: st1

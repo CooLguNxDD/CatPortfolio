@@ -179,6 +179,54 @@ export function extractCarryTheme(layout: Layout | null | undefined): string | n
   return typeof theme === "string" && theme.trim() ? theme.trim() : null;
 }
 
+/** Bake metadata from run_graph / bake_portfolio_for_job envelopes. */
+export type BakeMeta = {
+  shortId: string;
+  queryParam?: string;
+  audience?: string;
+};
+
+export function extractBakeMeta(data: unknown): BakeMeta | null {
+  if (!data || typeof data !== "object") return null;
+  const obj = data as Record<string, any>;
+  const bags: unknown[] = [
+    obj,
+    obj.data,
+    obj.content,
+    obj.response,
+    obj.carry,
+    obj.response?.carry,
+    obj.response?.data,
+    obj.response?.content,
+  ];
+  // step_results entries
+  for (const bag of [obj.step_results, obj.response?.step_results, obj.data]) {
+    if (Array.isArray(bag)) {
+      for (let i = bag.length - 1; i >= 0; i--) bags.push(bag[i]);
+    }
+  }
+  for (const b of bags) {
+    if (!b || typeof b !== "object") continue;
+    const e = b as Record<string, any>;
+    const sid =
+      (typeof e.short_id === "string" && e.short_id) ||
+      (typeof e.shortId === "string" && e.shortId) ||
+      null;
+    if (!sid) continue;
+    return {
+      shortId: sid,
+      queryParam:
+        typeof e.query_param === "string"
+          ? e.query_param
+          : typeof e.queryParam === "string"
+            ? e.queryParam
+            : `j=${sid}`,
+      audience: typeof e.audience === "string" ? e.audience : undefined,
+    };
+  }
+  return null;
+}
+
 async function performCall(userMessage: string, sessionId: string): Promise<OctToolResult> {
   const client = await getSharedClient();
   // Idle budget from runtime config (public/config.json askTimeoutMs).
