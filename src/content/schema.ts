@@ -374,6 +374,14 @@ export function sanitizeThemeOverrides(
   return Object.keys(out).length ? out : undefined;
 }
 
+/** Citation for an agentically-composed block (build_layout_block grounding). */
+const LayoutSource = z.object({
+  ref: z.string(),
+  label: z.string().optional(),
+  url: z.string().optional(),
+  kind: z.string().optional(),
+});
+
 export const LayoutSchema = z.object({
   version: z.literal(1),
   meta: z.object({
@@ -388,6 +396,8 @@ export const LayoutSchema = z.object({
       .record(z.string())
       .optional()
       .transform((v) => sanitizeThemeOverrides(v)),
+    /** Aggregated citations from agentically-composed blocks (build_layout_block). */
+    sources: z.array(LayoutSource).optional(),
   }),
   blocks: z.array(
     z.discriminatedUnion("type", [
