@@ -1,0 +1,79 @@
+{
+  "generatedAt": "2026-07-24T00:00:00.000Z",
+  "source": "snapshot",
+  "fragments": [
+    {
+      "id": "hero.compact",
+      "label": "Hero (compact)",
+      "description": "Name, tagline, pitch, links only.",
+      "tags": ["hero"],
+      "audience_affinity": ["default", "recruiter", "peer", "hiring-manager"],
+      "overrides": {},
+      "blocks": [
+        {
+          "type": "hero",
+          "id": "hero-1",
+          "props": {
+            "name": "Andrew (the cat)",
+            "tagline": "Postgres-first systems, agent infra, OpenCat Tunnel",
+            "pitch": "One MCP server with agent intelligence baked in.",
+            "links": [
+              { "label": "OCT", "href": "https://github.com/CooLguNxDD/Weltel-Mcp-Full" },
+              { "label": "CatPortfolio", "href": "https://github.com/CooLguNxDD/CatPortfolio" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "cta.quickActions",
+      "label": "Quick actions",
+      "description": "Visitor CTA chips from settings.quick_actions.",
+      "tags": ["cta", "chat"],
+      "audience_affinity": ["default", "recruiter", "peer", "hiring-manager"],
+      "overrides": {},
+      "blocks": [
+        {
+          "type": "quickActions",
+          "id": "cta-quick",
+          "props": {
+            "prompt": "Ask about the work:",
+            "actions": [
+              {
+                "label": "Infra work",
+                "prompt": "Show me your infra / SRE work"
+              },
+              {
+                "label": "Deepest system",
+                "prompt": "What is the deepest system you built?"
+              },
+              {
+                "label": "Recent ship",
+                "prompt": "What did you ship last month?"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "quick_actions": [
+    {
+      "label": "Infra work",
+      "prompt": "Show me your infra / SRE work",
+      "audience": "peer"
+    },
+    {
+      "label": "Deepest system",
+      "prompt": "What is the deepest system you built?",
+      "audience": "hiring-manager"
+    },
+    {
+      "label": "Recent ship",
+      "prompt": "What did you ship last month?",
+      "audience": "default"
+    }
+  ],
+  "themes": ["cozy", "neon", "paper"],
+  "presets": ["showcase", "minimal", "deep-dive"]
+}

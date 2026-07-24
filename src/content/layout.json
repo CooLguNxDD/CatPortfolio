@@ -88,7 +88,7 @@
             "metrics": [
               {
                 "label": "block types",
-                "value": "7"
+                "value": "14"
               }
             ],
             "links": [
@@ -97,6 +97,27 @@
                 "href": "https://github.com/CooLguNxDD/CatPortfolio"
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "quickActions",
+      "id": "cta-quick",
+      "props": {
+        "prompt": "Ask about the work:",
+        "actions": [
+          {
+            "label": "Infra work",
+            "prompt": "Show me your infra / SRE work"
+          },
+          {
+            "label": "Deepest system",
+            "prompt": "What is the deepest system you built?"
+          },
+          {
+            "label": "Recent ship",
+            "prompt": "What did you ship last month?"
           }
         ]
       }
