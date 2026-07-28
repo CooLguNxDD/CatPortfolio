@@ -104,7 +104,7 @@ const components = {
 
 export function Prose({ markdown }: ProseProps) {
   return (
-    <div className="w-full py-6 text-(--fg) space-y-4">
+    <div className="w-full py-6 text-(--fg) space-y-4 rounded-xl border border-(--hairline)/60 bg-(--card)/40 px-4 shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-0.5">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {markdown}
       </ReactMarkdown>

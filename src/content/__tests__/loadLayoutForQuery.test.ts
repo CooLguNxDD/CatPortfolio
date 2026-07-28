@@ -38,7 +38,7 @@ describe("loadLayoutForQuery", () => {
     expect(result.layout).toStrictEqual(loadBaked());
   });
 
-  it("returns the live layout on a successful fetch", async () => {
+  it("returns the live layout on a successful fetch (bare layout legacy)", async () => {
     const liveLayout = {
       version: 1,
       meta: { audience: "recruiter", generatedAt: "2026-07-16T00:00:00Z" },
@@ -56,6 +56,28 @@ describe("loadLayoutForQuery", () => {
       "http://localhost:10000/api/portfolio/public/layout-for-query?query=show%20me%20your%20SRE%20work",
       expect.any(Object)
     );
+  });
+
+  it("returns fragments source from envelope response", async () => {
+    const liveLayout = {
+      version: 1,
+      meta: { audience: "peer", generatedAt: "2026-07-16T00:00:00Z" },
+      blocks: [],
+    };
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        layout: liveLayout,
+        mode: "fragments",
+        fragments: ["hero.full", "work.grid"],
+        audience: "peer",
+      }),
+    }) as unknown as typeof fetch;
+
+    const result = await loadLayoutForQuery("show me infra");
+    expect(result.source).toBe("fragments");
+    expect(result.fragments).toEqual(["hero.full", "work.grid"]);
+    expect(result.layout).toStrictEqual(liveLayout);
   });
 
   it("falls back to baked snapshot on a 400 (missing/invalid query)", async () => {

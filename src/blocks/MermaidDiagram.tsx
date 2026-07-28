@@ -1,7 +1,9 @@
 import { useEffect, useState, useId } from "react";
 import mermaid from "mermaid";
+import { usePreferencesStore } from "@/store";
 
 let mermaidInitialized = false;
+let mermaidTheme: string | null = null;
 
 export default function MermaidDiagram({ source }: { source: string }) {
   const [svg, setSvg] = useState<string | null>(null);
@@ -9,19 +11,23 @@ export default function MermaidDiagram({ source }: { source: string }) {
   const rawId = useId();
   // Sanitizing the ID to be a valid HTML ID without colons
   const elementId = `mmd-${rawId.replace(/:/g, "-")}`;
+  const themeId = usePreferencesStore((s) => s.theme);
+  // paper is light; others are dark-ish
+  const mermaidThemeName = themeId === "paper" ? "neutral" : "dark";
 
   useEffect(() => {
     let active = true;
 
     async function drawDiagram() {
       try {
-        if (!mermaidInitialized) {
+        if (!mermaidInitialized || mermaidTheme !== mermaidThemeName) {
           mermaid.initialize({
             startOnLoad: false,
-            theme: "dark",
+            theme: mermaidThemeName,
             securityLevel: "strict",
           });
           mermaidInitialized = true;
+          mermaidTheme = mermaidThemeName;
         }
 
         const { svg: renderedSvg } = await mermaid.render(elementId, source);
@@ -42,7 +48,7 @@ export default function MermaidDiagram({ source }: { source: string }) {
     return () => {
       active = false;
     };
-  }, [elementId, source]);
+  }, [elementId, source, mermaidThemeName]);
 
   if (error) {
     return (

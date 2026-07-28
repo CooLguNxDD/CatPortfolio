@@ -7,6 +7,12 @@ import path from 'path'
 export default defineConfig({
   base: "/CatPortfolio/",
   plugins: [react(), tailwindcss()],
+  server: {
+    port: 11000,
+  },
+  preview: {
+    port: 11000,
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
