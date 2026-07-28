@@ -12,6 +12,7 @@ function chipLabel(s: Source): string {
   return short.length > 40 ? `${short.slice(0, 37)}…` : short || "source";
 }
 
+/** Renders a list of source citations provided by the agent. */
 export function SourceCitations({
   sources,
   className,
