@@ -2,6 +2,7 @@ import baked from "./layout.json";
 import { LayoutSchema, type Layout } from "./schema";
 import { getOctBaseUrl } from "../config/runtimeConfig";
 
+/** Loads the statically baked layout.json file. */
 export function loadBaked(): Layout {
   return LayoutSchema.parse(baked);
 }
@@ -49,6 +50,7 @@ function parseLayoutPayload(json: unknown): LayoutLoadResult | null {
   return { layout: bare.data, source: "live" };
 }
 
+/** Loads a live layout from the backend with detailed load status. */
 export async function loadLiveWithStatus(audience: string): Promise<LayoutLoadResult> {
   const base = import.meta.env.VITE_OCT_URL as string | undefined;
   if (!base) return { layout: loadBaked(), source: "snapshot" };

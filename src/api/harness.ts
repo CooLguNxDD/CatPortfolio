@@ -186,6 +186,7 @@ export type BakeMeta = {
   audience?: string;
 };
 
+/** Extracts bake metadata from layout responses. */
 export function extractBakeMeta(data: unknown): BakeMeta | null {
   if (!data || typeof data !== "object") return null;
   const obj = data as Record<string, any>;

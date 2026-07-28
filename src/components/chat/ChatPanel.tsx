@@ -290,7 +290,7 @@ export function ChatPanel() {
                     key={chip}
                     type="button"
                     onClick={() => void sendText(chip)}
-                    className="rounded-full border border-(--border) bg-(--bg-elevated) px-3 py-1 text-xs text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) transition-colors"
+                    className="rounded-full border border-(--border) bg-(--bg-elevated) px-3 py-1 text-xs text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors"
                   >
                     {chip}
                   </button>

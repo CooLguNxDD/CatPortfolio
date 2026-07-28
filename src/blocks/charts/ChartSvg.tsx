@@ -13,6 +13,7 @@ function plotBox() {
   };
 }
 
+/** Renders a bar chart using standard SVG. */
 export function BarChart({ series }: { series: Series[] }) {
   const labels = xLabels(series);
   const { min, max } = yDomain(series);
@@ -57,6 +58,7 @@ export function BarChart({ series }: { series: Series[] }) {
   );
 }
 
+/** Renders a line chart, optionally as an area chart, using SVG. */
 export function LineChart({ series, area = false }: { series: Series[]; area?: boolean }) {
   const labels = xLabels(series);
   const { min, max } = yDomain(series);
@@ -91,6 +93,7 @@ export function LineChart({ series, area = false }: { series: Series[]; area?: b
   );
 }
 
+/** Renders a donut chart using standard SVG. */
 export function DonutChart({ series }: { series: Series[] }) {
   const values = series[0]?.points ?? [];
   const total = values.reduce((a, p) => a + (Number(p.y) || 0), 0) || 1;
@@ -139,6 +142,7 @@ export function DonutChart({ series }: { series: Series[] }) {
   );
 }
 
+/** Renders a radar chart using standard SVG. */
 export function RadarChart({ series }: { series: Series[] }) {
   const labels = xLabels(series);
   const n = Math.max(labels.length, 3);

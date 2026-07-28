@@ -10,6 +10,7 @@ export interface ChatSlice {
   setPendingPrompt: (prompt: string | null) => void;
 }
 
+/** Zustand store for ephemeral chat state like pending prompts. */
 export const useChatStore = create<ChatSlice>((set) => ({
   pendingPrompt: null,
   setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),

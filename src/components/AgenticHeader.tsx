@@ -10,6 +10,7 @@ function sourceCount(meta: Meta): number {
   return Array.isArray(meta.sources) ? meta.sources.length : 0;
 }
 
+/** Determines if the agentic header should be displayed based on layout metadata. */
 export function shouldShowAgenticHeader(meta: Meta | undefined | null): boolean {
   if (!meta) return false;
   if (meta.curationLabel) return true;
@@ -21,6 +22,7 @@ export function shouldShowAgenticHeader(meta: Meta | undefined | null): boolean 
   return false;
 }
 
+/** Displays agent metadata and status above the layout. */
 export function AgenticHeader({ meta }: { meta: Meta }) {
   if (!shouldShowAgenticHeader(meta)) return null;
 
