@@ -7,7 +7,14 @@
     "starStory",
     "archDiagram",
     "codeSnippet",
-    "prose"
+    "prose",
+    "chart",
+    "timeline",
+    "flowAnim",
+    "kpiGrid",
+    "comparison",
+    "quickActions",
+    "composite"
   ],
-  "lastSynced": "2026-07-07"
+  "lastSynced": "2026-07-24"
 }

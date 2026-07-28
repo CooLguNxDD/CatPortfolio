@@ -23,6 +23,11 @@
   --neon: oklch(0.86 0.200 145);
   --cyan: oklch(0.82 0.130 200);
   --shadow-card: 0 0 0 1px var(--hairline), 0 12px 28px -20px rgba(0,0,0,0.6);
+  --glow-ambient: radial-gradient(
+    ellipse 80% 50% at 50% -10%,
+    color-mix(in oklch, var(--amber) 14%, transparent),
+    transparent 70%
+  );
 
   /* Mapping to layout variables used in App */
   --text: var(--fg-muted);
@@ -43,6 +48,8 @@
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
+  background-image: var(--glow-ambient);
+  background-attachment: fixed;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
