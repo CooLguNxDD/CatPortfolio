@@ -1,18 +1,24 @@
 /**
  * Global Store Entry Point
  *
- * Orchestrates the creation and composition of Zustand store slices.
- * Handles persistence for user preferences.
+ * react-app-guide ownership:
+ *   - Preferences → localStorage (device)
+ *   - Demo session (`?j=`, themeOverride, working layout) → **in-memory only**
+ *     (transient UI; lost on full page reload — URL `?j=` re-seeds identity)
+ *   - Layout payloads → TanStack Query (server state)
+ *   - Chat pending prompt → non-persisted
  */
 
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
+import { useShallow } from "zustand/react/shallow"
 import { createPreferencesSlice, type PreferencesSlice } from "./preferencesSlice"
+import { createLayoutSlice, type LayoutSlice } from "./layoutSlice"
 
 type PreferencesStore = PreferencesSlice
 
 /**
- * Store hook for user preferences.
+ * Store hook for user preferences (device-persistent).
  */
 export const usePreferencesStore = create<PreferencesStore>()(
   persist(
@@ -32,6 +38,29 @@ export const usePreferencesStore = create<PreferencesStore>()(
   ),
 )
 
+/**
+ * Demo session — temporary in-memory store (no sessionStorage / localStorage).
+ * Survives Home ↔ Ask client navigation; cleared on hard reload.
+ * Re-enter via `?j=` in the URL.
+ */
+export const useLayoutStore = create<LayoutSlice>()((...args) => ({
+  ...createLayoutSlice(...args),
+}))
+
+/** Shallow selector for demo session chrome / nav. */
+export const useLayoutSession = () =>
+  useLayoutStore(
+    useShallow((s) => ({
+      shortId: s.shortId,
+      isDemoSession: s.isDemoSession,
+      workingLayout: s.workingLayout,
+      workingSource: s.workingSource,
+      audience: s.audience,
+      bakeTheme: s.bakeTheme,
+      themeOverride: s.themeOverride,
+    })),
+  )
+
 export type {
   Theme,
   Accent,
@@ -40,3 +69,4 @@ export type {
   ThemeAttrs,
 } from "./preferencesSlice"
 export { selectThemeAttrs } from "./preferencesSlice"
+export type { LayoutSlice, LayoutSessionView } from "./layoutSlice"

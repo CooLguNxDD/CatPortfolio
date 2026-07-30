@@ -18,16 +18,41 @@
   --border: oklch(0.32 0.025 55);
   --border-strong: oklch(0.42 0.035 60);
   --hairline: oklch(0.28 0.022 50);
+  /* Base chroma — accent swap re-points --amber (and glow/soft). */
   --amber: oklch(0.82 0.165 70);
+  --amber-glow: oklch(0.88 0.14 70);
+  --amber-soft: oklch(0.28 0.08 70);
   --pink: oklch(0.76 0.180 350);
   --neon: oklch(0.86 0.200 145);
   --cyan: oklch(0.82 0.130 200);
+  --violet: oklch(0.72 0.160 300);
+
+  /* 5-accent palette (picker swatches + data-accent rebind of --amber) */
+  --accent-amber: oklch(0.82 0.165 70);
+  --accent-pink: oklch(0.76 0.180 350);
+  --accent-neon: oklch(0.86 0.200 145);
+  --accent-cyan: oklch(0.82 0.130 200);
+  --accent-violet: oklch(0.72 0.160 300);
+
+  /* Domain accents (Open Design matrix system) — orthogonal to global accent picker */
+  --accent-ai: oklch(0.82 0.165 70);
+  --accent-ai-soft: oklch(0.28 0.08 70);
+  --accent-devops: oklch(0.84 0.18 145);
+  --accent-devops-soft: oklch(0.26 0.07 145);
+  --accent-mobile: oklch(0.76 0.18 350);
+  --accent-mobile-soft: oklch(0.28 0.08 350);
+  --accent-platform: oklch(0.82 0.13 200);
+  --accent-platform-soft: oklch(0.26 0.06 200);
+
   --shadow-card: 0 0 0 1px var(--hairline), 0 12px 28px -20px rgba(0,0,0,0.6);
   --glow-ambient: radial-gradient(
     ellipse 80% 50% at 50% -10%,
     color-mix(in oklch, var(--amber) 14%, transparent),
     transparent 70%
   );
+
+  --pad-card: 1rem;
+  --radius-lg: 0.875rem;
 
   /* Mapping to layout variables used in App */
   --text: var(--fg-muted);
@@ -86,6 +111,56 @@
   --sidebar-border: var(--hairline);
   --sidebar-ring: var(--border-strong);
 }
+
+/*
+ * Accent axis: components keep consuming --amber; data-accent re-points it.
+ * Must live on a *descendant* of <html> (App shell), because ThemeProvider
+ * writes theme vars as inline style on documentElement (beats attribute rules).
+ */
+[data-accent="pink"] {
+  --amber: var(--accent-pink);
+  --amber-glow: oklch(0.84 0.14 350);
+  --amber-soft: oklch(0.28 0.08 350);
+  --primary: var(--accent-pink);
+}
+[data-accent="neon"] {
+  --amber: var(--accent-neon);
+  --amber-glow: oklch(0.90 0.16 145);
+  --amber-soft: oklch(0.26 0.07 145);
+  --primary: var(--accent-neon);
+}
+[data-accent="cyan"] {
+  --amber: var(--accent-cyan);
+  --amber-glow: oklch(0.88 0.11 200);
+  --amber-soft: oklch(0.26 0.06 200);
+  --primary: var(--accent-cyan);
+}
+[data-accent="violet"] {
+  --amber: var(--accent-violet);
+  --amber-glow: oklch(0.80 0.12 300);
+  --amber-soft: oklch(0.28 0.07 300);
+  --primary: var(--accent-violet);
+}
+
+/* Domain tint for matrix cards / KPI tiles (Open Design). */
+[data-domain="ai"] {
+  --card-accent: var(--accent-ai);
+  --card-accent-soft: var(--accent-ai-soft);
+}
+[data-domain="devops"] {
+  --card-accent: var(--accent-devops);
+  --card-accent-soft: var(--accent-devops-soft);
+}
+[data-domain="mobile"] {
+  --card-accent: var(--accent-mobile);
+  --card-accent-soft: var(--accent-mobile-soft);
+}
+[data-domain="platform"] {
+  --card-accent: var(--accent-platform);
+  --card-accent-soft: var(--accent-platform-soft);
+}
+
+/* Level-row matrix bands live in styles/matrix.css (Open Design kit). */
 
 @theme {
   --color-background: var(--background);

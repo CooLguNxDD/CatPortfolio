@@ -8,6 +8,7 @@ import { Progress } from "./primitives/Progress";
 import { Divider } from "./primitives/Divider";
 import { IconTile } from "./primitives/IconTile";
 import { MarkdownText } from "./primitives/MarkdownText";
+import { Card } from "./Card";
 import { BarChart, DonutChart, LineChart, RadarChart } from "./charts/ChartSvg";
 import type { Series } from "./charts/scale";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,12 @@ function containerClass(kind: string, cols?: number, gap?: string): string {
   const g = gap === "sm" ? "gap-2" : gap === "lg" ? "gap-6" : "gap-4";
   if (kind === "stack") return cn("flex flex-col", g);
   if (kind === "split") return cn("grid grid-cols-1 md:grid-cols-2", g);
+  if (kind === "cards") {
+    return cn(
+      "grid gap-4",
+      "grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(14rem,1fr))]",
+    );
+  }
   const c = Math.min(4, Math.max(1, cols ?? 2));
   const colMap: Record<number, string> = {
     1: "grid-cols-1",
@@ -101,13 +108,87 @@ function Leaf({ node }: { node: CompositeNodeType }) {
       if (kind === "radar") return <RadarChart series={series} />;
       return <BarChart series={series} />;
     }
+    case "card":
+      return (
+        <Card
+          title={typeof n.title === "string" ? n.title : undefined}
+          eyebrow={typeof n.eyebrow === "string" ? n.eyebrow : undefined}
+          body={
+            typeof n.body === "string"
+              ? n.body
+              : typeof n.markdown === "string"
+                ? n.markdown
+                : undefined
+          }
+          metrics={
+            Array.isArray(n.metrics)
+              ? (n.metrics as { label: string; value: string }[])
+              : undefined
+          }
+          tags={Array.isArray(n.tags) ? (n.tags as string[]) : undefined}
+          domain={
+            typeof n.domain === "string"
+              ? (n.domain as "ai" | "devops" | "mobile" | "platform")
+              : undefined
+          }
+          accent={
+            typeof n.accent === "string"
+              ? (n.accent as "amber" | "pink" | "neon" | "cyan" | "violet")
+              : undefined
+          }
+          variant={
+            n.variant === "outline" || n.variant === "ghost" || n.variant === "solid"
+              ? n.variant
+              : undefined
+          }
+        />
+      );
+    case "stat":
+    case "kv":
+      return (
+        <Metric
+          label={typeof n.label === "string" ? n.label : undefined}
+          value={typeof n.value === "string" ? n.value : String(n.value ?? "")}
+          delta={typeof n.delta === "string" ? n.delta : undefined}
+        />
+      );
+    case "tagRow":
+      return (
+        <BadgeCloud
+          items={Array.isArray(n.items) ? (n.items as string[]) : []}
+        />
+      );
+    case "link":
+      return typeof n.href === "string" ? (
+        <a
+          href={n.href}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm text-(--amber) underline-offset-2 hover:underline"
+        >
+          {typeof n.label === "string" ? n.label : n.href}
+        </a>
+      ) : null;
+    case "media":
+      return typeof n.src === "string" ? (
+        <img
+          src={n.src}
+          alt={typeof n.alt === "string" ? n.alt : ""}
+          className="max-h-48 rounded-[var(--radius)] border border-(--hairline) object-cover"
+        />
+      ) : null;
     default:
       return null;
   }
 }
 
 function NodeView({ node }: { node: CompositeNodeType }) {
-  if (node.kind === "grid" || node.kind === "stack" || node.kind === "split") {
+  if (
+    node.kind === "grid" ||
+    node.kind === "stack" ||
+    node.kind === "split" ||
+    node.kind === "cards"
+  ) {
     const cols = typeof (node as { cols?: number }).cols === "number"
       ? (node as { cols?: number }).cols
       : undefined;

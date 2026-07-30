@@ -1,23 +1,119 @@
-import { Link, Outlet } from "@tanstack/react-router"
-import { usePreferencesStore } from "@/store"
+/**
+ * App shell — nav, theme switcher, demo chip.
+ *
+ * Demo session + themeOverride live in an in-memory Zustand store (not
+ * sessionStorage/localStorage). URL `?j=` re-seeds identity after reload.
+ */
+
+import { useEffect } from "react"
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
+import {
+  useLayoutStore,
+  usePreferencesStore,
+  type Accent,
+} from "@/store"
 import { themeList } from "@/themes/registry"
 import { Button } from "@/components/ui/button"
+import type { DemoSearch } from "@/router"
+
+const ACCENTS: { id: Accent; label: string }[] = [
+  { id: "amber", label: "Amber" },
+  { id: "pink", label: "Pink" },
+  { id: "neon", label: "Neon" },
+  { id: "cyan", label: "Cyan" },
+  { id: "violet", label: "Violet" },
+]
 
 function App() {
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const theme = usePreferencesStore((s) => s.theme)
   const setTheme = usePreferencesStore((s) => s.setTheme)
+  const accent = usePreferencesStore((s) => s.accent)
+  const setAccent = usePreferencesStore((s) => s.setAccent)
+  // data-accent on shell (not <html>) so it beats ThemeProvider inline --amber.
+  const accentAttr =
+    accent !== "amber" ? ({ "data-accent": accent } as const) : {}
+  const shortId = useLayoutStore((s) => s.shortId)
+  const isDemoSession = useLayoutStore((s) => s.isDemoSession)
+  const themeOverride = useLayoutStore((s) => s.themeOverride)
+  const bakeTheme = useLayoutStore((s) => s.bakeTheme)
+  const clearDemo = useLayoutStore((s) => s.clearDemo)
+  const setThemeOverride = useLayoutStore((s) => s.setThemeOverride)
+
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const searchJ = useRouterState({
+    select: (s) => (s.location.search as DemoSearch | undefined)?.j,
+  })
+
+  // If the temporary store has a shortId but URL lost `j`, bake it back.
+  useEffect(() => {
+    if (!isDemoSession || !shortId) return
+    if (searchJ === shortId) return
+    const onAsk = pathname.includes("/ask")
+    void navigate({
+      to: onAsk ? "/ask" : "/",
+      search: { j: shortId },
+      replace: true,
+    })
+  }, [isDemoSession, shortId, searchJ, pathname, navigate])
+
+  const demoSearch: DemoSearch =
+    isDemoSession && shortId ? { j: shortId } : {}
+
+  const activeThemeId =
+    isDemoSession && themeOverride
+      ? themeOverride
+      : isDemoSession && bakeTheme
+        ? bakeTheme
+        : theme
+
+  const handleClearDemo = () => {
+    const id = shortId
+    clearDemo()
+    if (id) {
+      queryClient.removeQueries({ queryKey: ["layout", "demo", id] })
+    }
+    queryClient.removeQueries({ queryKey: ["layout", "default"] })
+    void navigate({
+      to: pathname.includes("/ask") ? "/ask" : "/",
+      search: {},
+      replace: true,
+    })
+  }
+
+  /**
+   * Demo: theme only in temporary store (no localStorage).
+   * Outside demo: preferences persist as usual.
+   */
+  const handleThemeClick = (id: string) => {
+    if (isDemoSession) {
+      setThemeOverride(id)
+      return
+    }
+    setTheme(id)
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-(--bg) text-(--fg)">
+    <div
+      className="app-root min-h-screen flex flex-col bg-(--bg) text-(--fg)"
+      {...accentAttr}
+    >
       <header className="sticky top-0 z-10 backdrop-blur-md border-b border-(--hairline) bg-(--bg)/80">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <Link to="/" className="font-semibold text-(--fg)">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-6 min-w-0">
+            <Link
+              to="/"
+              search={demoSearch}
+              className="font-semibold text-(--fg) shrink-0"
+            >
               🐱 Cat Portfolio
             </Link>
             <nav className="flex items-center gap-4 text-sm font-medium">
               <Link
                 to="/"
+                search={demoSearch}
                 activeProps={{ className: "text-(--amber)" }}
                 className="text-(--fg-muted) hover:text-(--fg)"
               >
@@ -25,20 +121,60 @@ function App() {
               </Link>
               <Link
                 to="/ask"
+                search={demoSearch}
                 activeProps={{ className: "text-(--amber)" }}
                 className="text-(--fg-muted) hover:text-(--fg)"
               >
                 Ask
               </Link>
             </nav>
+            {isDemoSession && shortId ? (
+              <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-(--amber)/40 bg-(--amber)/10 px-2.5 py-0.5 text-[11px] font-mono text-(--amber) max-w-[14rem] truncate">
+                <span className="truncate" title={shortId}>
+                  demo · {shortId}
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 opacity-70 hover:opacity-100"
+                  aria-label="Clear demo session"
+                  onClick={handleClearDemo}
+                >
+                  ×
+                </button>
+              </div>
+            ) : null}
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2 shrink-0">
+            <div
+              className="hidden sm:flex items-center gap-1"
+              role="group"
+              aria-label="Accent color"
+            >
+              {ACCENTS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  title={a.label}
+                  aria-label={`Accent ${a.label}`}
+                  aria-pressed={accent === a.id}
+                  onClick={() => setAccent(a.id)}
+                  className={
+                    accent === a.id
+                      ? "h-4 w-4 rounded-full ring-2 ring-(--fg) ring-offset-1 ring-offset-(--bg)"
+                      : "h-4 w-4 rounded-full opacity-70 hover:opacity-100"
+                  }
+                  style={{
+                    background: `var(--accent-${a.id})`,
+                  }}
+                />
+              ))}
+            </div>
             {themeList.map((t) => (
               <Button
                 key={t.id}
                 size="xs"
-                variant={theme === t.id ? "default" : "ghost"}
-                onClick={() => setTheme(t.id)}
+                variant={activeThemeId === t.id ? "default" : "ghost"}
+                onClick={() => handleThemeClick(t.id)}
               >
                 {t.label}
               </Button>
@@ -51,8 +187,9 @@ function App() {
         <Outlet />
       </main>
 
-      <footer className="py-6 text-center text-xs font-mono text-(--fg-muted) border-t border-(--hairline) max-w-4xl mx-auto w-full px-4">
-        schema-driven blocks · GenUI layout.json · {new Date().getFullYear()}
+      <footer className="py-6 text-center text-xs font-mono text-(--fg-muted) border-t border-(--hairline) max-w-6xl mx-auto w-full px-4">
+        schema-driven blocks · matrix levels · GenUI layout.json ·{" "}
+        {new Date().getFullYear()}
       </footer>
     </div>
   )
