@@ -11,4 +11,7 @@ export { FlowAnim } from "./FlowAnim";
 export { KpiGrid } from "./KpiGrid";
 export { Comparison } from "./Comparison";
 export { QuickActions } from "./QuickActions";
+export { Card } from "./Card";
+export { McpSandbox } from "./McpSandbox";
+export { CostSim } from "./CostSimulator";
 export { Composite } from "./Composite";

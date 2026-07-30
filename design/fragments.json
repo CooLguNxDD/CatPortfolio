@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-24T00:00:00.000Z",
+  "generatedAt": "2026-07-29T00:00:00.000Z",
   "source": "snapshot",
   "fragments": [
     {
@@ -12,14 +12,212 @@
       "blocks": [
         {
           "type": "hero",
-          "id": "hero-1",
+          "id": "h1",
           "props": {
-            "name": "Andrew (the cat)",
-            "tagline": "Postgres-first systems, agent infra, OpenCat Tunnel",
-            "pitch": "One MCP server with agent intelligence baked in.",
+            "name": "Andrew Liang (the cat)",
+            "tagline": "AI Systems Architect · Cloud Infra & DevOps · Mobile & Platform Engineering",
+            "pitch": "High-impact full-stack systems builder across WelTel. Reduced AWS costs from $4k → $2.8k/mo (−30%), built greenfield MCP gateway (42 clinical tools), and delivered WelTel Mobile (531+ commits).",
             "links": [
-              { "label": "OCT", "href": "https://github.com/CooLguNxDD/Weltel-Mcp-Full" },
-              { "label": "CatPortfolio", "href": "https://github.com/CooLguNxDD/CatPortfolio" }
+              { "label": "GitHub Profile", "href": "https://github.com/CooLguNxDD" },
+              { "label": "OpenCat Tunnel Repo", "href": "https://github.com/CooLguNxDD/Weltel-Mcp-Full" },
+              { "label": "CatPortfolio Repo", "href": "https://github.com/CooLguNxDD/CatPortfolio" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "work.cards",
+      "label": "Domain project cards",
+      "description": "One domain-tinted card per project (Open Design matrix L2).",
+      "tags": ["projects", "cards", "matrix"],
+      "audience_affinity": ["default", "recruiter", "peer", "hiring-manager"],
+      "overrides": {},
+      "blocks": [
+        {
+          "type": "card",
+          "id": "card-ai",
+          "props": {
+            "eyebrow": "AI Systems",
+            "title": "MCP & Clinician AI",
+            "body": "~395 commits · 42 live clinical tools · multi-provider streaming Command Center.",
+            "domain": "ai",
+            "tags": ["MCP", "pgvector", "LangGraph"],
+            "metrics": [
+              { "label": "commits", "value": "~395" },
+              { "label": "clinical tools", "value": "42" }
+            ]
+          }
+        },
+        {
+          "type": "card",
+          "id": "card-devops",
+          "props": {
+            "eyebrow": "DevOps · Cloud",
+            "title": "EKS & Terraform",
+            "body": "Self-hosted runners · multi-AZ VPC · −$1.2k/mo AWS.",
+            "domain": "devops",
+            "tags": ["AWS", "Terraform", "EKS"],
+            "metrics": [
+              { "label": "infra commits", "value": "570+" },
+              { "label": "AWS cost drop", "value": "-$1.2k/mo" }
+            ]
+          }
+        },
+        {
+          "type": "card",
+          "id": "card-mobile",
+          "props": {
+            "eyebrow": "Mobile",
+            "title": "WelTel RN",
+            "body": "Amplify GraphQL chat from zero · 531+ commits · 39+ tickets.",
+            "domain": "mobile",
+            "tags": ["React Native", "Amplify", "GraphQL"],
+            "metrics": [
+              { "label": "mobile commits", "value": "531+" },
+              { "label": "Jira tickets", "value": "39+" }
+            ]
+          }
+        },
+        {
+          "type": "card",
+          "id": "card-platform",
+          "props": {
+            "eyebrow": "Platform",
+            "title": "SMS & Clinical UI",
+            "body": "5 gateways → Axios · portal fixes · task-queue hygiene.",
+            "domain": "platform",
+            "tags": ["Axios", "SMS"],
+            "metrics": [
+              { "label": "gateways", "value": "5" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "devops.aws_cost",
+      "label": "AWS Infrastructure Cost Optimization",
+      "description": "Bar chart and metrics showing $4,000 → $2,800/mo AWS cost savings.",
+      "tags": ["devops", "aws", "cost-reduction"],
+      "audience_affinity": ["recruiter", "hiring-manager"],
+      "overrides": {},
+      "blocks": [
+        {
+          "type": "chart",
+          "id": "chart-aws-cost-frag",
+          "props": {
+            "kind": "bar",
+            "title": "Monthly AWS Infrastructure Cost Optimization ($4,000+ → $2,800/mo)",
+            "caption": "Direct cost savings (-30% bill drop) achieved via self-hosted AWS EKS runners and VPC tuning",
+            "unit": "USD / month",
+            "series": [
+              {
+                "name": "Legacy Setup",
+                "points": [{ "x": "Pre-Optimization", "y": 4150 }]
+              },
+              {
+                "name": "Optimized Stack",
+                "points": [{ "x": "Post-Optimization", "y": 2800 }]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ai.mcp_tools",
+      "label": "42 Clinical Tool MCP Distribution",
+      "description": "Donut chart of 42 clinical tools exposed over Model Context Protocol.",
+      "tags": ["ai", "mcp", "tools"],
+      "audience_affinity": ["peer", "hiring-manager"],
+      "overrides": {},
+      "blocks": [
+        {
+          "type": "chart",
+          "id": "chart-mcp-tools-frag",
+          "props": {
+            "kind": "donut",
+            "title": "Clinical Tool Distribution across WelTel Platform (42 Total Tools)",
+            "caption": "Real-time API tool capabilities exposed over Model Context Protocol (MCP)",
+            "unit": "tools",
+            "series": [
+              { "name": "Patients & Alerts", "points": [{ "x": "Patients", "y": 14 }] },
+              { "name": "Clinics & Forms", "points": [{ "x": "Clinics", "y": 11 }] },
+              { "name": "Notes & Outcomes", "points": [{ "x": "Notes", "y": 9 }] },
+              { "name": "Public Health & Tests", "points": [{ "x": "Health", "y": 8 }] }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "mobile.amplify_chat",
+      "label": "Mobile Real-Time Messaging Signal Flow",
+      "description": "Animated flow graph of AWS Amplify GraphQL message delivery.",
+      "tags": ["mobile", "graphql", "messaging"],
+      "audience_affinity": ["peer", "default"],
+      "overrides": {},
+      "blocks": [
+        {
+          "type": "flowAnim",
+          "id": "flow-mobile-frag",
+          "props": {
+            "title": "Real-Time Mobile Messaging & Push Notification Flow",
+            "animate": true,
+            "nodes": [
+              { "id": "sender", "label": "Mobile App A" },
+              { "id": "amplify", "label": "AWS Amplify" },
+              { "id": "lambda", "label": "Lambda & DB" },
+              { "id": "receiver", "label": "Mobile App B" }
+            ],
+            "edges": [
+              { "from": "sender", "to": "amplify", "label": "GraphQL mutation" },
+              { "from": "amplify", "to": "lambda", "label": "store & notify" },
+              { "from": "amplify", "to": "receiver", "label": "real-time sub" },
+              { "from": "lambda", "to": "receiver", "label": "push alert" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "kpi.metrics",
+      "label": "KPI Metrics Grid",
+      "description": "Live infrastructure KPIs and tool narrowing metrics with sparklines.",
+      "tags": ["kpi", "metrics"],
+      "audience_affinity": ["default", "recruiter", "peer", "hiring-manager"],
+      "overrides": {},
+      "blocks": [
+        {
+          "type": "kpiGrid",
+          "id": "kpi-grid-frag",
+          "props": {
+            "items": [
+              {
+                "label": "AWS Bill Savings",
+                "value": "$4k → $2.8k",
+                "delta": "-30% monthly reduction",
+                "spark": [4200, 3800, 3200, 2800]
+              },
+              {
+                "label": "Clinical MCP Tools",
+                "value": "42 tools",
+                "delta": "Real-time API bindings",
+                "spark": [10, 22, 35, 42]
+              },
+              {
+                "label": "DevOps Commits",
+                "value": "570+ commits",
+                "delta": "Across 4 repos",
+                "spark": [100, 280, 430, 570]
+              },
+              {
+                "label": "Mobile Commits",
+                "value": "531+ commits",
+                "delta": "39+ Jira tickets",
+                "spark": [80, 210, 380, 531]
+              }
             ]
           }
         }
@@ -37,19 +235,23 @@
           "type": "quickActions",
           "id": "cta-quick",
           "props": {
-            "prompt": "Ask about the work:",
+            "prompt": "Ask about Andrew's work at WelTel:",
             "actions": [
               {
-                "label": "Infra work",
-                "prompt": "Show me your infra / SRE work"
+                "label": "AWS Cost Reduction",
+                "prompt": "How did you reduce AWS costs from $4,000 to $2,800/mo?"
               },
               {
-                "label": "Deepest system",
-                "prompt": "What is the deepest system you built?"
+                "label": "42 Clinical MCP Tools",
+                "prompt": "How does the WelTel MCP server turn APIs into 42 clinical tools?"
               },
               {
-                "label": "Recent ship",
-                "prompt": "What did you ship last month?"
+                "label": "WelTel Mobile App",
+                "prompt": "Tell me about building WelTel Mobile from scratch (531+ commits)"
+              },
+              {
+                "label": "SMS Gateway Migration",
+                "prompt": "How did you refactor 5 SMS gateways from request to Axios?"
               }
             ]
           }
@@ -59,19 +261,24 @@
   ],
   "quick_actions": [
     {
-      "label": "Infra work",
-      "prompt": "Show me your infra / SRE work",
-      "audience": "peer"
+      "label": "AWS Cost Reduction",
+      "prompt": "How did you reduce AWS costs from $4,000 to $2,800/mo?",
+      "audience": "recruiter"
     },
     {
-      "label": "Deepest system",
-      "prompt": "What is the deepest system you built?",
+      "label": "42 Clinical MCP Tools",
+      "prompt": "How does the WelTel MCP server turn APIs into 42 clinical tools?",
       "audience": "hiring-manager"
     },
     {
-      "label": "Recent ship",
-      "prompt": "What did you ship last month?",
-      "audience": "default"
+      "label": "WelTel Mobile App",
+      "prompt": "Tell me about building WelTel Mobile from scratch (531+ commits)",
+      "audience": "peer"
+    },
+    {
+      "label": "SMS Gateway Migration",
+      "prompt": "How did you refactor 5 SMS gateways from request to Axios?",
+      "audience": "peer"
     }
   ],
   "themes": ["cozy", "neon", "paper"],

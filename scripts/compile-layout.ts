@@ -121,11 +121,21 @@ export function compileLayout(
     meta.generatedAt = opts.generatedAt ?? new Date().toISOString();
   }
 
+  let fragmentsCatalog = opts.fragmentsCatalog;
+  if (!fragmentsCatalog) {
+    try {
+      const fragmentsPath = resolve(import.meta.dirname, "../design/fragments.json");
+      fragmentsCatalog = JSON.parse(readFileSync(fragmentsPath, "utf-8")) as FragmentsCatalog;
+    } catch {
+      fragmentsCatalog = { fragments: [] };
+    }
+  }
+
   const blocks = (layoutInput as { blocks?: unknown }).blocks;
   if (Array.isArray(blocks)) {
     (layoutInput as { blocks: unknown[] }).blocks = expandFragmentBlocks(
       blocks,
-      opts.fragmentsCatalog,
+      fragmentsCatalog,
     );
   }
 

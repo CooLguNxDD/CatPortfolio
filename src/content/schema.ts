@@ -213,9 +213,73 @@ const QuickActions = z.object({
   }),
 });
 
+/** Domain tint (Open Design matrix) or global accent picker tint. */
+const AccentId = z.enum(["amber", "pink", "neon", "cyan", "violet"]);
+const DomainId = z.enum(["ai", "devops", "mobile", "platform"]);
+
+/**
+ * Generic card — first-class portfolio unit (project tiles, proof chips, STAR).
+ * Prefer card + layout.span over inventing new block types for card walls.
+ */
+const Card = z.object({
+  type: z.literal("card"),
+  id: z.string(),
+  layout: BlockLayout,
+  props: z.object({
+    title: z.string().optional(),
+    eyebrow: z.string().optional(),
+    body: z.string().optional(),
+    media: z
+      .object({
+        kind: z.enum(["image", "svg", "icon"]).optional(),
+        src: z.string(),
+        alt: z.string().optional(),
+      })
+      .optional(),
+    metrics: z
+      .array(z.object({ label: z.string(), value: z.string() }))
+      .optional(),
+    tags: z.array(z.string()).optional(),
+    links: z.array(Link).optional(),
+    /** Open Design verified chips (e.g. "✓ 531+ commits verified"). */
+    badges: z
+      .array(
+        z.object({
+          label: z.string(),
+          href: z.string().url().optional(),
+          tone: z.enum(["neon", "amber"]).optional(),
+        }),
+      )
+      .optional(),
+    /** Space-separated tech tokens for matrix tech filter (e.g. "MCP pgvector"). */
+    tech: z.string().optional(),
+    /** Open Design domain chroma (ai / devops / mobile / platform). */
+    domain: DomainId.optional(),
+    /** Global accent picker tint when domain is not set. */
+    accent: AccentId.optional(),
+    variant: z.enum(["solid", "outline", "ghost"]).optional(),
+  }),
+});
+
+/** Client-only mock MCP sandbox (OD matrix L3 interactive). */
+const McpSandbox = z.object({
+  type: z.literal("mcpSandbox"),
+  id: z.string(),
+  layout: BlockLayout,
+  props: z.object({}).default({}),
+});
+
+/** Client-only AWS cost simulator (OD matrix L4 interactive). */
+const CostSim = z.object({
+  type: z.literal("costSim"),
+  id: z.string(),
+  layout: BlockLayout,
+  props: z.object({}).default({}),
+});
+
 /** Composite DSL — recursive containers + typed leaves (depth ≤ 3, ≤ 40 nodes). */
 const CompositeLayoutSpec = z.object({
-  kind: z.enum(["grid", "stack", "split"]),
+  kind: z.enum(["grid", "stack", "split", "cards"]),
   cols: z.number().int().min(1).max(4).optional(),
   gap: z.enum(["sm", "md", "lg"]).optional(),
   align: z.string().optional(),
@@ -238,8 +302,14 @@ const LEAF_KINDS = new Set([
   "icon",
   "divider",
   "chart",
+  "card",
+  "media",
+  "kv",
+  "tagRow",
+  "link",
+  "stat",
 ]);
-const CONTAINER_KINDS = new Set(["grid", "stack", "split"]);
+const CONTAINER_KINDS = new Set(["grid", "stack", "split", "cards"]);
 
 const CompositeNodeSchema: z.ZodType<CompositeNode> = z.lazy(() =>
   z
@@ -325,6 +395,15 @@ export const THEME_VAR_ALLOWLIST = new Set([
   "neon",
   "neon-dim",
   "cyan",
+  "accent-amber",
+  "accent-pink",
+  "accent-neon",
+  "accent-cyan",
+  "accent-violet",
+  "accent-ai",
+  "accent-devops",
+  "accent-mobile",
+  "accent-platform",
   "ok",
   "ok-soft",
   "warn",
@@ -382,6 +461,25 @@ const LayoutSource = z.object({
   kind: z.string().optional(),
 });
 
+/** Open Design level-row story DAG — one horizontal band = one topological level. */
+const DagLevel = z.object({
+  level: z.number().int().min(0),
+  label: z.string(),
+  /** Scroll playback threshold 0–1 (optional; home minimap). */
+  at: z.number().min(0).max(1).optional(),
+  /** Block ids belonging to this level (order preserved within the band). */
+  nodes: z.array(z.string()).default([]),
+  /**
+   * Peer columns inside this band (1–4). Omit = min(4, node count).
+   * Use 1 for deep-dive / long-form levels so each block gets a full row.
+   */
+  cols: z.number().int().min(1).max(4).optional(),
+});
+
+const DagMeta = z.object({
+  levels: z.array(DagLevel).default([]),
+});
+
 export const LayoutSchema = z.object({
   version: z.literal(1),
   meta: z.object({
@@ -391,6 +489,8 @@ export const LayoutSchema = z.object({
     generatedAt: z.string(),
     /** Optional vibe from design_layout; renderer applies only registered themes. */
     theme: z.string().optional(),
+    /** Global accent axis (re-points --amber). Amber is default — omit attribute. */
+    accent: AccentId.optional(),
     /** Validated CSS-var overrides (allowlisted keys + strict value regex). */
     themeOverrides: z
       .record(z.string())
@@ -402,6 +502,11 @@ export const LayoutSchema = z.object({
     mode: z.string().optional(),
     curationLabel: z.string().optional(),
     scopedProjectCount: z.number().int().optional(),
+    /**
+     * Level-row matrix DAG (Open Design). When present, LayoutRenderer groups
+     * blocks into horizontal bands; missing → simple stagger fallback.
+     */
+    dag: DagMeta.optional(),
   }),
   blocks: z.array(
     z.discriminatedUnion("type", [
@@ -418,6 +523,9 @@ export const LayoutSchema = z.object({
       KpiGrid,
       Comparison,
       QuickActions,
+      Card,
+      McpSandbox,
+      CostSim,
       Composite,
     ]),
   ),
@@ -425,3 +533,5 @@ export const LayoutSchema = z.object({
 
 export type Layout = z.infer<typeof LayoutSchema>;
 export type CompositeNodeType = CompositeNode;
+export type AccentIdType = z.infer<typeof AccentId>;
+export type DomainIdType = z.infer<typeof DomainId>;

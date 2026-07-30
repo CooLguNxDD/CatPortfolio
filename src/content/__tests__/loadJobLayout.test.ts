@@ -50,7 +50,7 @@ describe("loadJobLayout", () => {
     }) as unknown as typeof fetch;
 
     const result = await loadJobLayout("weltel_successor_992");
-    expect(result.source).toBe("live");
+    expect(result.source).toBe("bake");
     expect(result.layout).toStrictEqual(liveLayout);
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "http://localhost:10000/api/portfolio/public/layout/weltel_successor_992",

@@ -14,7 +14,10 @@
     "kpiGrid",
     "comparison",
     "quickActions",
+    "card",
+    "mcpSandbox",
+    "costSim",
     "composite"
   ],
-  "lastSynced": "2026-07-24"
+  "lastSynced": "2026-07-30"
 }
