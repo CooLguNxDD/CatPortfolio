@@ -44,7 +44,14 @@ function renderBlock(
   const Comp = REGISTRY[block.type as BlockType] as
     | ComponentType<Block["props"]>
     | undefined;
-  if (!Comp) return null;
+  if (!Comp) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[LayoutRenderer] Unknown block type "${block.type}" (id=${block.id}) — skipped`,
+      );
+    }
+    return null;
+  }
 
   const shell = (
     <BlockErrorBoundary blockId={block.id}>
@@ -155,6 +162,7 @@ function MatrixLevels({
                     i === activeIdx && "is-current",
                   )}
                   data-dag-level-jump={lvl.level}
+                  aria-current={i === activeIdx ? "true" : undefined}
                   onClick={() => jumpToLevel(lvl.level)}
                 >
                   L{lvl.level} {lvl.label}
@@ -176,6 +184,7 @@ function MatrixLevels({
                 type="button"
                 className={cn("persona-btn", persona === id && "is-active")}
                 data-persona={id}
+                aria-pressed={persona === id}
                 onClick={() => setPersona(id)}
               >
                 {label}
@@ -191,6 +200,7 @@ function MatrixLevels({
                   type="button"
                   className={cn("tech-tag", tech === t && "is-active")}
                   data-tech={t}
+                  aria-pressed={tech === t}
                   onClick={() => toggleTech(t)}
                 >
                   #{t}

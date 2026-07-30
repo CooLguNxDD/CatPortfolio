@@ -6,7 +6,7 @@
  * That keeps is-lit / is-current aligned with what the user actually sees.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Layout } from "@/content/schema";
 
 export type DagLevelView = {
@@ -45,12 +45,22 @@ export function normalizeDagLevels(
 /**
  * Pick the active level index from live DOM geometry.
  * Focus line sits under sticky header+minimap so triggers match on-screen rows.
+ *
+ * Queries `.dag-level[data-dag-level]` once (not once per level) — this runs
+ * on every scroll/resize rAF tick, so per-level querySelector calls thrash
+ * the DOM under heavy scrolling.
  */
-function measureActiveIndex(levelCount: number): {
+function measureActiveIndex(): {
   activeIdx: number;
   progress: number;
 } {
-  if (typeof window === "undefined" || levelCount === 0) {
+  if (typeof window === "undefined") {
+    return { activeIdx: 0, progress: 0 };
+  }
+  const nodes = document.querySelectorAll<HTMLElement>(
+    ".dag-level[data-dag-level]",
+  );
+  if (nodes.length === 0) {
     return { activeIdx: 0, progress: 0 };
   }
   // Focus line sits just under sticky app header + matrix chrome.
@@ -64,15 +74,11 @@ function measureActiveIndex(levelCount: number): {
 
   let best = 0;
   // Highest level whose top has crossed the focus line wins (story unlock).
-  for (let i = 0; i < levelCount; i++) {
-    const el = document.querySelector(
-      `.dag-level[data-dag-level="${i}"]`,
-    ) as HTMLElement | null;
-    if (!el) continue;
+  nodes.forEach((el, i) => {
     const r = el.getBoundingClientRect();
     // Level is "reached" once its header crosses under chrome focus.
     if (r.top <= focusY + 40) best = i;
-  }
+  });
 
   const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
   const max = Math.max(
@@ -99,7 +105,7 @@ export function useLayoutDag(layout: Layout | null | undefined) {
 
     let raf = 0;
     const tick = () => {
-      const m = measureActiveIndex(levels.length);
+      const m = measureActiveIndex();
       setActiveIdx((prev) => (prev === m.activeIdx ? prev : m.activeIdx));
       setProgress((prev) =>
         Math.abs(prev - m.progress) < 0.005 ? prev : m.progress,
@@ -139,8 +145,19 @@ export function useLayoutDag(layout: Layout | null | undefined) {
     return lit;
   }, [activeIdx, levels, reduced]);
 
+  // Pending settle-timer/listener from a prior jumpToLevel — cleared on the
+  // next jump and on unmount so a scroll-settle callback never fires (and
+  // sets state) after the component is gone.
+  const settleCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    return () => settleCleanupRef.current?.();
+  }, []);
+
   const jumpToLevel = useCallback(
     (level: number) => {
+      settleCleanupRef.current?.();
+      settleCleanupRef.current = null;
+
       const el = document.querySelector(
         `[data-dag-level="${level}"]`,
       ) as HTMLElement | null;
@@ -170,15 +187,21 @@ export function useLayoutDag(layout: Layout | null | undefined) {
       );
       setActiveIdx(idx);
       const settle = () => {
-        const n = document.querySelectorAll(".dag-level").length;
-        const m = measureActiveIndex(n);
+        const m = measureActiveIndex();
         setActiveIdx(m.activeIdx);
         setProgress(m.progress);
+        settleCleanupRef.current = null;
       };
       if (typeof window !== "undefined" && "onscrollend" in window) {
-        window.addEventListener("scrollend", settle, { once: true });
+        const controller = new AbortController();
+        window.addEventListener("scrollend", settle, {
+          once: true,
+          signal: controller.signal,
+        });
+        settleCleanupRef.current = () => controller.abort();
       } else {
-        globalThis.setTimeout(settle, reduced ? 0 : 450);
+        const handle = globalThis.setTimeout(settle, reduced ? 0 : 450);
+        settleCleanupRef.current = () => globalThis.clearTimeout(handle);
       }
     },
     [reduced],

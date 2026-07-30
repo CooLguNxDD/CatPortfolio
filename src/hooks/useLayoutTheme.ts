@@ -10,7 +10,7 @@ import { useEffect, useRef } from "react"
 import type { Layout } from "@/content/schema"
 import { sanitizeThemeOverrides } from "@/content/schema"
 import { themeRegistry, DEFAULT_THEME_ID } from "@/themes/registry"
-import { useLayoutStore, usePreferencesStore } from "@/store"
+import { useLayoutSession, usePreferencesStore } from "@/store"
 
 export type LayoutThemeMode = "home" | "ask" | "auto"
 
@@ -25,6 +25,11 @@ export function useLayoutTheme(
 ) {
   void opts?.mode
   const setTheme = usePreferencesStore((s) => s.setTheme)
+  // Reactive shallow selector — a getState() snapshot here would miss
+  // bakeTheme/themeOverride/isDemoSession changes that land without a new
+  // `layout` object identity (this effect's other dep), silently drifting
+  // the applied theme out of sync with the store.
+  const session = useLayoutSession()
   const lastOverridesRef = useRef<string>("")
   const appliedRef = useRef<string[]>([])
   const seededBakeRef = useRef<string | null>(null)
@@ -32,7 +37,6 @@ export function useLayoutTheme(
   useEffect(() => {
     if (!layout?.meta) return
 
-    const session = useLayoutStore.getState()
     const layoutTheme =
       layout.meta.theme && themeRegistry[layout.meta.theme]
         ? layout.meta.theme
@@ -96,7 +100,7 @@ export function useLayoutTheme(
       }
     }
     appliedRef.current = applied
-  }, [layout, setTheme])
+  }, [layout, setTheme, session])
 
   useEffect(() => {
     return () => {

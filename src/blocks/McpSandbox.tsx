@@ -3,7 +3,7 @@
  * Ported from OD cat-portfolio-system prototypes/matrix-home.html.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const TOOL_DEMOS: Record<
@@ -46,40 +46,76 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+type LogKind = "dim" | "prompt" | "cmd" | "lat" | "ok" | "json";
+type LogSegment = { kind: LogKind; text: string };
+type LogLine = {
+  segments: LogSegment[];
+  /** Trailing blinking cursor rendered inline after this line's segments. */
+  cursor?: boolean;
+};
+
+const seg = (kind: LogKind, text: string): LogSegment => ({ kind, text });
+
+const READY_LINES: LogLine[] = [
+  { segments: [seg("dim", "// OpenCat MCP mock inspector · ready")] },
+  {
+    segments: [seg("prompt", "mcp>"), seg("dim", "select a tool to stream a demo invoke…")],
+    cursor: true,
+  },
+];
+
 /** Interactive MCP mock terminal for matrix L3. */
 export function McpSandbox(_props: Record<string, unknown> = {}) {
-  const [lines, setLines] = useState<string[]>([
-    `<span class="dim">// OpenCat MCP mock inspector · ready</span>`,
-    `<span class="prompt">mcp&gt;</span> <span class="dim">select a tool to stream a demo invoke…</span><span class="sandbox-cursor"></span>`,
-  ]);
+  const [lines, setLines] = useState<LogLine[]>(READY_LINES);
   const [busy, setBusy] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const runTool = async (name: string) => {
     const demo = TOOL_DEMOS[name];
     if (!demo || busy) return;
     setBusy(true);
-    setLines([
-      `<span class="dim">// vector route · mock OpenCat gateway</span>`,
-      `<span class="prompt">mcp&gt;</span> <span class="cmd">tools/call ${name}</span>`,
-      `<span class="dim">args ${JSON.stringify(demo.args)}</span>`,
-    ]);
-    await sleep(280);
-    setLines((prev) => [
-      ...prev,
-      `<span class="lat">pgvector top-k → ${demo.route.join(" · ")} · conf ${demo.confidence.toFixed(2)}</span>`,
-    ]);
-    await sleep(220);
-    setLines((prev) => [
-      ...prev,
-      `<span class="ok">✓ stream ${demo.latencyMs}ms</span>`,
-    ]);
-    await sleep(180);
-    setLines((prev) => [
-      ...prev,
-      `<span class="json">${JSON.stringify(demo.result, null, 2)}</span>`,
-      `<span class="prompt">mcp&gt;</span> <span class="sandbox-cursor"></span>`,
-    ]);
-    setBusy(false);
+    try {
+      setLines([
+        { segments: [seg("dim", "// vector route · mock OpenCat gateway")] },
+        { segments: [seg("prompt", "mcp>"), seg("cmd", `tools/call ${name}`)] },
+        { segments: [seg("dim", `args ${JSON.stringify(demo.args)}`)] },
+      ]);
+      await sleep(280);
+      if (!mountedRef.current) return;
+      setLines((prev) => [
+        ...prev,
+        {
+          segments: [
+            seg(
+              "lat",
+              `pgvector top-k → ${demo.route.join(" · ")} · conf ${demo.confidence.toFixed(2)}`,
+            ),
+          ],
+        },
+      ]);
+      await sleep(220);
+      if (!mountedRef.current) return;
+      setLines((prev) => [
+        ...prev,
+        { segments: [seg("ok", `✓ stream ${demo.latencyMs}ms`)] },
+      ]);
+      await sleep(180);
+      if (!mountedRef.current) return;
+      setLines((prev) => [
+        ...prev,
+        { segments: [seg("json", JSON.stringify(demo.result, null, 2))] },
+        { segments: [seg("prompt", "mcp>")], cursor: true },
+      ]);
+    } finally {
+      if (mountedRef.current) setBusy(false);
+    }
   };
 
   return (
@@ -118,14 +154,18 @@ export function McpSandbox(_props: Record<string, unknown> = {}) {
             </button>
           ))}
         </div>
-        <div
-          className="sandbox-term"
-          aria-live="polite"
-          // Demo-only HTML from our own line templates (no user input).
-          dangerouslySetInnerHTML={{
-            __html: lines.map((l) => `<div>${l}</div>`).join(""),
-          }}
-        />
+        <div className="sandbox-term" aria-live="polite">
+          {lines.map((l, i) => (
+            <div key={i}>
+              {l.segments.map((s, si) => (
+                <span key={si} className={cn(s.kind, si > 0 && "ml-1")}>
+                  {s.text}
+                </span>
+              ))}
+              {l.cursor ? <span className="sandbox-cursor" /> : null}
+            </div>
+          ))}
+        </div>
       </div>
     </article>
   );

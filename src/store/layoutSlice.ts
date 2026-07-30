@@ -66,9 +66,9 @@ const EMPTY: Pick<
 }
 
 function audienceOf(result: LayoutLoadResult): string | null {
-  if (typeof result.audience === "string" && result.audience) return result.audience
+  if (typeof result.audience === "string" && result.audience.trim()) return result.audience
   const a = result.layout?.meta?.audience
-  return typeof a === "string" && a ? a : null
+  return typeof a === "string" && a.trim() ? a : null
 }
 
 /**
