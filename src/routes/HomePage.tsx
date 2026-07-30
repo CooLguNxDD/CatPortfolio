@@ -1,26 +1,34 @@
-import { useQuery } from "@tanstack/react-query"
+/**
+ * Home — static bake, or `?j=<short_id>` demo layout.
+ * URL param is baked into the session store; payload loads via TanStack Query.
+ */
+
 import { useSearch } from "@tanstack/react-router"
-import { loadBaked, loadJobLayout } from "@/content/loadLayout"
+import { loadBaked } from "@/content/loadLayout"
 import { LayoutRenderer } from "@/render/LayoutRenderer"
+import { useDemoLayoutQuery, useDemoShortId } from "@/hooks/useDemoLayout"
 
 export function HomePage() {
   const { j } = useSearch({ from: "/" })
-  const bakedLayout = loadBaked()
+  const { shortId, isDemoSession } = useDemoShortId(j)
+  const { result, isLoading } = useDemoLayoutQuery(shortId)
 
-  const { data } = useQuery({
-    queryKey: ["job-layout", j],
-    queryFn: () => loadJobLayout(j!),
-    enabled: !!j,
-    retry: false,
-    staleTime: 60_000,
-    placeholderData: { layout: bakedLayout, source: "snapshot" as const },
-  })
-
-  const layout = j ? (data?.layout ?? bakedLayout) : bakedLayout
+  const layout =
+    isDemoSession && shortId && result.source !== "snapshot"
+      ? result.layout
+      : j
+        ? result.layout
+        : loadBaked()
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10 space-y-10">
-      <LayoutRenderer layout={layout} />
+    <div className="mx-auto w-full max-w-[1180px] px-4 py-6 md:py-8 space-y-6">
+      {isLoading ? (
+        <p className="text-sm font-mono text-(--fg-muted) animate-pulse">
+          loading demo layout…
+        </p>
+      ) : null}
+      {/* Theme sticks across Home/Ask — user header pick is not reset here */}
+      <LayoutRenderer layout={layout} themeMode="home" />
     </div>
   )
 }

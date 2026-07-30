@@ -17,6 +17,8 @@ import { ChatMessage, type Message } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/store/chatSlice";
+import { useLayoutStore } from "@/store";
+import { demoLayoutQueryKey } from "@/hooks/useDemoLayout";
 
 /** Soft planner nudge — prefer fragments + bake for Ask-mode page re-render. */
 const ENRICHMENT_DIRECTIVE =
@@ -27,7 +29,9 @@ const ENRICHMENT_DIRECTIVE =
   "Always put a valid layout in the response so the page updates. " +
   "If portfolio content is thin, follow live-layout-enrichment: local RAG first, " +
   "then get_project_context(slug) for DB context_sources only (never invent refs from chat). " +
-  "Creative vibe redesign → design_layout or compose_from_fragments.]";
+  "Creative vibe redesign → design_layout or compose_from_fragments.]" +
+  "\nWhen a demo short_id is already in session (visitor opened ?j=…), expand that " +
+  "layout in place — do not replace it with an unrelated audience template.]";
 
 /** Label for the one-shot CLI pill (mirrors OpenCat admin McpMode). */
 function oneShotPillLabel(cli: CliMeta): string {
@@ -37,12 +41,25 @@ function oneShotPillLabel(cli: CliMeta): string {
   return `one-shot cli · ${cli.agent}`;
 }
 
+/**
+ * Push layout into Query cache + session working layout (demo expansions).
+ * Server bake stays under demoLayoutQueryKey(shortId); default key for non-demo.
+ */
 function applyLayoutToCache(
   queryClient: ReturnType<typeof useQueryClient>,
   result: LayoutLoadResult,
 ) {
   if (result.source === "snapshot") return;
-  queryClient.setQueryData(["layout", "default"], result);
+  const shortId =
+    result.shortId || useLayoutStore.getState().shortId || undefined;
+  const next: LayoutLoadResult = shortId ? { ...result, shortId } : result;
+  if (shortId) {
+    useLayoutStore.getState().enterDemo(shortId);
+    useLayoutStore.getState().setWorkingLayout(next);
+    queryClient.setQueryData(demoLayoutQueryKey(shortId), next);
+  } else {
+    queryClient.setQueryData(["layout", "default"], next);
+  }
 }
 
 export function ChatPanel() {
@@ -50,12 +67,20 @@ export function ChatPanel() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [cliMeta, setCliMeta] = useState<CliMeta | null>(null);
-  const [lastBakeId, setLastBakeId] = useState<string | null>(null);
+  const demoShortId = useLayoutStore((s) => s.shortId);
+  const [lastBakeId, setLastBakeId] = useState<string | null>(
+    () => useLayoutStore.getState().shortId,
+  );
   const [sessionId] = useState(() => crypto.randomUUID());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
   const pendingPrompt = useChatStore((s) => s.pendingPrompt);
   const setPendingPrompt = useChatStore((s) => s.setPendingPrompt);
+
+  // Keep bake chip in sync when Home seeded a ?j= demo session.
+  useEffect(() => {
+    if (demoShortId) setLastBakeId(demoShortId);
+  }, [demoShortId]);
 
   const { data: tools, isSuccess } = useQuery({
     queryKey: ["oct", "tools"],
@@ -99,21 +124,19 @@ export function ChatPanel() {
 
           // 1) Agentic layout carry (compose_from_fragments / emit / design / bake.layout)
           const carryLayout = extractCarryLayout(result.raw);
+          // 2) Bake short_id → load persisted job layout (or stamp id onto carry)
+          const bake = extractBakeMeta(result.raw);
+          if (bake?.shortId) setLastBakeId(bake.shortId);
+
           if (carryLayout) {
             applyLayoutToCache(queryClient, {
               layout: carryLayout,
-              source: "live",
+              source: bake?.shortId ? "bake" : "live",
+              shortId: bake?.shortId,
             });
-          }
-
-          // 2) Bake short_id → load persisted job layout (or use carry layout)
-          const bake = extractBakeMeta(result.raw);
-          if (bake?.shortId) {
-            setLastBakeId(bake.shortId);
-            if (!carryLayout) {
-              const baked = await loadJobLayout(bake.shortId);
-              applyLayoutToCache(queryClient, baked);
-            }
+          } else if (bake?.shortId) {
+            const baked = await loadJobLayout(bake.shortId);
+            applyLayoutToCache(queryClient, baked);
           }
 
           // 3) Fast REST fragment path if agent didn't return a layout

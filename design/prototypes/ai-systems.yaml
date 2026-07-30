@@ -1,0 +1,129 @@
+# Prototype 1 — AI Systems & MCP Architect Showcase
+version: 1
+theme: cozy
+meta:
+  audience: hiring-manager
+  generatedAt: "2026-07-29T13:20:00Z"
+  mode: prototype
+  curationLabel: "AI Systems & MCP Architect Profile"
+
+blocks:
+  - type: hero
+    id: hero-ai
+    props:
+      name: Andrew Liang 🤖
+      tagline: AI Systems Architect · WelTel MCP & Clinician AI Command Center
+      pitch: Architected WelTel's greenfield MCP server (~395 commits) connecting 42 live clinical tools with multi-provider AI (Google Antigravity, xAI Grok, OpenAI) and real-time streaming.
+      links:
+        - label: WelTel MCP Gateway
+          href: https://github.com/CooLguNxDD/Weltel-Mcp-Full
+        - label: OpenCat Tunnel
+          href: https://github.com/CooLguNxDD/CatPortfolio
+
+  - type: kpiGrid
+    id: kpi-ai
+    props:
+      items:
+        - label: Clinical MCP Tools
+          value: 42 tools
+          delta: Real-time API bindings
+          spark: [10, 22, 35, 42]
+        - label: MCP Commits
+          value: ~395 commits
+          delta: Primary architect
+          spark: [50, 150, 280, 395]
+        - label: LLM Providers
+          value: 3 engines
+          delta: Antigravity / Grok / OpenAI
+          spark: [1, 2, 3]
+        - label: Vector Precision
+          value: 0.98
+          delta: pgvector tool router
+          spark: [0.82, 0.91, 0.98]
+
+  - type: flowAnim
+    id: flow-ai
+    props:
+      title: Clinician AI Command Center & Multi-Provider Architecture
+      animate: true
+      nodes:
+        - id: clinician
+          label: Clinician UI
+        - id: hub
+          label: AI Gateway
+        - id: analyst
+          label: Sub-Agent
+        - id: mcp
+          label: 42 Tools
+      edges:
+        - from: clinician
+          to: hub
+          label: natural language
+        - from: hub
+          to: analyst
+          label: complex query
+        - from: hub
+          to: mcp
+          label: 42 clinical tools
+        - from: mcp
+          to: clinician
+          label: streaming answer
+
+  - type: chart
+    id: chart-ai
+    props:
+      kind: donut
+      title: Clinical Tool Distribution across WelTel Platform (42 Total Tools)
+      caption: Real-time tool capabilities exposed over Model Context Protocol (MCP)
+      unit: tools
+      series:
+        - name: Patient Records & Alerts
+          points: [{ x: "Patients", y: 14 }]
+        - name: Clinic & Form Entries
+          points: [{ x: "Clinics", y: 11 }]
+        - name: Interaction & Note Outcomes
+          points: [{ x: "Notes", y: 9 }]
+        - name: Public Health & Tests
+          points: [{ x: "Health", y: 8 }]
+
+  - type: comparison
+    id: comp-ai
+    props:
+      title: AI Provider & Agent Architecture Matrix
+      columns:
+        - label: Single LLM API
+        - label: WelTel MCP & Sub-Agent Hub
+      rows:
+        - label: Vendor Lock-in
+          cells: ["High (Hardcoded)", "Zero (Provider-Agnostic Engine)"]
+        - label: Live Data Actionability
+          cells: ["Read-only prompt", "42 Real-time Clinical API Tools"]
+        - label: Heavy Analysis
+          cells: ["Main thread blocks", "Silently delegated Sub-Agent Analyst"]
+        - label: Streaming Experience
+          cells: ["Buffered output", "Word-by-word streaming with progress pills"]
+
+  - type: codeSnippet
+    id: code-ai
+    props:
+      lang: ts
+      caption: Multi-Provider AI Provider Dispatcher & Streaming Engine (welTel-mono)
+      code: |-
+        export async function streamClinicianAssistant({ prompt, provider = "antigravity" }: StreamRequest) {
+          const mcpTools = await octClient.listTools();
+          const engine = provider === "grok" ? xAiGrok : provider === "antigravity" ? googleAntigravity : openAI;
+          return engine.chatStream({
+            messages: [{ role: "user", content: prompt }],
+            tools: mcpTools,
+            onProgress: (step) => emitProgressPill(step),
+          });
+        }
+
+  - type: starStory
+    id: star-ai
+    props:
+      situation: Clinicians needed real-time AI assistance across patient records, clinic statistics, and public health incidents without switching windows.
+      task: Architect a zero-lock-in AI Command Center and Model Context Protocol (MCP) gateway with 42 clinical tools and real-time streaming.
+      action: Built greenfield WelTel MCP server (~395 commits), integrated Google Antigravity & xAI Grok engines, and engineered specialist analyst sub-agents.
+      result: Delivered full Clinician AI Assistant inside weltel-mono with live data queries, streaming status indicators, and offline fallback capability.
+      tags: [ai-mcp, antg-engine, grok, sub-agents, streaming]

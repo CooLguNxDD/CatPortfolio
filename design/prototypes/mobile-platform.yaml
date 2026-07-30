@@ -1,0 +1,114 @@
+# Prototype 3 — Mobile & Platform Engineering Showcase
+version: 1
+theme: cozy
+meta:
+  audience: peer
+  generatedAt: "2026-07-29T13:20:00Z"
+  mode: prototype
+  curationLabel: "Mobile & Platform Engineering Leader Profile"
+
+blocks:
+  - type: hero
+    id: hero-mobile
+    props:
+      name: Andrew Liang 📱
+      tagline: Mobile & Platform Engineer · React Native, AWS Amplify & SMS Messaging Modernization
+      pitch: Built WelTel Mobile from the ground up (~531 commits across 39+ Jira tickets) with AWS Amplify GraphQL real-time chat, push notifications, and modernized 5 legacy SMS gateway implementations to Axios.
+      links:
+        - label: WelTel Mobile
+          href: https://github.com/CooLguNxDD/Weltel-Mcp-Full
+        - label: CatPortfolio Repo
+          href: https://github.com/CooLguNxDD/CatPortfolio
+
+  - type: kpiGrid
+    id: kpi-mobile
+    props:
+      items:
+        - label: Mobile Commits
+          value: 531+ commits
+          delta: Primary app builder
+          spark: [80, 210, 380, 531]
+        - label: Tracked Jira Items
+          value: 39+ tickets
+          delta: PL-7448 to MA-180
+          spark: [10, 22, 31, 39]
+        - label: SMS Gateways
+          value: 5 modernized
+          delta: Legacy request → Axios
+          spark: [1, 2, 4, 5]
+        - label: Messaging Speed
+          value: < 200 ms
+          delta: AWS Amplify real-time
+          spark: [800, 450, 260, 190]
+
+  - type: flowAnim
+    id: flow-mobile
+    props:
+      title: Real-Time Mobile Messaging & Push Notification Flow
+      animate: true
+      nodes:
+        - id: sender
+          label: Mobile App A
+        - id: amplify
+          label: AWS Amplify
+        - id: lambda
+          label: Lambda & DB
+        - id: receiver
+          label: Mobile App B
+      edges:
+        - from: sender
+          to: amplify
+          label: GraphQL mutation
+        - from: amplify
+          to: lambda
+          label: store & notify
+        - from: amplify
+          to: receiver
+          label: real-time subscription
+        - from: lambda
+          to: receiver
+          label: push notification
+
+  - type: comparison
+    id: comp-mobile
+    props:
+      title: Mobile Application & Platform Infrastructure Modernization
+      columns:
+        - label: Legacy System
+        - label: Modernized Architecture
+      rows:
+        - label: Mobile App Status
+          cells: ["No app / zero infrastructure", "Production React Native app on AWS Amplify"]
+        - label: SMS Gateway Stack
+          cells: ["Deprecated `request` library", "Modernized Axios integration across 5 gateways"]
+        - label: Real-Time Sync
+          cells: ["Manual polling", "GraphQL subscriptions & instant push notifications"]
+        - label: Media Attachments
+          cells: ["Unstructured local files", "S3 multi-part encrypted upload pipeline"]
+
+  - type: timeline
+    id: timeline-mobile
+    props:
+      title: Mobile & Platform Engineering Progression (Oct 2025 – July 2026)
+      items:
+        - date: "2026-07"
+          title: Clinician AI Assistant Integration (weltel-mono)
+          body: Built 3-column clinical assistant workspace with 42 clinical tools, dynamic charts, and session memory.
+          tag: Platform AI
+        - date: "2026-01"
+          title: SMS Messaging Modernization (5 Gateways)
+          body: Migrated legacy Node.js request library to Axios across Africa's Talking, Oxygen8, SMSGateway, Mixed2, and core attachments.
+          tag: Platform Infra
+        - date: "2025-11"
+          title: Real-Time Chat & Multimedia Pipeline
+          body: Implemented GraphQL subscriptions, media sharing, S3 uploads, and Push Notification triggers in React Native.
+          tag: Mobile App
+
+  - type: starStory
+    id: star-mobile
+    props:
+      situation: WelTel Mobile had no working application or backend, while the web platform relied on deprecated HTTP libraries across 5 SMS gateways.
+      task: Build the mobile app from scratch (Amplify backend, real-time chat, push notifications) and modernize the core SMS messaging pipeline.
+      action: Authored 531+ mobile commits across 39+ Jira tickets, designed GraphQL subscriptions, and refactored SMS gateways to Axios.
+      result: Delivered production mobile app, eliminated security risks from deprecated HTTP packages, and established automated app build & delivery pipelines.
+      tags: [mobile, react-native, aws-amplify, graphql, sms-gateways]
