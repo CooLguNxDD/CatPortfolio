@@ -14,8 +14,18 @@ import {
 } from "@/content/loadLayout"
 import { useLayoutStore } from "@/store"
 
+/** Defines the TanStack Query key for resolving the demo layout. */
 export const demoLayoutQueryKey = (j: string | null | undefined) =>
   ["layout", "demo", j ?? "none"] as const
+
+// Mirrors the backend contract exactly: plugins/portfolio_plugin/routes.py
+// JOB_ID_RE — anything else 400s server-side, so don't bother firing the
+// fetch (and don't hydrate the store / query key with garbage).
+const JOB_ID_RE = /^[a-z0-9_]{1,80}$/
+
+function isValidJobId(id: string): boolean {
+  return JOB_ID_RE.test(id)
+}
 
 /**
  * Resolves the active demo short id from URL param first, then temporary store.
@@ -30,13 +40,16 @@ export function useDemoShortId(urlJ: string | undefined): {
   const isDemoSession = useLayoutStore((s) => s.isDemoSession)
   const enterDemo = useLayoutStore((s) => s.enterDemo)
 
-  // Bake URL → temporary store.
-  useEffect(() => {
-    if (urlJ?.trim()) enterDemo(urlJ.trim())
-  }, [urlJ, enterDemo])
+  // Bake URL → temporary store. Invalid ids fall through to the baked
+  // snapshot instead of hydrating the store / query key with garbage.
+  const trimmedJ = urlJ?.trim()
+  const validJ = trimmedJ && isValidJobId(trimmedJ) ? trimmedJ : null
 
-  const shortId =
-    (urlJ?.trim() || null) ?? (isDemoSession ? storeShortId : null)
+  useEffect(() => {
+    if (validJ) enterDemo(validJ)
+  }, [validJ, enterDemo])
+
+  const shortId = validJ ?? (isDemoSession ? storeShortId : null)
 
   return {
     shortId,
@@ -72,11 +85,15 @@ export function useDemoLayoutQuery(shortId: string | null): {
   })
 
   // Stamp bake theme from the server layout once it lands (e.g. neon).
+  // Derive just the theme so the effect doesn't re-fire on unrelated
+  // query.data changes (e.g. a refetch that leaves theme unchanged).
+  const serverTheme =
+    query.data && query.data.source !== "snapshot"
+      ? query.data.layout?.meta?.theme
+      : undefined
   useEffect(() => {
-    if (!query.data || query.data.source === "snapshot") return
-    const t = query.data.layout?.meta?.theme
-    if (t) setBakeTheme(t)
-  }, [query.data, setBakeTheme])
+    if (serverTheme) setBakeTheme(serverTheme)
+  }, [serverTheme, setBakeTheme])
 
   // Expansion wins over network bake when it belongs to this shortId.
   if (
