@@ -44,9 +44,27 @@ function parseTimeoutMs(value: unknown, fallback: number): number {
   return fallback;
 }
 
+/**
+ * Resolve OCT base URL for the browser.
+ * - empty / "same-origin" / "." → window.location.origin (nginx proxies /api + /mcp)
+ * - absolute URL → use as-is (e.g. GitHub Pages pointing at a public OCT host)
+ */
+function resolveOctBaseUrl(raw: string | undefined | null): string {
+  const v = (raw ?? "").trim();
+  if (!v || v === "same-origin" || v === ".") {
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return window.location.origin;
+    }
+    return "";
+  }
+  return v.replace(/\/$/, "");
+}
+
 function envFallback(): RuntimeConfig {
   return {
-    octBaseUrl: (import.meta.env.VITE_OCT_URL as string | undefined) ?? "",
+    octBaseUrl: resolveOctBaseUrl(
+      (import.meta.env.VITE_OCT_URL as string | undefined) ?? "",
+    ),
     mcpApiKey: (import.meta.env.VITE_OCT_API_KEY as string | undefined) ?? "",
     askTimeoutMs: parseTimeoutMs(
       import.meta.env.VITE_ASK_TIMEOUT_MS as string | undefined,
@@ -70,9 +88,10 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
       if (!res.ok) throw new Error(String(res.status));
       const json = await res.json();
       const fallback = envFallback();
+      const rawBase =
+        typeof json?.octBaseUrl === "string" ? json.octBaseUrl : fallback.octBaseUrl;
       cached = {
-        octBaseUrl:
-          typeof json?.octBaseUrl === "string" && json.octBaseUrl ? json.octBaseUrl : fallback.octBaseUrl,
+        octBaseUrl: resolveOctBaseUrl(rawBase || fallback.octBaseUrl),
         mcpApiKey:
           typeof json?.mcpApiKey === "string" && json.mcpApiKey ? json.mcpApiKey : fallback.mcpApiKey,
         askTimeoutMs:
@@ -93,7 +112,7 @@ export function getOctBaseUrl(): string {
   if (!cached) {
     throw new Error("runtime_config_not_loaded");
   }
-  return cached.octBaseUrl;
+  return resolveOctBaseUrl(cached.octBaseUrl);
 }
 
 /** Returns the resolved /mcp bearer token (may be ""). Throws if not loaded yet. */

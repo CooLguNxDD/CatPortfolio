@@ -3,13 +3,15 @@
 ## Summary
 
 - Personal portfolio site built with React 19, Vite 8, and TypeScript 6
-- **Self-rendering SPA:** the page renders from a Zod-validated `src/content/layout.json` block spec through a whitelisted block registry (7 block types). The layout grows; the code doesn't change.
-- **Layout source of truth is `design/layout.yaml`** — compiled to `layout.json` via `npm run compile:layout`; CI verifies sync with `npm run check:layout` (never generates). `design/design.md` is the design contract agents read.
-- Entry: `src/main.tsx` → `src/router.tsx` (TanStack Router) → `src/App.tsx` shell → routes `/` (baked layout, or a job-specific baked layout via `?j=<short_id>` — "bake & send", see below) and `/ask` (live layout with static fallback)
+- **Self-rendering SPA:** the page renders from a Zod-validated `src/content/layout.json` block spec through a whitelisted block registry. The layout grows; the code doesn't change.
+- **Open Design matrix home (2026-07):** default layout is a **level-row DAG**, not a flat stack. `meta.dag.levels` groups blocks into horizontal story bands (L0 Intro → L1 Impact → L2 Projects → L3 Architecture/MCP sandbox → L4 Charts/cost sim → L5 Proof → L6 Deep dive → L7 Ask). `LayoutRenderer` + `useLayoutDag` + `styles/matrix.css` drive viewport-aligned lighting (focus line under sticky chrome), sticky minimap / persona / tech filter. Prefer first-class **`card`** blocks (`domain: ai|devops|mobile|platform`) over `projectGrid` for L2. Interactive client-only blocks: **`mcpSandbox`**, **`costSim`**. **L6 Deep dive uses `cols: 1`** — one full-width component per row (composite / arch / code / prose), not a compacted multi-column band.
+- **Layout source of truth is `design/layout.yaml`** — compiled to `layout.json` via `npm run compile:layout`; CI verifies sync with `npm run check:layout` (never generates). `design/design.md` is the design contract agents read (matrix + card rules live there too). Schema mirror: `src/content/schema.ts` ↔ OCT `utils/ui_layout_schema.py` (incl. `card`, `mcpSandbox`, `costSim`, `meta.dag.levels[].cols`).
+- Entry: `src/main.tsx` → `src/router.tsx` (TanStack Router) → `src/App.tsx` shell → routes `/` (baked matrix layout, or a job-specific baked layout via `?j=<short_id>` — "bake & send", see below) and `/ask` (live layout with static fallback; agent should stamp `meta.dag` for matrix chrome)
 - **Runtime backend config:** `src/config/runtimeConfig.ts` fetches `public/config.json` (unhashed, patchable post-deploy without a rebuild) at startup for the OCT backend base URL, `/mcp` API key, and **`askTimeoutMs`** (MCP SDK idle timeout for Andrew's AI `run_graph`; default **600000** ms / 10 min, reset by server progress keepalives). GitHub Pages has no build-time env injection. Falls back to `VITE_OCT_URL` / `VITE_OCT_API_KEY` / `VITE_ASK_TIMEOUT_MS`, then safe defaults. Gated in `src/main.tsx` before first render; `src/api/octClient.ts::octBaseUrl()` prefers it, falling back to the build-time env var if not yet loaded. Docker injects the same fields via `docker-entrypoint.sh` (`OCT_BASE_URL`, `OCT_API_KEY`, `OCT_ASK_TIMEOUT_MS`).
+- **Local Docker:** `docker compose` serves nginx on **localhost:11000** with `base: /CatPortfolio/`. After editing `design/layout.yaml`, run `compile:layout` **and rebuild the image** — bind-mount alone will not update a baked nginx root if the image copied `dist/` at build time.
 - **MCP tool call timeouts:** `octClient.callTool` passes SDK `RequestOptions` (`timeout`, `resetTimeoutOnProgress: true`, `onprogress`) — not a bare `Promise.race`. The SDK default is 60s; without `onprogress` the client never sends a `progressToken`, so the server skips keepalives and long agent turns die with "Request timed out".
 - **`?j=` job-specific pre-baked layout:** the `/` route's `validateSearch` accepts an optional `j` (job short id, minted server-side by the OpenCat backend's "bake & send" pipeline — see `Weltel-Mcp-Full/CLAUDE.md`). `src/content/loadLayout.ts::loadJobLayout(jobId)` fetches `GET /api/portfolio/public/layout/{jobId}` from the OCT backend and falls back to the baked snapshot on any failure — never hard-fails, since this backs a public HR-facing resume link. `src/routes/HomePage.tsx` renders the baked-only path byte-for-byte unchanged when `j` is absent.
-- **Chat-driven live layout re-render (`/ask`):** `ChatPanel.tsx` fires `src/content/loadLayout.ts::loadLayoutForQuery(userMessage)` alongside (not blocking) each chat turn — a fast, public REST call (`GET /api/portfolio/public/layout-for-query?query=...`, no MCP round-trip) that deterministically infers audience from the chat text server-side. On a `"live"` result it writes directly into the `["layout","default"]` TanStack Query cache (`queryClient.setQueryData`) so `AskPage`'s `LayoutRenderer` updates immediately without an invalidate/refetch. Agentic path: `extractCarryLayout` Zod-validates `response.carry.layout` (drops malformed agent JSON); if `meta.theme` is a registered theme id, `ChatPanel` applies it via the Zustand preferences store. Soft directive nudges creative redesigns toward OCT `design_layout` (layout-design-builder skill).
+- **Chat-driven live layout re-render (`/ask`):** `ChatPanel.tsx` fires `src/content/loadLayout.ts::loadLayoutForQuery(userMessage)` alongside (not blocking) each chat turn — a fast, public REST call (`GET /api/portfolio/public/layout-for-query?query=...`, no MCP round-trip) that deterministically infers audience from the chat text server-side. On a `"live"` result it writes directly into the `["layout","default"]` TanStack Query cache (`queryClient.setQueryData`) so `AskPage`'s `LayoutRenderer` updates immediately without an invalidate/refetch. Agentic path: `extractCarryLayout` Zod-validates `response.carry.layout` (drops malformed agent JSON); if `meta.theme` is a registered theme id, `ChatPanel` applies it via the Zustand preferences store. Soft directive nudges creative redesigns toward OCT `design_layout` (layout-design-builder skill). OCT matrix defaults: `hero` → `kpiGrid` → `cards` → `starStory` with `meta.dag` stamping.
 - **One-shot CLI agent (when OCT core LLM is `claude-cli` / `agy-cli`):** `askOct` still calls `run_graph` once; OpenCat short-circuits the whole turn to a single headless CLI agent spawn (`core_graph/goap_agent/oneshot.py`) and returns `{status, message, meta.cli}`. `extractCliMeta` + ChatPanel surface an `one-shot cli · claude|agy` pill (parity with admin playground `McpMode`). Layout carry is best-effort on oneshot — REST `loadLayoutForQuery` remains the layout fallback. Backend mints an admin child token for the CLI (does not inherit the public deny-all gateway API key).
 - **Job-search agent live status:** `src/api/agentStatus.ts::fetchAgentStatus` polls the public, privacy-safe `GET /api/portfolio/public/agent-status` (never applicant PII — just `{job_id, status, updated_at}`); `src/components/AgentStatusPill.tsx` (TanStack Query `refetchInterval: 8000`) renders it, mounted in `AskPage.tsx`. No SSE — polling only, by design (see backend CLAUDE.md).
 - Deployed to GitHub Pages (project page, `base: "/CatPortfolio/"`) via `.github/workflows/deploy.yml`
@@ -37,22 +39,27 @@ CatPortfolio/
 │   ├── App.tsx               # Root layout shell: sticky header, nav, theme switcher, Outlet, footer
 │   ├── index.css             # Tailwind v4 CSS-first config + OKLCH design tokens + shadcn bridge
 │   ├── content/
-│   │   ├── schema.ts         # Zod LayoutSchema — block contract (7-type union) + optional meta.theme
+│   │   ├── schema.ts         # Zod LayoutSchema — full block union + meta.theme / meta.dag (+ cols)
 │   │   ├── layout.json       # Baked layout spec (committed, gated) — must pass LayoutSchema
-│   │   ├── loadLayout.ts     # loadBaked (sync, fail-loud) + loadLiveWithStatus (4s timeout → snapshot fallback) + loadJobLayout(jobId) ("bake & send") + loadLayoutForQuery(query) (chat fast path)
+│   │   ├── loadLayout.ts     # loadBaked (singleton) + loadLiveWithStatus + loadJobLayout + loadLayoutForQuery
 │   │   └── __tests__/        # Fixture parse, whitelist rejection, fallback tests
 │   ├── render/
 │   │   ├── registry.ts       # type → component map; `satisfies` enforces whitelist completeness
-│   │   ├── LayoutRenderer.tsx# Spec → components; unknown block = skip; motion/react animations
+│   │   ├── LayoutRenderer.tsx# Matrix chrome when meta.dag present; else stagger + span grid
 │   │   ├── BlockErrorBoundary.tsx # Per-block error boundary (isolates throw → null)
 │   │   └── __tests__/        # Registry ↔ schema drift test
-│   ├── blocks/               # The 7 whitelisted block components + barrel
-│   │   ├── Hero.tsx  ProjectGrid.tsx  StatStrip.tsx  StarStory.tsx
+│   ├── blocks/               # Whitelisted block components + barrel
+│   │   ├── Hero.tsx  Card.tsx  ProjectGrid.tsx  StatStrip.tsx  StarStory.tsx  KpiGrid.tsx
 │   │   ├── ArchDiagram.tsx   # kind svg → data-URI img; kind mermaid → lazy MermaidDiagram
 │   │   ├── MermaidDiagram.tsx# Lazy chunk (not exported from barrel)
+│   │   ├── Chart.tsx Timeline.tsx FlowAnim.tsx Comparison.tsx Composite.tsx QuickActions.tsx
+│   │   ├── McpSandbox.tsx CostSimulator.tsx  # OD matrix L3/L4 interactives (client-only)
 │   │   ├── CodeSnippet.tsx  Prose.tsx  index.ts
+│   │   └── primitives/ charts/   # shared card shell, sparkline, etc.
+│   ├── styles/
+│   │   └── matrix.css        # Level-row bands, sticky chrome, domain chroma, is-lit / is-current
 │   ├── routes/
-│   │   ├── HomePage.tsx      # loadBaked() → LayoutRenderer
+│   │   ├── HomePage.tsx      # loadBaked() → LayoutRenderer (matrix home)
 │   │   └── AskPage.tsx       # TanStack Query loadLiveWithStatus + live/snapshot pill
 │   ├── api/                  # MCP Client integration
 │   │   ├── octClient.ts      # StreamableHTTPClientTransport client
@@ -61,18 +68,19 @@ CatPortfolio/
 │   │   └── __tests__/        # Harness and client unit tests
 │   ├── assets/               # hero.png
 │   ├── lib/utils.ts          # cn helper
-│   ├── store/                # Zustand preferences (theme)
+│   ├── store/                # Zustand preferences (theme) + layoutSlice
 │   ├── themes/               # cozy/neon/paper theme JSONs + registry
-│   ├── hooks/                # useThemeRegistry
+│   ├── hooks/                # useThemeRegistry, useLayoutDag, useLayoutTheme, …
 │   └── components/
 │       ├── ThemeProvider.tsx # Injects theme CSS vars on document root
+│       ├── AgenticHeader.tsx SourceCitations.tsx  # GenUI chrome when meta.mode / sources set
 │       ├── chat/             # Interactive ask chat components
 │       │   ├── ChatPanel.tsx # Main chat window & connection manager
 │       │   └── ChatMessage.tsx# Message bubble renderer
 │       └── ui/               # shadcn: button.tsx, card.tsx
 ├── design/                   # Source of truth for generation (human/agent-editable)
-│   ├── layout.yaml           # Layout source — compiled to src/content/layout.json (compile:layout)
-│   ├── design.md             # Design contract: tokens frontmatter + voice/audience/block rules
+│   ├── layout.yaml           # Matrix layout source (meta.dag L0–L7) → layout.json
+│   ├── design.md             # Design contract: tokens + matrix/card rules + voice/audience
 │   ├── sources.yaml          # External context sources configuration
 │   ├── mirror-manifest.json  # Block types known to the Python mirror (mirror-drift test)
 │   └── pending-mirror/       # (created on demand) Pydantic patches awaiting OCT-side sync

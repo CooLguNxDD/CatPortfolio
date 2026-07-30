@@ -14,6 +14,9 @@ import {
   KpiGrid,
   Comparison,
   QuickActions,
+  Card,
+  McpSandbox,
+  CostSim,
   Composite,
 } from "@/blocks";
 
@@ -36,5 +39,8 @@ export const REGISTRY = {
   kpiGrid: KpiGrid,
   comparison: Comparison,
   quickActions: QuickActions,
+  card: Card,
+  mcpSandbox: McpSandbox,
+  costSim: CostSim,
   composite: Composite,
 } satisfies { [K in BlockType]: ComponentType<PropsOf<K>> };

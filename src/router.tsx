@@ -1,3 +1,9 @@
+/**
+ * TanStack Router tree. Both Home and Ask accept optional `?j=<short_id>` so
+ * the demo bake stays in the URL when navigating (react-app-guide: params as
+ * shareable route state).
+ */
+
 import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router"
 import { z } from "zod"
 import App from "./App"
@@ -8,21 +14,24 @@ const rootRoute = createRootRoute({
   component: App,
 })
 
-const homeSearchSchema = z.object({
-  // Job-specific baked portfolio layout ("bake & send") — e.g. ?j=weltel_successor_992
+/** Shared search: job-layout / demo short id (bake & send + showcase demos). */
+export const demoSearchSchema = z.object({
   j: z.string().optional(),
 })
+
+export type DemoSearch = z.infer<typeof demoSearchSchema>
 
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  validateSearch: homeSearchSchema,
+  validateSearch: demoSearchSchema,
   component: HomePage,
 })
 
 const askRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/ask",
+  validateSearch: demoSearchSchema,
   component: AskPage,
 })
 

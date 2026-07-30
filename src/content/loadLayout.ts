@@ -2,9 +2,12 @@ import baked from "./layout.json";
 import { LayoutSchema, type Layout } from "./schema";
 import { getOctBaseUrl } from "../config/runtimeConfig";
 
-/** Loads the statically baked layout.json file. */
+/** Parsed once — never re-create on every HomePage render (breaks scroll/DAG hooks). */
+const BAKED_LAYOUT: Layout = LayoutSchema.parse(baked);
+
+/** Loads the statically baked layout.json file (stable reference). */
 export function loadBaked(): Layout {
-  return LayoutSchema.parse(baked);
+  return BAKED_LAYOUT;
 }
 
 export type LayoutSource = "live" | "snapshot" | "fragments" | "bake";
@@ -158,10 +161,34 @@ export async function loadJobLayout(
     );
     if (!res.ok) throw new Error(String(res.status));
     const json = await res.json();
-    const parsed = LayoutSchema.safeParse(json);
-    if (!parsed.success) throw new Error("schema");
-    return { layout: parsed.data, source: "bake", shortId: jobId };
-  } catch {
-    return { layout: loadBaked(), source: "snapshot" };
+    // Bare layout or envelope { layout, audience, ... }
+    const candidate =
+      json &&
+      typeof json === "object" &&
+      "layout" in json &&
+      (json as { layout: unknown }).layout &&
+      typeof (json as { layout: unknown }).layout === "object"
+        ? (json as { layout: unknown }).layout
+        : json;
+    const parsed = LayoutSchema.safeParse(candidate);
+    if (!parsed.success) {
+      console.warn("[loadJobLayout] schema:", parsed.error.flatten());
+      throw new Error("schema");
+    }
+    const audience =
+      json &&
+      typeof json === "object" &&
+      typeof (json as { audience?: unknown }).audience === "string"
+        ? (json as { audience: string }).audience
+        : parsed.data.meta.audience;
+    return {
+      layout: parsed.data,
+      source: "bake",
+      shortId: jobId,
+      audience,
+    };
+  } catch (err) {
+    console.warn("[loadJobLayout] fallback snapshot for", jobId, err);
+    return { layout: loadBaked(), source: "snapshot", shortId: jobId };
   }
 }
