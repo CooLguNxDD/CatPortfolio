@@ -232,6 +232,7 @@ function MatrixLevels({
             );
             const lit = litLevels.has(i);
             const current = i === activeIdx;
+            const isLastBand = i === levels.length - 1;
 
             // Tech filter: mark match on cards with data-tech
             const nodeShell = nodes.map((block, ni) => {
@@ -268,6 +269,7 @@ function MatrixLevels({
                   "dag-level",
                   lit && "is-lit",
                   current && "is-current",
+                  isLastBand && "is-last-band",
                 )}
                 data-dag-level={lvl.level}
               >
@@ -320,13 +322,24 @@ export function LayoutRenderer({
     );
 
   return (
-    <div className="w-full">
+    <div
+      className={cn(
+        "w-full",
+        hasDag && "layout-canvas layout-canvas--matrix",
+        usesGrid && "layout-canvas layout-canvas--grid",
+        !hasDag && !usesGrid && "layout-canvas layout-canvas--stack space-y-6",
+      )}
+      data-layout-canvas={hasDag ? "matrix" : usesGrid ? "grid" : "stack"}
+    >
       <AgenticHeader meta={layout.meta} />
       {hasDag ? (
         <MatrixLevels layout={layout} reduced={reduced} />
       ) : (
         <div
-          className={cn(usesGrid && "grid grid-cols-12 gap-4 auto-rows-min")}
+          className={cn(
+            usesGrid && "grid grid-cols-12 gap-4 auto-rows-min",
+            !usesGrid && "flex flex-col gap-6",
+          )}
         >
           {layout.blocks.map((block, i) => {
             const span = block.layout?.span;

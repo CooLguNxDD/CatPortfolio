@@ -30,7 +30,7 @@ describe("Python mirror drift", () => {
 
     expect(
       uncovered,
-      `Block types missing from the Python mirror (Weltel-Mcp-Full/utils/ui_layout_schema.py). ` +
+      `Block types missing from the Python mirror (OpenCat-Mcp-Full/utils/ui_layout_schema.py). ` +
         `Either sync the mirror + update design/mirror-manifest.json, or add ` +
         `design/pending-mirror/<yyyy-mm-dd>-<type>.md with the Pydantic patch: ${uncovered.join(", ")}`,
     ).toEqual([]);
