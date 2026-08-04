@@ -17,7 +17,8 @@
     "card",
     "mcpSandbox",
     "costSim",
-    "composite"
+    "composite",
+    "scene2d"
   ],
   "themeVarAllowlist": [
     "bg",
@@ -99,5 +100,5 @@
   "compositeContainerKinds": ["grid", "stack", "split", "cards"],
   "compositeMaxDepth": 3,
   "compositeMaxNodes": 40,
-  "lastSynced": "2026-08-04"
+  "lastSynced": "2026-08-05"
 }

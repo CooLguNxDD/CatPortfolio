@@ -277,6 +277,53 @@ const CostSim = z.object({
   props: z.object({}).default({}),
 });
 
+/**
+ * Declarative canvas-2D visual (OD matrix L3, alongside archDiagram/flowAnim).
+ * Preset + grounded data, NOT a general drawing DSL: no arbitrary paths,
+ * colors, or expressions -- mirrors flowAnim's nodes/edges shape, server-
+ * derived from real projects (see OpenCat-Mcp-Full block_builder.py's
+ * "scene2d" branch). `renderer` is a Literal union deliberately left open
+ * for "webgl" later (a schema widening, not a rewrite) -- three.js is not
+ * added until that path ships.
+ */
+const Scene2d = z.object({
+  type: z.literal("scene2d"),
+  id: z.string(),
+  layout: BlockLayout,
+  props: z.object({
+    renderer: z.literal("2d").default("2d"),
+    preset: z.enum(["orbit", "pulse-grid", "particle-field"]),
+    title: z.string().optional(),
+    nodes: z
+      .array(
+        z.object({
+          id: z.string(),
+          label: z.string(),
+          group: z.string().optional(),
+        }),
+      )
+      .default([]),
+    edges: z
+      .array(
+        z.object({
+          from: z.string(),
+          to: z.string(),
+          label: z.string().optional(),
+        }),
+      )
+      .default([]),
+    palette: AccentId.optional(),
+    motion: z
+      .object({
+        speed: z.number().min(0.1).max(3).default(1),
+        loop: z.boolean().default(true),
+        intensity: z.number().min(0).max(2).default(1),
+      })
+      .default({}),
+    caption: z.string().optional(),
+  }),
+});
+
 /** Composite DSL — recursive containers + typed leaves (depth ≤ 3, ≤ 40 nodes). */
 const CompositeLayoutSpec = z.object({
   kind: z.enum(["grid", "stack", "split", "cards"]),
@@ -532,6 +579,7 @@ export const LayoutSchema = z.object({
       McpSandbox,
       CostSim,
       Composite,
+      Scene2d,
     ]),
   ),
 });
