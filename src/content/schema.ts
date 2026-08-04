@@ -291,7 +291,10 @@ type CompositeNode = {
   [key: string]: unknown;
 };
 
-const LEAF_KINDS = new Set([
+// Exported (not just module-private) so scripts/__tests__/mirror-drift.test.ts
+// can assert design/mirror-manifest.json's copy matches the actual source of
+// truth, instead of drifting independently the way THEME_VAR_ALLOWLIST did.
+export const LEAF_KINDS = new Set([
   "metric",
   "sparkline",
   "badgeCloud",
@@ -309,7 +312,9 @@ const LEAF_KINDS = new Set([
   "link",
   "stat",
 ]);
-const CONTAINER_KINDS = new Set(["grid", "stack", "split", "cards"]);
+export const CONTAINER_KINDS = new Set(["grid", "stack", "split", "cards"]);
+export const COMPOSITE_MAX_DEPTH = 3;
+export const COMPOSITE_MAX_NODES = 40;
 
 const CompositeNodeSchema: z.ZodType<CompositeNode> = z.lazy(() =>
   z
@@ -358,16 +363,16 @@ const Composite = z.object({
     })
     .superRefine((props, ctx) => {
       const { count, maxDepth } = countComposite(props.children, 1);
-      if (maxDepth > 3) {
+      if (maxDepth > COMPOSITE_MAX_DEPTH) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "composite children exceed max depth 3",
+          message: `composite children exceed max depth ${COMPOSITE_MAX_DEPTH}`,
         });
       }
-      if (count > 40) {
+      if (count > COMPOSITE_MAX_NODES) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `composite children exceed max nodes 40 (got ${count})`,
+          message: `composite children exceed max nodes ${COMPOSITE_MAX_NODES} (got ${count})`,
         });
       }
     }),
