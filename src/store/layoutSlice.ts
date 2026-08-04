@@ -13,7 +13,7 @@ import type { LayoutLoadResult, LayoutSource } from "@/content/loadLayout"
 import type { Layout } from "@/content/schema"
 
 export interface LayoutSlice {
-  /** Active bake short id, e.g. `andrew_weltel_showcase_4` — mirrors `?j=`. */
+  /** Active bake short id, e.g. `andrew_opencat_showcase_4` — mirrors `?j=`. */
   shortId: string | null
   /** True while a demo session is active (URL or rehydrated session). */
   isDemoSession: boolean

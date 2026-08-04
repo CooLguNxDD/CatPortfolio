@@ -1,5 +1,5 @@
 {
-  "description": "Block types known to exist in the Python mirror (Weltel-Mcp-Full/utils/ui_layout_schema.py). A new block type in schema.ts must appear here after the OCT-side sync lands, or be flagged by a design/pending-mirror/*.md file until then.",
+  "description": "Block types known to exist in the Python mirror (OpenCat-Mcp-Full/utils/ui_layout_schema.py). A new block type in schema.ts must appear here after the OCT-side sync lands, or be flagged by a design/pending-mirror/*.md file until then.",
   "pythonMirrorBlockTypes": [
     "hero",
     "projectGrid",

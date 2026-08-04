@@ -3,7 +3,7 @@
 #
 # Required secrets:
 #   ANTHROPIC_API_KEY  — Claude API key
-#   OCT_REPO_TOKEN     — read-only PAT for CooLguNxDD/Weltel-Mcp-Full (plugin source);
+#   OCT_REPO_TOKEN     — read-only PAT for CooLguNxDD/OpenCat-Mcp-Full (plugin source);
 #                        omit the token line if that repo is public.
 name: portfolio-gen
 
@@ -41,7 +41,7 @@ jobs:
       # Canonical plugin source — no vendored copy in this repo.
       - uses: actions/checkout@v4
         with:
-          repository: CooLguNxDD/Weltel-Mcp-Full
+          repository: CooLguNxDD/OpenCat-Mcp-Full
           token: ${{ secrets.OCT_REPO_TOKEN }}
           path: oct
           sparse-checkout: |

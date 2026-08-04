@@ -2,7 +2,7 @@
   "version": 1,
   "meta": {
     "audience": "default",
-    "generatedAt": "2026-07-30T18:00:00Z",
+    "generatedAt": "2026-08-03T06:30:00Z",
     "dag": {
       "levels": [
         {
@@ -23,7 +23,7 @@
         },
         {
           "level": 2,
-          "label": "Projects",
+          "label": "WelTel job tracks",
           "at": 0.28,
           "nodes": [
             "card-ai",
@@ -34,7 +34,7 @@
         },
         {
           "level": 3,
-          "label": "Architecture · Live MCP sandbox",
+          "label": "Personal OSS · OpenCat Tunnel",
           "at": 0.42,
           "nodes": [
             "fa1",
@@ -43,7 +43,7 @@
         },
         {
           "level": 4,
-          "label": "Charts · AWS cost simulator",
+          "label": "Charts · AWS cost (WelTel)",
           "at": 0.55,
           "nodes": [
             "cost-sim",
@@ -89,19 +89,19 @@
       "id": "h1",
       "props": {
         "name": "Andrew Liang (the cat)",
-        "tagline": "AI Systems Architect · Cloud Infra & DevOps · Mobile & Platform Engineering",
-        "pitch": "High-impact full-stack systems builder across WelTel. Reduced AWS costs from $4k → $2.8k/mo (-30%), built greenfield MCP gateway (42 clinical tools), and delivered WelTel Mobile (531+ commits).",
+        "tagline": "AI Systems · Cloud Infra & DevOps · Mobile & Platform",
+        "pitch": "WelTel employment impact (AI gateway, cloud cost, mobile, platform) plus personal OSS: OpenCat Tunnel MCP platform and this agentic CatPortfolio SPA.",
         "links": [
           {
             "label": "GitHub Profile",
             "href": "https://github.com/CooLguNxDD"
           },
           {
-            "label": "OpenCat Tunnel Repo",
-            "href": "https://github.com/CooLguNxDD/Weltel-Mcp-Full"
+            "label": "OpenCat Tunnel (personal OSS)",
+            "href": "https://github.com/CooLguNxDD/OpenCat-Mcp-Full"
           },
           {
-            "label": "CatPortfolio Repo",
+            "label": "CatPortfolio (this site)",
             "href": "https://github.com/CooLguNxDD/CatPortfolio"
           }
         ]
@@ -113,9 +113,9 @@
       "props": {
         "items": [
           {
-            "label": "AWS Bill Reduction",
+            "label": "WelTel AWS bill",
             "value": "$4k → $2.8k",
-            "delta": "-30% monthly savings",
+            "delta": "-30% monthly (job DevOps)",
             "spark": [
               4200,
               3800,
@@ -124,9 +124,9 @@
             ]
           },
           {
-            "label": "Clinical MCP Tools",
+            "label": "WelTel clinical MCP tools",
             "value": "42 tools",
-            "delta": "Real-time API bindings",
+            "delta": "Job AI gateway",
             "spark": [
               10,
               22,
@@ -135,9 +135,9 @@
             ]
           },
           {
-            "label": "DevOps Commits",
+            "label": "WelTel DevOps commits",
             "value": "570+ commits",
-            "delta": "Across 4 repos",
+            "delta": "Deploy + Terraform track",
             "spark": [
               100,
               280,
@@ -146,9 +146,9 @@
             ]
           },
           {
-            "label": "Mobile Commits",
+            "label": "WelTel Mobile commits",
             "value": "531+ commits",
-            "delta": "39+ Jira tickets",
+            "delta": "39+ tickets · ~9 months",
             "spark": [
               80,
               210,
@@ -163,26 +163,26 @@
       "type": "flowAnim",
       "id": "fa1",
       "props": {
-        "title": "OpenCat Vector Tool Routing & Multi-Provider AI Architecture",
+        "title": "OpenCat Tunnel (personal OSS) — tool routing & multi-provider agents",
         "nodes": [
           {
             "id": "client",
-            "label": "Clinician UI",
+            "label": "Console / CLI",
             "group": "client"
           },
           {
             "id": "gateway",
-            "label": "MCP Gateway",
+            "label": "OpenCat MCP",
             "group": "infra"
           },
           {
             "id": "router",
-            "label": "pgvector Router",
+            "label": "GOAP + embeddings",
             "group": "core"
           },
           {
             "id": "tool",
-            "label": "42 Tools",
+            "label": "Plugin tools",
             "group": "exec"
           }
         ],
@@ -190,22 +190,22 @@
           {
             "from": "client",
             "to": "gateway",
-            "label": "natural language prompt"
+            "label": "natural language"
           },
           {
             "from": "gateway",
             "to": "router",
-            "label": "cosine search (1536 dim)"
+            "label": "plan / hybrid search"
           },
           {
             "from": "router",
             "to": "tool",
-            "label": "2-3 narrowed tools"
+            "label": "scoped ops"
           },
           {
             "from": "tool",
             "to": "client",
-            "label": "streaming answer"
+            "label": "streaming result"
           }
         ],
         "animate": true
@@ -216,11 +216,11 @@
       "id": "card-ai",
       "props": {
         "title": "MCP & Clinician AI",
-        "eyebrow": "AI Systems",
-        "body": "~395 commits · 42 live clinical tools · multi-provider streaming Command Center with pgvector semantic routing and OAuth 2.0 PKCE.",
+        "eyebrow": "WelTel · AI (job)",
+        "body": "Greenfield WelTel MCP (~395 commits) · 42 clinical tools · multi-provider Command Center streaming · Pullfrog multi-model code-review agent.",
         "metrics": [
           {
-            "label": "commits",
+            "label": "MCP commits",
             "value": "~395"
           },
           {
@@ -229,25 +229,24 @@
           }
         ],
         "tags": [
+          "WelTel",
           "MCP",
-          "pgvector",
-          "LangGraph",
-          "OAuth 2.0"
+          "clinician-AI",
+          "job"
         ],
         "links": [
           {
-            "label": "repository",
-            "href": "https://github.com/CooLguNxDD/Weltel-Mcp-Full"
+            "label": "related mirror",
+            "href": "https://github.com/CooLguNxDD/Weltel-MCP"
           }
         ],
         "badges": [
           {
-            "label": "✓ ~395 commits verified",
-            "href": "https://github.com/CooLguNxDD/Weltel-Mcp-Full",
+            "label": "Job track · AI assistant",
             "tone": "amber"
           }
         ],
-        "tech": "MCP pgvector LangGraph",
+        "tech": "MCP pgvector LangGraph OAuth",
         "domain": "ai"
       }
     },
@@ -255,9 +254,9 @@
       "type": "card",
       "id": "card-devops",
       "props": {
-        "title": "EKS & Terraform",
-        "eyebrow": "DevOps · Cloud",
-        "body": "Self-hosted organization runners · multi-AZ VPC · ACM automation · reduced AWS monthly bill by 30% (−$1.2k/mo).",
+        "title": "EKS · Terraform · runners",
+        "eyebrow": "WelTel · DevOps (job)",
+        "body": "Self-hosted org runners · multi-AZ VPC · ~570+ infra commits · AWS monthly bill $4k+ → ~$2.8k (−30%).",
         "metrics": [
           {
             "label": "infra commits",
@@ -269,20 +268,14 @@
           }
         ],
         "tags": [
+          "WelTel",
           "AWS",
           "Terraform",
-          "EKS",
-          "Docker"
-        ],
-        "links": [
-          {
-            "label": "repository",
-            "href": "https://github.com/CooLguNxDD/Weltel-Mcp-Full"
-          }
+          "job"
         ],
         "badges": [
           {
-            "label": "✓ 570+ infra commits"
+            "label": "Job track · cloud cost"
           }
         ],
         "tech": "EKS Terraform AWS Docker",
@@ -293,33 +286,28 @@
       "type": "card",
       "id": "card-mobile",
       "props": {
-        "title": "WelTel RN",
-        "eyebrow": "Mobile",
-        "body": "React Native app from scratch with Amplify GraphQL real-time chat · 531+ commits · 39+ Jira tickets over 9 months.",
+        "title": "React Native · Amplify",
+        "eyebrow": "WelTel · Mobile (job)",
+        "body": "Mobile foundation · Amplify GraphQL real-time chat · media & push deep-links · 531+ commits · 39+ tickets over ~9 months.",
         "metrics": [
           {
             "label": "mobile commits",
             "value": "531+"
           },
           {
-            "label": "Jira tickets",
+            "label": "tickets",
             "value": "39+"
           }
         ],
         "tags": [
-          "React Native",
-          "AWS Amplify",
-          "GraphQL"
-        ],
-        "links": [
-          {
-            "label": "repository",
-            "href": "https://github.com/CooLguNxDD/CatPortfolio"
-          }
+          "WelTel",
+          "React-Native",
+          "Amplify",
+          "job"
         ],
         "badges": [
           {
-            "label": "✓ 531+ commits verified"
+            "label": "Job track · mobile"
           }
         ],
         "tech": "React-Native GraphQL Amplify",
@@ -330,25 +318,26 @@
       "type": "card",
       "id": "card-platform",
       "props": {
-        "title": "SMS & Clinical UI",
-        "eyebrow": "Platform",
-        "body": "Modernized 5 legacy SMS gateway integrations to Axios · portal fixes · task-queue hygiene across the clinical stack.",
+        "title": "SMS & clinical UI",
+        "eyebrow": "WelTel · Platform (job)",
+        "body": "~105 commits · 5 SMS gateways request→Axios · patient portal test results · task-queue and clinical UI production fixes.",
         "metrics": [
           {
-            "label": "gateways",
-            "value": "5"
+            "label": "platform commits",
+            "value": "105"
           },
           {
-            "label": "migration",
-            "value": "request → Axios"
+            "label": "SMS gateways",
+            "value": "5"
           }
         ],
         "tags": [
+          "WelTel",
           "Axios",
           "SMS",
-          "Platform"
+          "job"
         ],
-        "tech": "Axios SMS",
+        "tech": "Axios SMS Angular",
         "domain": "platform"
       }
     },
@@ -367,28 +356,28 @@
       "id": "chart-master",
       "props": {
         "kind": "bar",
-        "title": "Monthly AWS Infrastructure Cost Optimization ($4,000+ → $2,800/mo)",
+        "title": "WelTel AWS monthly cost (job DevOps) — $4,000+ → $2,800/mo",
         "series": [
           {
-            "name": "Pre-Optimization (Shared Public Runners)",
+            "name": "Pre-Optimization",
             "points": [
               {
-                "x": "Legacy Cloud Setup",
+                "x": "Legacy cloud setup",
                 "y": 4150
               }
             ]
           },
           {
-            "name": "Post-Optimization (Self-Hosted EKS Runners)",
+            "name": "Post-Optimization",
             "points": [
               {
-                "x": "Refactored Terraform Stack",
+                "x": "Self-hosted EKS stack",
                 "y": 2800
               }
             ]
           }
         ],
-        "caption": "Direct cost savings achieved through self-hosted AWS EKS runners and Terraform VPC refactoring",
+        "caption": "Self-hosted runners + Terraform VPC optimization at WelTel (employer work)",
         "unit": "USD / month"
       }
     },
@@ -396,42 +385,42 @@
       "type": "comparison",
       "id": "comp-master",
       "props": {
-        "title": "WelTel Infrastructure & AI System Tradeoffs",
+        "title": "Three streams — job vs personal OSS",
         "columns": [
           {
-            "label": "Legacy System"
+            "label": "WelTel (job)"
           },
           {
-            "label": "Andrew's Modernized Stack"
+            "label": "Personal OSS"
           }
         ],
         "rows": [
           {
-            "label": "AWS Monthly Cost",
+            "label": "Focus",
             "cells": [
-              "$4,000+ / month",
-              "$2,800 / month (-30% savings)"
+              "AI / DevOps / Mobile / Platform employment impact",
+              "OpenCat Tunnel MCP + CatPortfolio SPA"
             ]
           },
           {
-            "label": "AI Integration",
+            "label": "AI surface",
             "cells": [
-              "Hardcoded single LLM API",
-              "42-Tool MCP Gateway (Antigravity / Grok)"
+              "42-tool WelTel MCP + Clinician Command Center",
+              "OpenCat Tunnel plugins, GOAP, OAuth gateway"
             ]
           },
           {
-            "label": "Mobile Architecture",
+            "label": "Cloud",
             "cells": [
-              "No app / zero infrastructure",
-              "Production React Native + Amplify GraphQL"
+              "AWS $4k→$2.8k/mo · self-hosted runners",
+              "Portfolio bake / multi-tenant platform infra"
             ]
           },
           {
-            "label": "SMS Messaging",
+            "label": "Mobile / UI",
             "cells": [
-              "Deprecated `request` package",
-              "Axios migration across 5 SMS gateways"
+              "WelTel RN app 531+ commits",
+              "CatPortfolio matrix GenUI (this site)"
             ]
           }
         ]
@@ -441,31 +430,37 @@
       "type": "timeline",
       "id": "timeline-master",
       "props": {
-        "title": "WelTel System Architecture Evolution (Oct 2025 – July 2026)",
+        "title": "Recent arc — WelTel job + personal OSS",
         "items": [
           {
             "date": "2026-07",
-            "title": "Clinician AI Command Center & WelTel MCP Gateway",
-            "body": "Built 42-tool MCP gateway, multi-provider AI engine (Antigravity/Grok), and live streaming chat UI in weltel-mono.",
-            "tag": "AI & MCP"
+            "title": "WelTel Clinician AI + MCP (job)",
+            "body": "Command Center, multi-provider streaming, 42 clinical tools — employer AI track.",
+            "tag": "WelTel AI"
           },
           {
             "date": "2026-06",
-            "title": "AWS Infrastructure Overhaul & Cost Optimization",
-            "body": "Reduced monthly AWS costs from $4,000+ to $2,800/mo (-30% savings) via self-hosted EKS runners and Terraform multi-AZ VPC.",
-            "tag": "Cloud DevOps"
+            "title": "WelTel AWS cost & deploy (job)",
+            "body": "Self-hosted EKS runners / Terraform — bill ~$4k → $2.8k/mo.",
+            "tag": "WelTel DevOps"
           },
           {
             "date": "2026-01",
-            "title": "SMS Gateway Modernization & Media Pipeline",
-            "body": "Refactored 5 legacy SMS gateways to modern Axios and upgraded media attachment pipelines.",
-            "tag": "Platform Infra"
+            "title": "WelTel SMS modernization (job)",
+            "body": "Five gateways request → Axios; media pipeline hygiene.",
+            "tag": "WelTel Platform"
           },
           {
             "date": "2025-11",
-            "title": "WelTel Mobile Launch on AWS Amplify",
-            "body": "Built React Native app from the ground up (531+ commits, 39+ tickets) with real-time GraphQL chat and push alerts.",
-            "tag": "Mobile App"
+            "title": "WelTel Mobile foundation (job)",
+            "body": "RN + Amplify GraphQL chat path; 531+ commits over the mobile window.",
+            "tag": "WelTel Mobile"
+          },
+          {
+            "date": "2026",
+            "title": "OpenCat Tunnel & CatPortfolio (personal OSS)",
+            "body": "Separate open-source MCP platform and agentic portfolio SPA — not WelTel product code.",
+            "tag": "Personal OSS"
           }
         ]
       }
@@ -474,7 +469,7 @@
       "type": "composite",
       "id": "composite-master",
       "props": {
-        "title": "Full-Stack Systems & AI Engineering Deep-Dive",
+        "title": "Full-stack systems — employment + OSS",
         "layout": {
           "kind": "split",
           "gap": "md"
@@ -485,19 +480,16 @@
             "children": [
               {
                 "kind": "text",
-                "markdown": "### Core Technical System Achievements\n\n- **DevOps**: Reduced AWS bill from **$4,000+ to $2,800/mo** (-30% bill savings).\n- **AI**: Sole architect of WelTel MCP Server (**42 clinical tools**, 395+ commits).\n- **Mobile**: Built React Native app (**531+ commits**, 39+ Jira tickets)."
+                "markdown": "### WelTel job tracks\n- **DevOps**: AWS **$4k → $2.8k/mo** (−30%).\n- **AI**: WelTel MCP (**42 tools**, ~395 commits).\n- **Mobile**: RN app (**531+ commits**, 39+ tickets).\n- **Platform**: SMS Axios + clinical UI (~105 commits)."
               },
               {
                 "kind": "badgeCloud",
                 "items": [
+                  "WelTel",
                   "AWS EKS",
                   "Terraform",
-                  "React 19",
+                  "MCP",
                   "React Native",
-                  "Zod",
-                  "pgvector",
-                  "LangGraph",
-                  "OAuth 2.0",
                   "Axios"
                 ]
               }
@@ -508,15 +500,19 @@
             "kind": "stack",
             "children": [
               {
+                "kind": "text",
+                "markdown": "### Personal OSS\n- **OpenCat Tunnel** — LangGraph, OAuth, plugins, GOAP MCP platform.\n- **CatPortfolio** — React 19 matrix GenUI, live `/ask`, bake `?j=`."
+              },
+              {
                 "kind": "quote",
-                "text": "Building the engine room and the clinician experience: from cloud cost optimization and self-hosted runners to 42-tool AI streaming gateways.",
-                "cite": "Andrew Liang — Systems & AI Architect"
+                "text": "Job impact at WelTel. Platform craft in OpenCat Tunnel. Storytelling in CatPortfolio — three separate streams.",
+                "cite": "Andrew Liang"
               },
               {
                 "kind": "metric",
-                "label": "Infrastructure Volume",
-                "value": "1,600+ Commits",
-                "delta": "Across 6 Repositories"
+                "label": "Indexed job reports",
+                "value": "4 tracks",
+                "delta": "AI · DevOps · Mobile · Platform"
               }
             ],
             "gap": "sm"
@@ -528,16 +524,16 @@
       "type": "starStory",
       "id": "st1",
       "props": {
-        "situation": "WelTel's cloud costs exceeded $4,000/mo, mobile had no infrastructure, and clinical tools lacked unified AI integration.",
-        "task": "Overhaul cloud pipelines, build the mobile app from scratch, and architect a multi-provider AI gateway over 42 clinical tools.",
-        "action": "Deployed self-hosted EKS runners, refactored 570+ DevOps lines, built React Native app (531+ commits), and authored WelTel MCP server (395+ commits).",
-        "result": "Reduced AWS expenditure to $2,800/mo (-30% savings), delivered production mobile chat, and launched Clinician AI Command Center with streaming status.",
+        "situation": "At WelTel, cloud spend exceeded $4k/mo, mobile needed a real foundation, and clinicians lacked a safe AI tool surface over live clinical APIs.",
+        "task": "Drive DevOps cost/runner work, ship mobile chat infrastructure, and build the AI layer (MCP + Command Center) without conflating personal OSS projects.",
+        "action": "Self-hosted runners and Terraform multi-AZ; RN + Amplify GraphQL; WelTel MCP (~395 commits, 42 tools) and multi-provider streaming assistant.",
+        "result": "AWS ~$2.8k/mo (−30%), production mobile messaging, clinician AI with live tools — while OpenCat Tunnel and CatPortfolio remain separate personal OSS products.",
         "tags": [
+          "WelTel",
           "aws",
-          "terraform",
-          "mcp-server",
+          "mcp",
           "react-native",
-          "ai-command-center"
+          "job"
         ]
       }
     },
@@ -545,9 +541,9 @@
       "type": "archDiagram",
       "id": "a1",
       "props": {
-        "title": "WelTel Architecture — Dual-Loop SPA & OpenCat Tunnel Gateway",
+        "title": "Personal OSS loop — OpenCat Tunnel + CatPortfolio",
         "kind": "mermaid",
-        "source": "flowchart LR\n  oct[WelTel MCP Server / 42 Tools] --> layout[layout.json]\n  layout --> gate[Commit Gate & CI]\n  gate --> action[GitHub Action / Self-Hosted Runner]\n  action --> pages[GitHub Pages]\n  spa[CatPortfolio SPA] --> live[live OCT]\n  live --> fallback[fallback snapshot]\n  fallback --> baked[baked layout]"
+        "source": "flowchart LR\n  oct[OpenCat Tunnel OSS] --> bake[bake layout / MCP tools]\n  bake --> api[public layout API]\n  spa[CatPortfolio SPA] --> api\n  spa --> ask[\"/ask live GenUI\"]\n  ask --> oct\n  job[WelTel job reports] -.->|context only| oct"
       }
     },
     {
@@ -555,38 +551,42 @@
       "id": "c1",
       "props": {
         "lang": "ts",
-        "code": "export async function streamClinicianAssistant({ prompt, provider = \"antigravity\" }: StreamRequest) {\n  const mcpTools = await octClient.listTools(); // 42 clinical tools\n  const engine = provider === \"grok\" ? xAiGrok : provider === \"antigravity\" ? googleAntigravity : openAI;\n  return engine.chatStream({\n    messages: [{ role: \"user\", content: prompt }],\n    tools: mcpTools,\n    onProgress: (step) => emitProgressPill(step),\n  });\n}",
-        "caption": "Multi-Provider AI Provider Dispatcher & Streaming Engine (welTel-mono)"
+        "code": "// loadJobLayout(shortId) → GET /api/portfolio/public/layout/{id}\n// Backend bakes from portfolio projects (e.g. WelTel job tracks) + fragments.\nexport async function loadJobLayout(jobId: string) {\n  const res = await fetch(`${octBaseUrl()}/api/portfolio/public/layout/${jobId}`);\n  if (!res.ok) return loadBaked(); // fail-open to default matrix\n  return LayoutSchema.parse(await res.json());\n}",
+        "caption": "CatPortfolio — job layout fetch (personal OSS SPA talking to OpenCat Tunnel)"
       }
     },
     {
       "type": "prose",
       "id": "pr1",
       "props": {
-        "markdown": "## How this system powers WelTel's software delivery\n\nBy coupling **AWS cloud cost optimization (-30% bill reduction)** with an **AI-driven Model Context Protocol (MCP) gateway**, WelTel's engineering stack operates with zero vendor lock-in, automated CI/CD pipelines, and real-time clinical intelligence.\n\n- **DevOps**: Self-hosted AWS EKS runners & multi-AZ VPC layout.\n- **AI & MCP**: 42 clinical tools, Google Antigravity & xAI Grok streaming.\n- **Mobile**: AWS Amplify GraphQL real-time chat & 5 modernized SMS gateways.\n\n| Infrastructure Area | Metric | Achievement |\n| --- | --- | --- |\n| Cloud Infrastructure | $4,000 → $2,800/mo | -30% AWS Monthly Bill Reduction |\n| AI Gateway | 42 Tools | Greenfield MCP Protocol Server (~395 commits) |\n| Mobile App | 531+ Commits | Production React Native + Amplify GraphQL |\n| Platform SMS | 5 Gateways | Refactored deprecated request to Axios |"
+        "markdown": "## How the streams fit\n\n**WelTel job work** (AI, DevOps, mobile, platform) is employer impact — sourced from contribution reports under `weltelprojects/`.\n\n**OpenCat Tunnel** is a **personal OSS** MCP platform (LangGraph, OAuth, plugins, portfolio bake). It is not WelTel product code.\n\n**CatPortfolio** is this **agentic portfolio SPA**: Zod layout contract, matrix `meta.dag`, live `/ask`, and `?j=` baked resumes.\n\n| Stream | Kind | Headline |\n| --- | --- | --- |\n| WelTel AI / DevOps / Mobile / Platform | Job | 42 tools · −30% AWS · 531+ mobile commits · SMS Axios |\n| OpenCat Tunnel | Personal OSS | MCP gateway platform + agent runtime |\n| CatPortfolio | Personal OSS | Matrix GenUI portfolio you are reading |"
       }
     },
     {
       "type": "quickActions",
       "id": "cta-quick",
       "props": {
-        "prompt": "Ask about Andrew's work at WelTel:",
+        "prompt": "Ask about Andrew's work (WelTel job vs personal OSS):",
         "actions": [
           {
-            "label": "AWS Cost Reduction",
-            "prompt": "How did you reduce AWS costs from $4,000 to $2,800/mo?"
+            "label": "WelTel AWS cost",
+            "prompt": "How did WelTel AWS costs drop from $4,000 to $2,800/mo on the job DevOps track?"
           },
           {
-            "label": "42 Clinical MCP Tools",
-            "prompt": "How does the WelTel MCP server turn APIs into 42 clinical tools?"
+            "label": "WelTel MCP (job)",
+            "prompt": "What is the WelTel MCP server and the 42 clinical tools from the job AI track?"
           },
           {
-            "label": "WelTel Mobile App",
-            "prompt": "Tell me about building WelTel Mobile from scratch (531+ commits)"
+            "label": "WelTel Mobile (job)",
+            "prompt": "Summarize WelTel Mobile work: 531+ commits and Amplify GraphQL chat."
           },
           {
-            "label": "SMS Gateway Migration",
-            "prompt": "How did you refactor 5 SMS gateways from request to Axios?"
+            "label": "OpenCat Tunnel (OSS)",
+            "prompt": "How is OpenCat Tunnel different from WelTel job work as a personal OSS MCP platform?"
+          },
+          {
+            "label": "CatPortfolio (OSS)",
+            "prompt": "How does CatPortfolio agentic layout bake and matrix GenUI work?"
           }
         ]
       }
