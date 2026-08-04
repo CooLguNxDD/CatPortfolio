@@ -1,0 +1,110 @@
+# Hiring-Manager-focused layout prototype.
+# Aligns with CRAP principles: Proximity (groups STAR metrics together),
+# Repetition (consistent timeline formatting), Alignment (chronological story path),
+# and explicit separation between contracted WelTel contributions and personal OSS architecture.
+
+version: 1
+theme: cozy
+meta:
+  audience: hiring-manager
+  generatedAt: "2026-08-03T07:00:00Z"
+  dag:
+    levels:
+      - level: 0
+        label: Intro
+        at: 0
+        nodes: [h1]
+      - level: 1
+        label: STAR Story
+        at: 0.25
+        nodes: [star-bento]
+      - level: 2
+        label: Timeline
+        at: 0.55
+        nodes: [timeline-arc]
+      - level: 3
+        label: Compare
+        at: 0.85
+        nodes: [comparison-bento]
+
+blocks:
+  - type: hero
+    id: h1
+    props:
+      name: Andrew Liang (the cat)
+      tagline: Systems Engineer & Platform Lead
+      pitch: >-
+        STAR methodology portfolio demonstrating technical ownership, 
+        project management timelines, and clear organizational metrics at WelTel Healthcare 
+        alongside personal open-source platform developments.
+      links:
+        - label: GitHub Profile
+          href: https://github.com/CooLguNxDD"
+
+  - type: starStory
+    id: star-bento
+    props:
+      situation: >-
+        At WelTel Healthcare, high infrastructure overhead exceeded $4k/mo, 
+        mobile chat lacked a real foundation, and clinical staff lacked secure, compliant AI integrations.
+      task: >-
+        Overhaul cloud runner costs, build production-grade messaging tools, and architect 
+        the clinical AI layer without conflating personal open-source libraries.
+      action: >-
+        Created self-hosted org runner fleets on AWS EKS; coded the mobile Amplify GraphQL chat pipeline; 
+        wrote the WelTel MCP server hosting 42 clinical tools.
+      result: >-
+        Slashed monthly cloud spend by 30% ($4,150 → $2,800/mo), shipped native chat features, 
+        and deployed the clinician AI gateway.
+      tags: [WelTel, AWS, React-Native, FastMCP, job]
+
+  - type: timeline
+    id: timeline-arc
+    props:
+      title: Project History & Milestones
+      items:
+        - date: "2026-07"
+          title: WelTel Clinical AI & MCP (Job)
+          body: Built clinician workspace streaming dashboards and 42 health telemetry tools.
+          tag: WelTel AI
+        - date: "2026-06"
+          title: WelTel Cloud Cost Reduction (Job)
+          body: Migrated pipelines to self-hosted Kubernetes EKS runners. Conserved subnets.
+          tag: WelTel DevOps
+        - date: "2026-01"
+          title: WelTel SMS Gateway Refactor (Job)
+          body: Shifted 5 gateways from requests package to Axios structures, raising uptime.
+          tag: WelTel Platform
+        - date: "2025-11"
+          title: WelTel Mobile Chat Launch (Job)
+          body: Authored native messaging support using GraphQL subscriptions and Amplify hooks.
+          tag: WelTel Mobile
+        - date: "2026-07"
+          title: OpenCat Tunnel & CatPortfolio (Personal OSS)
+          body: Designed LangGraph runtime, local server tunnel client, and Zod layout portfolio.
+          tag: Personal OSS
+
+  - type: comparison
+    id: comparison-bento
+    props:
+      title: Project Stream Matrix (Job vs. OSS)
+      columns:
+        - label: WelTel Employment (Job Track)
+        - label: Personal Open-Source (OSS)
+      rows:
+        - label: Primary Role
+          cells:
+            - "Clinician tooling, AWS optimization, RN messaging"
+            - "LangGraph core router, OAuth tunneling gateway"
+        - label: AI Engineering
+          cells:
+            - "42-tool clinical FastMCP server on internal databases"
+            - "GOAP planner algorithm, plugin system, layout engine"
+        - label: Infrastructure
+          cells:
+            - "AWS VPC design, EKS nodes, ECS gateway orchestration"
+            - "Local tunnels, client-to-server schema compile pipeline"
+        - label: Stack
+          cells:
+            - "React Native, Amplify, Angular, AWS Cloud Services"
+            - "React 19, TypeScript, Python SDK, FastMCP core"

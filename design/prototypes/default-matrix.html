@@ -1,0 +1,1699 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Andrew Liang — Cat Portfolio Matrix</title>
+<meta name="description" content="Metrics-first portfolio: WelTel job work, OpenCat Tunnel personal OSS, and CatPortfolio agentic SPA." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* Dark cozy-cyberpunk · tech-utility posture, inverted for matrix home */
+:root {
+  --bg: oklch(14% 0.028 285);
+  --surface: oklch(19% 0.032 285);
+  --surface-2: oklch(23% 0.036 285);
+  --fg: oklch(94% 0.018 100);
+  --muted: oklch(70% 0.03 285);
+  --border: oklch(32% 0.04 285);
+  --accent: oklch(78% 0.15 175);
+  --accent-dim: oklch(55% 0.1 175 / 0.25);
+  --danger: oklch(68% 0.18 25);
+  --warn: oklch(80% 0.14 85);
+  --ok: oklch(76% 0.15 155);
+
+  --ai: oklch(76% 0.17 310);
+  --devops: oklch(78% 0.15 155);
+  --mobile: oklch(80% 0.13 55);
+  --platform: oklch(74% 0.13 240);
+  --oss: oklch(78% 0.16 335);
+
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --pad: clamp(1rem, 2.5vw, 2rem);
+  --max: 1120px;
+  --minimap-w: 148px;
+  --glow: 0 0 40px oklch(70% 0.12 175 / 0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, oklch(28% 0.08 310 / 0.35), transparent 55%),
+    radial-gradient(900px 500px at 95% 20%, oklch(26% 0.07 175 / 0.28), transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(oklch(100% 0 0 / 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(100% 0 0 / 0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 90%);
+  z-index: 0;
+}
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: oklch(88% 0.12 175); }
+
+.shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: var(--minimap-w) minmax(0, 1fr);
+  gap: 0;
+  max-width: calc(var(--max) + var(--minimap-w) + 3rem);
+  margin: 0 auto;
+  padding: 0 var(--pad) 4rem;
+}
+
+/* —— Sticky level minimap —— */
+.minimap {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  height: fit-content;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem 0.75rem 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.minimap-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+.minimap a {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 0.4rem;
+  align-items: baseline;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.minimap a .lv {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  color: oklch(60% 0.04 285);
+}
+.minimap a.is-active {
+  background: oklch(24% 0.04 285);
+  border-color: var(--border);
+  color: var(--fg);
+}
+.minimap a.is-active .lv { color: var(--accent); }
+.minimap a:hover { color: var(--fg); border-color: oklch(40% 0.05 285); }
+
+.main { min-width: 0; padding-top: 1.25rem; }
+
+/* —— Shared atoms —— */
+.section {
+  scroll-margin-top: 1.25rem;
+  margin-bottom: 2.75rem;
+  padding: 1.35rem 1.4rem 1.5rem;
+  background: oklch(18% 0.03 285 / 0.72);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--glow);
+}
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1.1rem;
+}
+.section-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.section h2 {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.section-sub {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  max-width: 62ch;
+}
+.stream-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.stream-pill[data-stream="weltel"] { border-color: oklch(50% 0.08 240 / 0.5); color: var(--platform); }
+.stream-pill[data-stream="oss"] { border-color: oklch(50% 0.1 335 / 0.55); color: var(--oss); }
+.stream-pill[data-stream="portfolio"] { border-color: oklch(50% 0.1 175 / 0.5); color: var(--accent); }
+
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* —— L0 Hero —— */
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 1.75rem 1.5rem 1.6rem;
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, oklch(60% 0.18 310 / 0.22), transparent 70%);
+  pointer-events: none;
+}
+.hero-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.persona {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: var(--surface);
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 2.85rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+.hero h1 span.cat {
+  color: var(--accent);
+  font-weight: 600;
+}
+.tagline {
+  margin: 0.65rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: oklch(88% 0.02 100);
+}
+.tagline .sep { color: oklch(50% 0.04 285); margin: 0 0.35rem; }
+.tagline .d-ai { color: var(--ai); }
+.tagline .d-devops { color: var(--devops); }
+.tagline .d-mobile { color: var(--mobile); }
+.tagline .d-platform { color: var(--platform); }
+.pitch {
+  margin: 1rem 0 0;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+.hero-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.25rem;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  background: var(--accent);
+  color: oklch(14% 0.03 175);
+  border-color: oklch(70% 0.12 175);
+}
+.btn-primary:hover { background: oklch(84% 0.12 175); color: oklch(12% 0.03 175); }
+.btn-ghost {
+  background: var(--surface);
+  color: var(--fg);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-oss {
+  background: oklch(28% 0.06 335 / 0.45);
+  border-color: oklch(50% 0.1 335 / 0.55);
+  color: var(--oss);
+}
+.btn-oss:hover { background: oklch(32% 0.08 335 / 0.6); }
+
+/* —— Personal OSS rail —— */
+.oss-rail {
+  margin: 1.15rem 0 0;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid oklch(48% 0.1 335 / 0.45);
+  background:
+    linear-gradient(120deg, oklch(26% 0.06 335 / 0.4), oklch(22% 0.04 175 / 0.25));
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem 1rem;
+  align-items: start;
+}
+.oss-rail-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--oss);
+  padding-top: 0.2rem;
+}
+.oss-rail-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.65rem;
+}
+.oss-item {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid oklch(40% 0.06 335 / 0.4);
+  background: oklch(16% 0.03 285 / 0.55);
+  transition: border-color 0.15s, background 0.15s;
+}
+.oss-item:hover { border-color: var(--oss); background: oklch(22% 0.04 335 / 0.4); }
+.oss-item strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--fg);
+  margin-bottom: 0.15rem;
+}
+.oss-item span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.oss-item .repo {
+  margin-top: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--oss);
+}
+
+/* —— L1 KPI —— */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.kpi {
+  padding: 0.9rem 0.95rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  min-width: 0;
+}
+.kpi-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.kpi-value {
+  margin-top: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.kpi-note {
+  margin-top: 0.25rem;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.kpi-spark {
+  margin-top: 0.55rem;
+  height: 32px;
+  width: 100%;
+  display: block;
+}
+.kpi[data-domain="ai"] .kpi-value { color: var(--ai); }
+.kpi[data-domain="devops"] .kpi-value { color: var(--devops); }
+.kpi[data-domain="mobile"] .kpi-value { color: var(--mobile); }
+.kpi[data-domain="platform"] .kpi-value { color: var(--platform); }
+.kpi[data-domain="cost"] .kpi-value { color: var(--ok); }
+
+/* —— L2 Domain cards —— */
+.domain-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+.domain-card {
+  position: relative;
+  padding: 1.05rem 1.1rem 1.15rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+  min-width: 0;
+}
+.domain-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--domain-color);
+}
+.domain-card[data-domain="ai"] { --domain-color: var(--ai); }
+.domain-card[data-domain="devops"] { --domain-color: var(--devops); }
+.domain-card[data-domain="mobile"] { --domain-color: var(--mobile); }
+.domain-card[data-domain="platform"] { --domain-color: var(--platform); }
+.domain-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+.domain-slug {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--domain-color);
+  letter-spacing: 0.04em;
+}
+.domain-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+.domain-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.7rem 0 0.65rem;
+}
+.chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding: 0.28rem 0.5rem;
+  border-radius: 6px;
+  background: oklch(26% 0.03 285);
+  border: 1px solid var(--border);
+  color: var(--fg);
+}
+.chip strong { color: var(--domain-color); font-weight: 600; }
+.domain-body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.domain-list {
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+}
+.domain-list li {
+  font-size: 12.5px;
+  color: oklch(82% 0.02 100);
+  padding-left: 0.85rem;
+  position: relative;
+}
+.domain-list li::before {
+  content: "›";
+  position: absolute;
+  left: 0;
+  color: var(--domain-color);
+  font-family: var(--font-mono);
+}
+
+/* —— L3 Architecture + sandbox —— */
+.arch-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.95fr;
+  gap: 1rem;
+}
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.flow-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 0.35rem;
+  align-items: center;
+}
+.flow-node {
+  padding: 0.65rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-align: center;
+  min-width: 0;
+}
+.flow-node strong {
+  display: block;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+.flow-node span {
+  display: block;
+  margin-top: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+.flow-node.hl {
+  border-color: oklch(50% 0.1 335 / 0.55);
+  background: oklch(24% 0.05 335 / 0.35);
+}
+.flow-arrow {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  font-size: 14px;
+}
+.flow-note {
+  margin: 0.55rem 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sandbox {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: oklch(12% 0.025 285);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+}
+.sandbox-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.sandbox-bar strong {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oss);
+}
+.sandbox-body {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+.tool-list {
+  border-right: 1px solid var(--border);
+  overflow: auto;
+  padding: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.tool-btn {
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 36px;
+}
+.tool-btn:hover, .tool-btn.is-active {
+  background: oklch(22% 0.04 285);
+  border-color: var(--border);
+  color: var(--fg);
+}
+.tool-btn.is-active { border-color: oklch(50% 0.1 335 / 0.5); color: var(--oss); }
+.sandbox-out {
+  padding: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: oklch(86% 0.03 150);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sandbox-actions {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.sandbox-actions .btn { min-height: 36px; padding: 0.4rem 0.75rem; font-size: 12px; }
+
+/* —— L4 Charts —— */
+.charts-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0.95rem 1rem;
+  min-width: 0;
+}
+.panel h3 {
+  margin: 0 0 0.75rem;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+  height: 160px;
+  padding: 0.5rem 0.25rem 0;
+}
+.bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  min-width: 0;
+}
+.bar-fill {
+  width: 100%;
+  max-width: 72px;
+  border-radius: 6px 6px 2px 2px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: oklch(14% 0.02 155);
+  transition: height 0.4s ease;
+}
+.bar-fill.before { background: oklch(65% 0.12 25); height: 100%; }
+.bar-fill.after { background: var(--devops); height: 67.5%; color: oklch(14% 0.03 155); }
+.bar-label {
+  margin-top: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+.bar-caption {
+  margin: 0.75rem 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.bar-caption strong { color: var(--ok); font-family: var(--font-mono); }
+
+.sim-row {
+  display: grid;
+  gap: 0.85rem;
+}
+.sim-control label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+.sim-control label span { font-family: var(--font-mono); color: var(--fg); }
+.sim-control input[type="range"] {
+  width: 100%;
+  accent-color: var(--devops);
+}
+.sim-result {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.sim-stat {
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: oklch(16% 0.03 285);
+}
+.sim-stat .k {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sim-stat .v {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.sim-stat .v.good { color: var(--ok); }
+
+.table-wrap { overflow-x: auto; margin-top: 1rem; }
+table.compare {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+table.compare th,
+table.compare td {
+  text-align: left;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+}
+table.compare th {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: oklch(16% 0.03 285);
+  font-weight: 500;
+}
+table.compare td.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+table.compare tr:hover td { background: oklch(22% 0.03 285 / 0.5); }
+
+/* —— L5 Timeline + STAR —— */
+.proof-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  border-left: 2px solid var(--border);
+  margin-left: 0.4rem;
+}
+.timeline li {
+  position: relative;
+  padding: 0 0 1rem 1.1rem;
+}
+.timeline li:last-child { padding-bottom: 0; }
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 0.35rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--platform);
+  box-shadow: 0 0 0 3px oklch(20% 0.03 285);
+}
+.timeline .when {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.timeline .what {
+  margin-top: 0.15rem;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.timeline .detail {
+  margin-top: 0.2rem;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.star {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0.95rem 1rem;
+}
+.star h3 {
+  margin: 0 0 0.75rem;
+  font-size: 13.5px;
+}
+.star dl {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+.star dt {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.star dd {
+  margin: 0.2rem 0 0;
+  font-size: 13px;
+  color: oklch(86% 0.02 100);
+  line-height: 1.45;
+}
+
+/* —— L6 Deep dive —— */
+.deep-grid {
+  display: grid;
+  gap: 1rem;
+}
+.composite {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.composite .cell {
+  padding: 0.8rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.composite .cell .t {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.composite .cell .b {
+  margin-top: 0.35rem;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mermaid-board {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: oklch(12% 0.025 285);
+  padding: 1rem;
+  overflow-x: auto;
+}
+.mermaid-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.85rem;
+}
+.dual-loop {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.75rem;
+  align-items: stretch;
+  min-width: 520px;
+}
+.loop-col {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.loop-col.oss-side { border-color: oklch(48% 0.1 335 / 0.45); }
+.loop-col.port-side { border-color: oklch(48% 0.1 175 / 0.45); }
+.loop-col h4 {
+  margin: 0 0 0.25rem;
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+.loop-col.oss-side h4 { color: var(--oss); }
+.loop-col.port-side h4 { color: var(--accent); }
+.loop-step {
+  font-size: 12px;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  background: oklch(16% 0.03 285);
+  border: 1px solid oklch(30% 0.03 285);
+  color: oklch(88% 0.02 100);
+}
+.loop-bridge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 88px;
+}
+.loop-bridge .arrow {
+  font-size: 18px;
+  color: var(--accent);
+}
+
+.code-prose {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 1rem;
+}
+pre.code {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: oklch(11% 0.025 285);
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: oklch(86% 0.03 150);
+}
+pre.code .c { color: oklch(62% 0.03 285); }
+pre.code .k { color: var(--ai); }
+pre.code .s { color: var(--mobile); }
+pre.code .f { color: var(--accent); }
+.prose-block {
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.prose-block p { margin: 0 0 0.75rem; }
+.prose-block p:last-child { margin-bottom: 0; }
+.prose-block strong { color: var(--fg); font-weight: 600; }
+
+/* —— L7 CTA —— */
+.cta-panel {
+  text-align: left;
+}
+.cta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+.ask-chip {
+  min-height: 44px;
+  padding: 0.55rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.ask-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: oklch(24% 0.04 175 / 0.25);
+}
+.ask-reply {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+  background: oklch(16% 0.03 285);
+  font-size: 13.5px;
+  color: var(--muted);
+  min-height: 3.5rem;
+}
+.ask-reply strong { color: var(--fg); }
+.ask-reply .q {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+
+.footer-note {
+  margin-top: 0.5rem;
+  padding: 0.85rem 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* —— Responsive —— */
+@media (max-width: 960px) {
+  .shell { grid-template-columns: 1fr; }
+  .minimap {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-height: none;
+    padding: 0.65rem 0;
+    margin: 0 calc(var(--pad) * -1);
+    padding-left: var(--pad);
+    padding-right: var(--pad);
+    background: oklch(14% 0.028 285 / 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    gap: 0.25rem;
+  }
+  .minimap-label { display: none; }
+  .minimap a {
+    grid-template-columns: auto;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+  .minimap a .name { display: none; }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .domain-grid,
+  .arch-layout,
+  .charts-layout,
+  .proof-layout,
+  .code-prose,
+  .composite { grid-template-columns: 1fr; }
+  .sandbox-body { grid-template-columns: 1fr; }
+  .tool-list {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 520px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .flow-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+  .flow-arrow { transform: rotate(90deg); justify-self: center; }
+  .oss-rail { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="shell" data-od-id="shell">
+  <nav class="minimap" data-od-id="level-minimap" aria-label="Matrix levels">
+    <div class="minimap-label">Matrix</div>
+    <a href="#l0" data-level="l0" class="is-active"><span class="lv">L0</span><span class="name">Hero</span></a>
+    <a href="#l1" data-level="l1"><span class="lv">L1</span><span class="name">KPIs</span></a>
+    <a href="#l2" data-level="l2"><span class="lv">L2</span><span class="name">WelTel</span></a>
+    <a href="#l3" data-level="l3"><span class="lv">L3</span><span class="name">OpenCat</span></a>
+    <a href="#l4" data-level="l4"><span class="lv">L4</span><span class="name">AWS cost</span></a>
+    <a href="#l5" data-level="l5"><span class="lv">L5</span><span class="name">Proof</span></a>
+    <a href="#l6" data-level="l6"><span class="lv">L6</span><span class="name">Deep dive</span></a>
+    <a href="#l7" data-level="l7"><span class="lv">L7</span><span class="name">/ask</span></a>
+  </nav>
+
+  <main class="main" data-od-id="main">
+    <!-- L0 Hero -->
+    <section class="section hero" id="l0" data-od-id="l0-hero">
+      <div class="hero-top">
+        <span class="persona" data-od-id="persona">the cat · first person</span>
+        <span class="stream-pill" data-stream="weltel">WelTel · employer</span>
+        <span class="stream-pill" data-stream="oss">Personal OSS</span>
+        <span class="stream-pill" data-stream="portfolio">CatPortfolio</span>
+      </div>
+      <h1 data-od-id="hero-name">Andrew Liang <span class="cat">/ the cat</span></h1>
+      <p class="tagline" data-od-id="hero-tagline">
+        <span class="d-ai">AI systems</span><span class="sep">·</span>
+        <span class="d-devops">Cloud / DevOps</span><span class="sep">·</span>
+        <span class="d-mobile">Mobile</span><span class="sep">·</span>
+        <span class="d-platform">Platform</span>
+      </p>
+      <p class="pitch" data-od-id="hero-pitch">
+        I ship healthcare infrastructure and clinical tooling at <strong style="color:var(--fg)">WelTel</strong>
+        (MCP clinical tools, EKS runners, React Native chat, SMS gateways) — and separately maintain a personal OSS stack:
+        <strong style="color:var(--oss)">OpenCat Tunnel</strong> (LangGraph · FastMCP · GOAP gateway) and
+        <strong style="color:var(--accent)">CatPortfolio</strong> (agentic matrix SPA with live <span class="mono">/ask</span>).
+      </p>
+      <div class="hero-links" data-od-id="hero-links">
+        <a class="btn btn-primary" href="https://github.com/CooLguNxDD" target="_blank" rel="noopener">GitHub</a>
+        <a class="btn btn-oss" href="https://github.com/CooLguNxDD/OpenCat-Mcp-Full" target="_blank" rel="noopener">OpenCat Tunnel</a>
+        <a class="btn btn-ghost" href="https://github.com/CooLguNxDD/CatPortfolio" target="_blank" rel="noopener">CatPortfolio</a>
+        <a class="btn btn-ghost" href="#l7">Jump to /ask</a>
+      </div>
+
+      <aside class="oss-rail" data-od-id="personal-oss-rail" aria-label="Personal OSS — not WelTel product code">
+        <div class="oss-rail-label">Personal OSS</div>
+        <div class="oss-rail-items">
+          <a class="oss-item" href="https://github.com/CooLguNxDD/OpenCat-Mcp-Full" target="_blank" rel="noopener" data-od-id="oss-opencat">
+            <strong>OpenCat Tunnel</strong>
+            <span>MCP platform: LangGraph agent, OAuth 2.0, FastMCP plugins, GOAP planner, multi-tenant gateway. Not WelTel product code.</span>
+            <span class="repo">github.com/CooLguNxDD/OpenCat-Mcp-Full</span>
+          </a>
+          <a class="oss-item" href="https://github.com/CooLguNxDD/CatPortfolio" target="_blank" rel="noopener" data-od-id="oss-catportfolio">
+            <strong>CatPortfolio</strong>
+            <span>Agentic portfolio SPA: React 19 · Vite · Zod layout matrix · live /ask · bake <span class="mono">?j=</span> job layouts.</span>
+            <span class="repo">github.com/CooLguNxDD/CatPortfolio</span>
+          </a>
+        </div>
+      </aside>
+    </section>
+
+    <!-- L1 KPI -->
+    <section class="section" id="l1" data-od-id="l1-kpi">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">L1 · Impact</div>
+          <h2 data-od-id="l1-heading">Metrics that actually shipped</h2>
+          <p class="section-sub">Headline numbers from WelTel employment tracks plus cost signal. Sparklines are illustrative trajectories, not invented revenue.</p>
+        </div>
+        <span class="stream-pill" data-stream="weltel">WelTel · employer</span>
+      </div>
+      <div class="kpi-grid" data-od-id="kpi-grid">
+        <article class="kpi" data-domain="ai" data-od-id="kpi-mcp-commits">
+          <div class="kpi-label">AI · MCP commits</div>
+          <div class="kpi-value">~395</div>
+          <div class="kpi-note">Clinical MCP surface</div>
+          <svg class="kpi-spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="oklch(76% 0.17 310)" stroke-width="1.5" points="0,28 15,26 30,22 45,20 60,14 75,12 90,8 105,6 120,4"/></svg>
+        </article>
+        <article class="kpi" data-domain="devops" data-od-id="kpi-infra-commits">
+          <div class="kpi-label">DevOps · infra commits</div>
+          <div class="kpi-value">570+</div>
+          <div class="kpi-note">EKS · Terraform · runners</div>
+          <svg class="kpi-spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="oklch(78% 0.15 155)" stroke-width="1.5" points="0,24 15,22 30,18 45,16 60,12 75,10 90,9 105,7 120,5"/></svg>
+        </article>
+        <article class="kpi" data-domain="mobile" data-od-id="kpi-mobile-commits">
+          <div class="kpi-label">Mobile · commits</div>
+          <div class="kpi-value">531+</div>
+          <div class="kpi-note">39+ tickets closed</div>
+          <svg class="kpi-spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="oklch(80% 0.13 55)" stroke-width="1.5" points="0,26 15,24 30,20 45,18 60,15 75,11 90,10 105,8 120,6"/></svg>
+        </article>
+        <article class="kpi" data-domain="cost" data-od-id="kpi-aws-savings">
+          <div class="kpi-label">AWS · monthly cost</div>
+          <div class="kpi-value">−30%</div>
+          <div class="kpi-note">$4.15k → $2.8k / mo</div>
+          <svg class="kpi-spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="oklch(76% 0.15 155)" stroke-width="1.5" points="0,6 20,7 40,8 60,12 80,18 100,24 120,28"/></svg>
+        </article>
+      </div>
+    </section>
+
+    <!-- L2 WelTel domain cards -->
+    <section class="section" id="l2" data-od-id="l2-domains">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">L2 · WelTel job tracks</div>
+          <h2 data-od-id="l2-heading">Four domains at the employer</h2>
+          <p class="section-sub">Employment contribution only — monorepo <span class="mono">weltelprojects/</span>. Personal OSS is intentionally excluded from these cards.</p>
+        </div>
+        <span class="stream-pill" data-stream="weltel">WelTel · employer</span>
+      </div>
+      <div class="domain-grid" data-od-id="work-cards">
+        <article class="domain-card" data-domain="ai" data-od-id="card-weltel-ai">
+          <div class="domain-meta">
+            <span class="domain-slug">weltel-ai</span>
+            <span class="stream-pill" data-stream="weltel">Job</span>
+          </div>
+          <h3>AI · Clinical MCP</h3>
+          <div class="domain-metrics">
+            <span class="chip"><strong>~395</strong> MCP commits</span>
+            <span class="chip"><strong>42</strong> clinical tools</span>
+          </div>
+          <p class="domain-body">Multi-model clinical agent surface for clinicians — tool registry, command center UX, and safe action loops inside WelTel product boundaries.</p>
+          <ul class="domain-list">
+            <li>Clinician Command Center</li>
+            <li>Pullfrog multi-model agent</li>
+            <li>42 clinical tools registered on MCP</li>
+          </ul>
+        </article>
+
+        <article class="domain-card" data-domain="devops" data-od-id="card-weltel-devops">
+          <div class="domain-meta">
+            <span class="domain-slug">weltel-devops</span>
+            <span class="stream-pill" data-stream="weltel">Job</span>
+          </div>
+          <h3>DevOps · Cloud cost & runners</h3>
+          <div class="domain-metrics">
+            <span class="chip"><strong>570+</strong> infra commits</span>
+            <span class="chip"><strong>−30%</strong> AWS spend</span>
+          </div>
+          <p class="domain-body">Infrastructure that pays for itself: self-hosted EKS runners, Terraform multi-AZ, and a real cost drop from ~$4.15k to $2.8k monthly.</p>
+          <ul class="domain-list">
+            <li>Self-hosted EKS CI runners</li>
+            <li>Terraform multi-AZ foundations</li>
+            <li>AWS $4k → $2.8k / mo (−30%)</li>
+          </ul>
+        </article>
+
+        <article class="domain-card" data-domain="mobile" data-od-id="card-weltel-mobile">
+          <div class="domain-meta">
+            <span class="domain-slug">weltel-mobile</span>
+            <span class="stream-pill" data-stream="weltel">Job</span>
+          </div>
+          <h3>Mobile · RN + Amplify chat</h3>
+          <div class="domain-metrics">
+            <span class="chip"><strong>531+</strong> commits</span>
+            <span class="chip"><strong>39+</strong> tickets</span>
+          </div>
+          <p class="domain-body">React Native client work on messaging, media, and push — backed by Amplify GraphQL for clinical chat flows.</p>
+          <ul class="domain-list">
+            <li>React Native + Amplify GraphQL chat</li>
+            <li>Media & push notification paths</li>
+            <li>39+ tickets delivered</li>
+          </ul>
+        </article>
+
+        <article class="domain-card" data-domain="platform" data-od-id="card-weltel-platform">
+          <div class="domain-meta">
+            <span class="domain-slug">weltel-platform</span>
+            <span class="stream-pill" data-stream="weltel">Job</span>
+          </div>
+          <h3>Platform · SMS & clinical UI</h3>
+          <div class="domain-metrics">
+            <span class="chip"><strong>~105</strong> commits</span>
+            <span class="chip"><strong>5</strong> SMS gateways</span>
+          </div>
+          <p class="domain-body">Gateway modernization and portal hardening — request→Axios migrations across SMS providers plus production clinical UI fixes.</p>
+          <ul class="domain-list">
+            <li>5 SMS gateways request → Axios</li>
+            <li>Portal / clinical UI production fixes</li>
+            <li>~105 platform commits</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- L3 OpenCat architecture + MCP sandbox -->
+    <section class="section" id="l3" data-od-id="l3-architecture">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">L3 · Personal OSS architecture</div>
+          <h2 data-od-id="l3-heading">OpenCat Tunnel · MCP gateway loop</h2>
+          <p class="section-sub">Personal open-source MCP platform — LangGraph, OAuth, FastMCP, plugins, GOAP. Explicitly <strong style="color:var(--oss)">not</strong> WelTel product code.</p>
+        </div>
+        <span class="stream-pill" data-stream="oss">OpenCat Tunnel · OSS</span>
+      </div>
+      <div class="arch-layout">
+        <div data-od-id="opencat-flow">
+          <div class="flow">
+            <div class="flow-row">
+              <div class="flow-node"><strong>Client</strong><span>VS Code · CLI · SPA</span></div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-node hl"><strong>OAuth 2.0</strong><span>tenant gate</span></div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-node hl"><strong>Gateway</strong><span>FastMCP + plugins</span></div>
+            </div>
+            <div class="flow-row" style="margin-top:0.35rem">
+              <div class="flow-node hl"><strong>LangGraph</strong><span>agent graph</span></div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-node hl"><strong>GOAP</strong><span>plan · replan</span></div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-node"><strong>Tools</strong><span>run_graph · plugins</span></div>
+            </div>
+          </div>
+          <p class="flow-note">Multi-tenant gateway fans out to plugins; GOAP plans multi-step tool use. Portfolio bake pipeline and tunnel extension sit on the same OSS spine.</p>
+        </div>
+
+        <div class="sandbox" data-od-id="mcp-sandbox">
+          <div class="sandbox-bar">
+            <strong>MCP sandbox · demo</strong>
+            <span class="stream-pill" data-stream="oss">Local style</span>
+          </div>
+          <div class="sandbox-body">
+            <div class="tool-list" id="tool-list" role="listbox" aria-label="MCP tools"></div>
+            <div class="sandbox-out" id="sandbox-out" aria-live="polite">// Select a tool, then Run
+// Stream: OpenCat Tunnel (personal OSS)
+// Not WelTel clinical tools</div>
+          </div>
+          <div class="sandbox-actions">
+            <button type="button" class="btn btn-primary" id="sandbox-run" data-od-id="sandbox-run">Run tool</button>
+            <button type="button" class="btn btn-ghost" id="sandbox-clear" data-od-id="sandbox-clear">Clear</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- L4 AWS cost -->
+    <section class="section" id="l4" data-od-id="l4-cost">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">L4 · Charts · WelTel DevOps</div>
+          <h2 data-od-id="l4-heading">AWS cost: $4,150 → $2,800</h2>
+          <p class="section-sub">Employer infrastructure outcome. Simulator explores lever intensity on the same baseline — not a second product.</p>
+        </div>
+        <span class="stream-pill" data-stream="weltel">WelTel · DevOps</span>
+      </div>
+      <div class="charts-layout">
+        <div class="panel" data-od-id="aws-cost-chart">
+          <h3>Monthly AWS spend</h3>
+          <div class="bar-chart" role="img" aria-label="Bar chart comparing before 4150 dollars to after 2800 dollars">
+            <div class="bar-col">
+              <div class="bar-fill before">$4150</div>
+              <div class="bar-label">Before</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-fill after">$2800</div>
+              <div class="bar-label">After</div>
+            </div>
+          </div>
+          <p class="bar-caption">Net reduction <strong>−$1,350 / mo (−30%)</strong> via self-hosted EKS runners + rightsizing.</p>
+        </div>
+
+        <div class="panel" data-od-id="cost-sim">
+          <h3>Cost simulator · style panel</h3>
+          <div class="sim-row">
+            <div class="sim-control">
+              <label>Self-hosted runner adoption <span id="sim-runner-val">70%</span></label>
+              <input type="range" id="sim-runner" min="0" max="100" value="70" />
+            </div>
+            <div class="sim-control">
+              <label>Rightsizing aggressiveness <span id="sim-right-val">55%</span></label>
+              <input type="range" id="sim-right" min="0" max="100" value="55" />
+            </div>
+            <div class="sim-control">
+              <label>Spot / savings plans mix <span id="sim-spot-val">40%</span></label>
+              <input type="range" id="sim-spot" min="0" max="100" value="40" />
+            </div>
+            <div class="sim-result">
+              <div class="sim-stat">
+                <div class="k">Modeled monthly</div>
+                <div class="v" id="sim-monthly">$2,800</div>
+              </div>
+              <div class="sim-stat">
+                <div class="k">vs baseline $4150</div>
+                <div class="v good" id="sim-delta">−$1,350</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap" data-od-id="cost-compare-table">
+        <table class="compare">
+          <thead>
+            <tr>
+              <th>Lever</th>
+              <th>Before</th>
+              <th>After</th>
+              <th>Signal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CI compute</td>
+              <td class="mono">Managed runners</td>
+              <td class="mono">Self-hosted EKS</td>
+              <td>Primary savings driver</td>
+            </tr>
+            <tr>
+              <td>Topology</td>
+              <td class="mono">Ad-hoc AZ usage</td>
+              <td class="mono">Terraform multi-AZ</td>
+              <td>Reliability + predictability</td>
+            </tr>
+            <tr>
+              <td>Monthly AWS</td>
+              <td class="mono">~$4,150</td>
+              <td class="mono">~$2,800</td>
+              <td>−30% sustained</td>
+            </tr>
+            <tr>
+              <td>Infra commits</td>
+              <td class="mono">—</td>
+              <td class="mono">570+</td>
+              <td>Change volume supporting the drop</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- L5 Timeline + STAR -->
+    <section class="section" id="l5" data-od-id="l5-proof">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">L5 · Proof</div>
+          <h2 data-od-id="l5-heading">WelTel timeline + STAR</h2>
+          <p class="section-sub">Employer narrative only. OpenCat Tunnel and CatPortfolio are personal projects outside this timeline.</p>
+        </div>
+        <span class="stream-pill" data-stream="weltel">WelTel · employer</span>
+      </div>
+      <div class="proof-layout">
+        <ol class="timeline" data-od-id="weltel-timeline">
+          <li>
+            <div class="when">Platform foundation</div>
+            <div class="what">SMS gateways → Axios</div>
+            <div class="detail">5 gateways modernized; portal/clinical UI production fixes (~105 commits).</div>
+          </li>
+          <li>
+            <div class="when">Mobile delivery</div>
+            <div class="what">RN + Amplify GraphQL chat</div>
+            <div class="detail">531+ commits, 39+ tickets — messaging, media, push paths.</div>
+          </li>
+          <li>
+            <div class="when">Cloud optimization</div>
+            <div class="what">EKS runners + Terraform multi-AZ</div>
+            <div class="detail">570+ infra commits; AWS monthly cost $4.15k → $2.8k (−30%).</div>
+          </li>
+          <li>
+            <div class="when">Clinical AI surface</div>
+            <div class="what">MCP tools + Command Center</div>
+            <div class="detail">~395 MCP commits, 42 clinical tools, Pullfrog multi-model agent.</div>
+          </li>
+        </ol>
+
+        <div class="star" data-od-id="star-story">
+          <h3>STAR · AWS cost reduction (WelTel)</h3>
+          <dl>
+            <div>
+              <dt>Situation</dt>
+              <dd>Monthly AWS spend hovered near <span class="mono">$4,150</span> with managed CI runners and uneven capacity planning.</dd>
+            </div>
+            <div>
+              <dt>Task</dt>
+              <dd>Cut cloud spend without sacrificing delivery velocity or multi-AZ reliability for clinical workloads.</dd>
+            </div>
+            <div>
+              <dt>Action</dt>
+              <dd>Moved CI to self-hosted EKS runners, codified multi-AZ with Terraform, and rightsized recurring workloads across 570+ infra commits.</dd>
+            </div>
+            <div>
+              <dt>Result</dt>
+              <dd>Sustained monthly AWS near <span class="mono">$2,800</span> — about <strong style="color:var(--ok)">−30%</strong> versus the prior baseline.</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- L6 Deep dive -->
+    <section class="section" id="l6" data-od-id="l6-deep-dive">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">L6 · Deep dive · dual loop</div>
+          <h2 data-od-id="l6-heading">Employer impact + personal OSS spine</h2>
+          <p class="section-sub">Composite view: WelTel metrics stay labeled as job work; OpenCat Tunnel ↔ CatPortfolio is the personal agentic loop.</p>
+        </div>
+      </div>
+
+      <div class="deep-grid">
+        <div class="composite" data-od-id="composite-summary">
+          <div class="cell">
+            <div class="t">WelTel · job</div>
+            <div class="b">~1,600+ commits across AI / DevOps / Mobile / Platform · 42 clinical tools · −30% AWS</div>
+          </div>
+          <div class="cell">
+            <div class="t">OpenCat · OSS</div>
+            <div class="b">LangGraph · OAuth · FastMCP · plugins · GOAP multi-tenant gateway</div>
+          </div>
+          <div class="cell">
+            <div class="t">CatPortfolio · OSS</div>
+            <div class="b">React 19 · Vite · Zod matrix · live /ask · bake <span class="mono">?j=</span> layouts</div>
+          </div>
+        </div>
+
+        <div class="mermaid-board" data-od-id="mermaid-arch">
+          <div class="mermaid-title">Architecture · OpenCat Tunnel + CatPortfolio dual loop</div>
+          <div class="dual-loop">
+            <div class="loop-col oss-side">
+              <h4>OpenCat Tunnel</h4>
+              <div class="loop-step">1 · OAuth tenant session</div>
+              <div class="loop-step">2 · FastMCP plugin load</div>
+              <div class="loop-step">3 · LangGraph agent turn</div>
+              <div class="loop-step">4 · GOAP plan → tools</div>
+              <div class="loop-step">5 · run_graph response</div>
+            </div>
+            <div class="loop-bridge">
+              <span>backend</span>
+              <span class="arrow">⇄</span>
+              <span>bake /ask</span>
+              <span class="arrow">⇄</span>
+              <span>layout JSON</span>
+            </div>
+            <div class="loop-col port-side">
+              <h4>CatPortfolio</h4>
+              <div class="loop-step">1 · Zod layout contract</div>
+              <div class="loop-step">2 · matrix meta.dag rows</div>
+              <div class="loop-step">3 · domain card render</div>
+              <div class="loop-step">4 · live /ask chat</div>
+              <div class="loop-step">5 · bake ?j= job layout</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="code-prose">
+          <pre class="code" data-od-id="code-snippet"><span class="c">// CatPortfolio · matrix level row (conceptual)</span>
+<span class="k">const</span> level = z.object({
+  id: z.enum([<span class="s">'L0'</span>,<span class="s">'L1'</span>,<span class="s">'L2'</span>,<span class="s">'L3'</span>,
+              <span class="s">'L4'</span>,<span class="s">'L5'</span>,<span class="s">'L6'</span>,<span class="s">'L7'</span>]),
+  stream: z.enum([<span class="s">'weltel'</span>, <span class="s">'opencat'</span>, <span class="s">'portfolio'</span>]),
+  fragments: z.array(z.string()),
+});
+
+<span class="c">// OpenCat · personal OSS gateway call</span>
+<span class="k">await</span> <span class="f">run_graph</span>({
+  goal: <span class="s">'summarize WelTel DevOps cost story'</span>,
+  plugins: [<span class="s">'portfolio-bake'</span>],
+});</pre>
+          <div class="prose-block" data-od-id="deep-prose">
+            <p><strong>Stream discipline.</strong> WelTel cards carry employer metrics only. OpenCat Tunnel is the personal MCP control plane. CatPortfolio is the self-rendering portfolio that consumes bake layouts and hosts <span class="mono">/ask</span>.</p>
+            <p><strong>Why the dual loop.</strong> The OSS gateway plans tool use; the portfolio SPA validates layout with Zod and renders matrix levels. Baking a job layout via <span class="mono">?j=</span> never rewrites WelTel product boundaries — it composes narrative fragments for this site.</p>
+            <p><strong>What to click next.</strong> L7 chips simulate /ask intents over the real streams above. For source, open the GitHub links in the personal OSS rail.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- L7 CTA -->
+    <section class="section cta-panel" id="l7" data-od-id="l7-ask">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">L7 · Quick actions</div>
+          <h2 data-od-id="l7-heading">Ask the matrix</h2>
+          <p class="section-sub">Prototype of CatPortfolio <span class="mono">/ask</span> chips — answers stay stream-correct (WelTel vs personal OSS).</p>
+        </div>
+        <span class="stream-pill" data-stream="portfolio">CatPortfolio · /ask</span>
+      </div>
+      <div class="cta-chips" data-od-id="cta-quick-actions">
+        <button type="button" class="ask-chip" data-ask="aws">How did AWS drop 30%?</button>
+        <button type="button" class="ask-chip" data-ask="mcp">What are the 42 clinical tools?</button>
+        <button type="button" class="ask-chip" data-ask="opencat">What is OpenCat Tunnel?</button>
+        <button type="button" class="ask-chip" data-ask="mobile">Mobile chat stack?</button>
+        <button type="button" class="ask-chip" data-ask="portfolio">How does CatPortfolio bake layouts?</button>
+        <button type="button" class="ask-chip" data-ask="streams">Separate the three streams</button>
+      </div>
+      <div class="ask-reply" id="ask-reply" data-od-id="ask-reply">
+        <div class="q">// waiting for a chip</div>
+        Pick a question. Answers cite WelTel only when the metric is employment work; OSS questions stay on OpenCat / CatPortfolio.
+      </div>
+    </section>
+
+    <p class="footer-note" data-od-id="footer">Andrew Liang · Cat Portfolio default matrix · three streams · L0–L7</p>
+  </main>
+</div>
+
+<script>
+(function () {
+  const tools = [
+    { id: 'run_graph', label: 'run_graph', body: {
+      ok: true, stream: 'opencat-tunnel', plugin: 'goap',
+      plan: ['auth', 'select_plugins', 'execute', 'replan_if_needed'],
+      note: 'Personal OSS gateway — not WelTel clinical MCP'
+    }},
+    { id: 'list_plugins', label: 'list_plugins', body: {
+      plugins: ['fastmcp-core', 'oauth-gate', 'portfolio-bake', 'terminal-relay'],
+      stream: 'opencat-tunnel'
+    }},
+    { id: 'oauth_status', label: 'oauth_status', body: {
+      tenant: 'demo', grant: 'authorization_code', scopes: ['tools:invoke', 'bake:write']
+    }},
+    { id: 'bake_layout', label: 'bake_layout', body: {
+      job: 'default-matrix', levels: ['L0','L1','L2','L3','L4','L5','L6','L7'],
+      consumer: 'CatPortfolio', query: '?j=default-matrix'
+    }},
+    { id: 'goap_plan', label: 'goap_plan', body: {
+      goal: 'answer_portfolio_ask', steps: 4, replans: 1, engine: 'GOAP'
+    }}
+  ];
+
+  const list = document.getElementById('tool-list');
+  const out = document.getElementById('sandbox-out');
+  let active = tools[0].id;
+
+  tools.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tool-btn' + (i === 0 ? ' is-active' : '');
+    b.textContent = t.label;
+    b.setAttribute('role', 'option');
+    b.dataset.id = t.id;
+    b.addEventListener('click', () => {
+      active = t.id;
+      list.querySelectorAll('.tool-btn').forEach(el => el.classList.toggle('is-active', el.dataset.id === active));
+      out.textContent = '// selected ' + t.label + '\n// press Run tool';
+    });
+    list.appendChild(b);
+  });
+
+  document.getElementById('sandbox-run').addEventListener('click', () => {
+    const t = tools.find(x => x.id === active) || tools[0];
+    out.textContent = JSON.stringify({ tool: t.id, result: t.body, ts: new Date().toISOString() }, null, 2);
+  });
+  document.getElementById('sandbox-clear').addEventListener('click', () => {
+    out.textContent = '// cleared\n// Stream: OpenCat Tunnel (personal OSS)';
+  });
+
+  // Cost simulator — baseline 4150, actuals land near 2800 at default levers
+  const BASE = 4150;
+  const runner = document.getElementById('sim-runner');
+  const right = document.getElementById('sim-right');
+  const spot = document.getElementById('sim-spot');
+  const runnerVal = document.getElementById('sim-runner-val');
+  const rightVal = document.getElementById('sim-right-val');
+  const spotVal = document.getElementById('sim-spot-val');
+  const monthly = document.getElementById('sim-monthly');
+  const delta = document.getElementById('sim-delta');
+
+  function fmt(n) {
+    return '$' + Math.round(n).toLocaleString('en-US');
+  }
+  function recompute() {
+    const r = Number(runner.value) / 100;
+    const g = Number(right.value) / 100;
+    const s = Number(spot.value) / 100;
+    runnerVal.textContent = Math.round(r * 100) + '%';
+    rightVal.textContent = Math.round(g * 100) + '%';
+    spotVal.textContent = Math.round(s * 100) + '%';
+    // Weighted savings; defaults ~70/55/40 → ~2800
+    const save = BASE * (0.22 * r + 0.12 * g + 0.08 * s);
+    const cost = Math.max(BASE - save, BASE * 0.45);
+    monthly.textContent = fmt(cost);
+    const d = cost - BASE;
+    delta.textContent = (d <= 0 ? '−' : '+') + fmt(Math.abs(d)).slice(1);
+    delta.classList.toggle('good', d < 0);
+  }
+  [runner, right, spot].forEach(el => el.addEventListener('input', recompute));
+  recompute();
+
+  // /ask chips
+  const answers = {
+    aws: {
+      q: 'How did AWS drop 30%?',
+      a: '<strong>WelTel · DevOps (employer).</strong> Self-hosted EKS runners + Terraform multi-AZ + rightsizing moved monthly AWS from ~$4,150 to ~$2,800 (−30%) across 570+ infra commits. Not an OpenCat metric.'
+    },
+    mcp: {
+      q: 'What are the 42 clinical tools?',
+      a: '<strong>WelTel · AI (employer).</strong> ~395 MCP commits registered 42 clinical tools behind the Clinician Command Center and Pullfrog multi-model agent — product code inside WelTel, separate from OpenCat Tunnel.'
+    },
+    opencat: {
+      q: 'What is OpenCat Tunnel?',
+      a: '<strong>Personal OSS.</strong> OpenCat Tunnel is my open-source MCP platform (LangGraph, OAuth 2.0, FastMCP, plugins, GOAP). Repo: github.com/CooLguNxDD/OpenCat-Mcp-Full — not WelTel product code.'
+    },
+    mobile: {
+      q: 'Mobile chat stack?',
+      a: '<strong>WelTel · Mobile (employer).</strong> React Native client with Amplify GraphQL chat, media, and push — 531+ commits and 39+ tickets on the job track.'
+    },
+    portfolio: {
+      q: 'How does CatPortfolio bake layouts?',
+      a: '<strong>Personal OSS · CatPortfolio.</strong> React 19 + Vite SPA validates matrix rows with Zod, renders domain cards, hosts live /ask, and bakes job layouts via <span class="mono">?j=</span> against the OpenCat backend.'
+    },
+    streams: {
+      q: 'Separate the three streams',
+      a: '<strong>1 · WelTel</strong> = employer domains (AI/DevOps/Mobile/Platform metrics).<br><strong>2 · OpenCat Tunnel</strong> = personal OSS MCP gateway.<br><strong>3 · CatPortfolio</strong> = agentic portfolio SPA. Never rebrand OSS as WelTel product.'
+    }
+  };
+
+  const reply = document.getElementById('ask-reply');
+  document.querySelectorAll('.ask-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-ask');
+      const item = answers[key];
+      if (!item) return;
+      reply.innerHTML = '<div class="q">' + item.q + '</div>' + item.a;
+    });
+  });
+
+  // Sticky minimap active state via IntersectionObserver (no scrollIntoView)
+  const links = Array.from(document.querySelectorAll('.minimap a[data-level]'));
+  const sections = links.map(a => document.getElementById(a.getAttribute('data-level'))).filter(Boolean);
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      const id = en.target.id;
+      links.forEach(a => a.classList.toggle('is-active', a.getAttribute('data-level') === id));
+    });
+  }, { rootMargin: '-20% 0px -55% 0px', threshold: 0.01 });
+  sections.forEach(s => io.observe(s));
+})();
+</script>
+</body>
+</html>
