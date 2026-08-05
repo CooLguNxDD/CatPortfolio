@@ -232,6 +232,7 @@ async function performCall(userMessage: string, sessionId: string): Promise<OctT
   const client = await getSharedClient();
   // Idle budget from runtime config (public/config.json askTimeoutMs).
   // Passed through to MCP SDK RequestOptions; server keepalives reset the window.
+  // Caller may already have appended a system directive; wrapMessage still runs.
   return await client.callTool(
     "run_graph",
     {
@@ -266,9 +267,22 @@ function isConfirmationNeeded(data: unknown): boolean {
   return status === "confirmation_needed";
 }
 
-export async function askOct(userMessage: string, sessionId: string): Promise<AskResult> {
+/**
+ * Ask OpenCat via run_graph.
+ *
+ * @param directive Optional system directive already (or to be) appended for
+ *   confirm round-trips — when confirmation_needed, the continuation re-sends
+ *   the same directive so patch intent is not dropped.
+ */
+export async function askOct(
+  userMessage: string,
+  sessionId: string,
+  directive: string = "",
+): Promise<AskResult> {
+  const dir = typeof directive === "string" ? directive : "";
+  const fullMessage = dir ? `${userMessage}${dir}` : userMessage;
   try {
-    let result = await performCall(userMessage, sessionId);
+    let result = await performCall(fullMessage, sessionId);
     if (result.isError) {
       const textBlock = result.content.find((c) => c.type === "text");
       const errMsg = textBlock?.text || "Unknown tool error";
@@ -277,7 +291,7 @@ export async function askOct(userMessage: string, sessionId: string): Promise<As
     // Portfolio has no MCP elicitation UI — auto-continue headless once.
     if (isConfirmationNeeded(result.data)) {
       result = await performCall(
-        "Yes, proceed with the plan and finish the visitor's request.",
+        `Yes, proceed with the plan and finish the visitor's request.${dir}`,
         sessionId
       );
       if (result.isError) {

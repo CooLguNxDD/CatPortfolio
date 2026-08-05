@@ -559,6 +559,20 @@ export const LayoutSchema = z.object({
      * blocks into horizontal bands; missing → simple stagger fallback.
      */
     dag: DagMeta.optional(),
+    /** Job-bake framing (OCT job_tailor) — optional. */
+    jobCompany: z.string().optional(),
+    jobRole: z.string().optional(),
+    jobBriefHash: z.string().optional(),
+    tailored: z.boolean().optional(),
+    contentFingerprint: z.string().optional(),
+    composePath: z.string().optional(),
+    structureMode: z.string().optional(),
+    recipeId: z.string().optional(),
+    juryComposite: z.number().optional(),
+    evidencePackHash: z.string().optional(),
+    planSource: z.string().optional(),
+    enrichment: z.string().optional(),
+    patchedBlockIds: z.array(z.string()).optional(),
   }),
   blocks: z.array(
     z.discriminatedUnion("type", [
