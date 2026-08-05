@@ -18,20 +18,43 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/store/chatSlice";
 import { useLayoutStore } from "@/store";
-import { demoLayoutQueryKey } from "@/hooks/useDemoLayout";
+import { applyLayoutToCache } from "@/store/applyLayout";
 
-/** Soft planner nudge — prefer fragments + bake for Ask-mode page re-render. */
+/** Soft planner nudge — prefer bake / design / scoped compose for Ask re-render. */
 const ENRICHMENT_DIRECTIVE =
   "\n\n[System: CatPortfolio Ask mode re-renders the page from layout carry. " +
-  "Prefer: (1) compose_from_fragments with refresh=true for creative page assembly; " +
-  "(2) bake_portfolio_for_job when the visitor describes a job/role/company (returns short_id + layout); " +
-  "(3) emit_layout(refresh=true) only if fragments don't fit. " +
+  "Prefer: (1) bake_portfolio_for_job when the visitor describes a job/role/company (returns short_id + layout); " +
+  "(2) design_layout or compose_scoped_layout for creative redesign; " +
+  "(3) emit_layout(refresh=true) only as a thin fallback. " +
   "Always put a valid layout in the response so the page updates. " +
   "If portfolio content is thin, follow live-layout-enrichment: local RAG first, " +
   "then get_project_context(slug) for DB context_sources only (never invent refs from chat). " +
-  "Creative vibe redesign → design_layout or compose_from_fragments.]" +
-  "\nWhen a demo short_id is already in session (visitor opened ?j=…), expand that " +
+  "Do not call compose_from_fragments (removed). " +
+  "When a demo short_id is already in session (visitor opened ?j=…), expand that " +
   "layout in place — do not replace it with an unrelated audience template.]";
+
+/**
+ * Patch directive when a short_id demo session is active.
+ * Instructs 1–2 block build + patch_job_layout (derived fork).
+ */
+export function patchDirective(shortId: string, derivedShortId?: string | null): string {
+  const base = shortId.trim();
+  const derived = (derivedShortId || "").trim();
+  const derivedArg = derived && derived !== base ? derived : "";
+  return (
+    "\n\n[System: CatPortfolio demo session short_id=" +
+    JSON.stringify(base) +
+    (derivedArg ? ` derived_short_id=${JSON.stringify(derivedArg)}` : "") +
+    ". Incremental patch mode: do NOT bake_portfolio_for_job or full-page design_layout/compose_scoped_layout/emit_layout. " +
+    "Instead: (1) search_portfolio_context for the visitor topic; " +
+    "(2) build_layout_block × 1–2 targeted blocks only; " +
+    `(3) patch_job_layout(base_short_id=${JSON.stringify(base)}` +
+    (derivedArg ? `, derived_short_id=${JSON.stringify(derivedArg)}` : "") +
+    ", sections=[block1, …]). " +
+    "Return the tool layout + short_id so the page patches in place. " +
+    "Original HR bake is immutable — first patch mints a derived short_id.]"
+  );
+}
 
 /** Label for the one-shot CLI pill (mirrors OpenCat admin McpMode). */
 function oneShotPillLabel(cli: CliMeta): string {
@@ -41,24 +64,17 @@ function oneShotPillLabel(cli: CliMeta): string {
   return `one-shot cli · ${cli.agent}`;
 }
 
-/**
- * Push layout into Query cache + session working layout (demo expansions).
- * Server bake stays under demoLayoutQueryKey(shortId); default key for non-demo.
- */
-function applyLayoutToCache(
+/** Apply the first non-snapshot of rest/compose REST races (when allowed). */
+async function applyFirstRestLayout(
   queryClient: ReturnType<typeof useQueryClient>,
-  result: LayoutLoadResult,
+  layoutPromise: Promise<LayoutLoadResult>,
+  composePromise: Promise<LayoutLoadResult>,
 ) {
-  if (result.source === "snapshot") return;
-  const shortId =
-    result.shortId || useLayoutStore.getState().shortId || undefined;
-  const next: LayoutLoadResult = shortId ? { ...result, shortId } : result;
-  if (shortId) {
-    useLayoutStore.getState().enterDemo(shortId);
-    useLayoutStore.getState().setWorkingLayout(next);
-    queryClient.setQueryData(demoLayoutQueryKey(shortId), next);
-  } else {
-    queryClient.setQueryData(["layout", "default"], next);
+  const [restResult, composeResult] = await Promise.all([layoutPromise, composePromise]);
+  if (composeResult.source !== "snapshot") {
+    applyLayoutToCache(queryClient, composeResult);
+  } else if (restResult.source !== "snapshot") {
+    applyLayoutToCache(queryClient, restResult);
   }
 }
 
@@ -107,24 +123,35 @@ export function ChatPanel() {
 
       setMessages((prev) => [...prev, { role: "user", markdown: userMessageText }]);
 
-      // Parallel fast path: public fragment compose (no MCP) so the page can
-      // re-render while run_graph is still planning/executing.
-      const layoutPromise = loadLayoutForQuery(userMessageText, { timeoutMs: 10000 });
-      // Also fire explicit compose (same intent) — first success wins below.
-      const composePromise = composeLayoutLive(
-        { query: userMessageText, refresh: true },
-        { timeoutMs: 12000 },
-      );
+      // Patch mode when a short_id session exists — skip whole-page REST races
+      // that would clobber an incremental patch.
+      const sessionShortId = useLayoutStore.getState().shortId;
+      const patchMode = Boolean(sessionShortId?.trim());
+      // Session id is both the load key and (after first patch) the derived fork.
+      const directive = patchMode
+        ? patchDirective(sessionShortId!)
+        : ENRICHMENT_DIRECTIVE;
+
+      // Parallel fast path only when NOT in a short_id patch session.
+      const layoutPromise = patchMode
+        ? Promise.resolve({ layout: null as never, source: "snapshot" as const })
+        : loadLayoutForQuery(userMessageText, { timeoutMs: 10000 });
+      const composePromise = patchMode
+        ? Promise.resolve({ layout: null as never, source: "snapshot" as const })
+        : composeLayoutLive(
+            { query: userMessageText, refresh: true },
+            { timeoutMs: 12000 },
+          );
 
       try {
-        const result = await askOct(userMessageText + ENRICHMENT_DIRECTIVE, sessionId);
+        const result = await askOct(userMessageText, sessionId, directive);
         if (result.ok) {
           if (result.cli) setCliMeta(result.cli);
           setMessages((prev) => [...prev, { role: "assistant", markdown: result.markdown }]);
 
-          // 1) Agentic layout carry (compose_from_fragments / emit / design / bake.layout)
+          // 1) Agentic layout carry (design / bake / patch.layout)
           const carryLayout = extractCarryLayout(result.raw);
-          // 2) Bake short_id → load persisted job layout (or stamp id onto carry)
+          // 2) Bake/patch short_id → load persisted job layout (or stamp id onto carry)
           const bake = extractBakeMeta(result.raw);
           if (bake?.shortId) setLastBakeId(bake.shortId);
 
@@ -139,17 +166,9 @@ export function ChatPanel() {
             applyLayoutToCache(queryClient, baked);
           }
 
-          // 3) Fast REST fragment path if agent didn't return a layout
-          if (!carryLayout && !bake?.shortId) {
-            const [restResult, composeResult] = await Promise.all([
-              layoutPromise,
-              composePromise,
-            ]);
-            if (composeResult.source !== "snapshot") {
-              applyLayoutToCache(queryClient, composeResult);
-            } else if (restResult.source !== "snapshot") {
-              applyLayoutToCache(queryClient, restResult);
-            }
+          // 3) Fast REST path only when agent didn't return a layout AND not patch session
+          if (!carryLayout && !bake?.shortId && !patchMode) {
+            await applyFirstRestLayout(queryClient, layoutPromise, composePromise);
           }
         } else {
           setMessages((prev) => [
@@ -162,14 +181,8 @@ export function ChatPanel() {
               isError: true,
             },
           ]);
-          const [restResult, composeResult] = await Promise.all([
-            layoutPromise,
-            composePromise,
-          ]);
-          if (composeResult.source !== "snapshot") {
-            applyLayoutToCache(queryClient, composeResult);
-          } else if (restResult.source !== "snapshot") {
-            applyLayoutToCache(queryClient, restResult);
+          if (!patchMode) {
+            await applyFirstRestLayout(queryClient, layoutPromise, composePromise);
           }
         }
       } catch (err: any) {
@@ -181,18 +194,12 @@ export function ChatPanel() {
             isError: true,
           },
         ]);
-        try {
-          const [restResult, composeResult] = await Promise.all([
-            layoutPromise,
-            composePromise,
-          ]);
-          if (composeResult.source !== "snapshot") {
-            applyLayoutToCache(queryClient, composeResult);
-          } else if (restResult.source !== "snapshot") {
-            applyLayoutToCache(queryClient, restResult);
+        if (!patchMode) {
+          try {
+            await applyFirstRestLayout(queryClient, layoutPromise, composePromise);
+          } catch {
+            // ignore layout fallback failures
           }
-        } catch {
-          // ignore layout fallback failures
         }
       } finally {
         void layoutPromise.catch(() => undefined);
@@ -200,7 +207,7 @@ export function ChatPanel() {
         setPending(false);
       }
     },
-    [pending, isOnline, sessionId, queryClient],
+    [pending, isOnline, sessionId, queryClient, lastBakeId],
   );
 
   // QuickActions chips seed chat via pendingPrompt.
