@@ -28,11 +28,21 @@
   }
 }
 
+/* Route shell when HomePage is in matrix mode */
+.layout-shell--matrix {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 /* ── Page frame ── */
 .matrix-home .matrix-page {
-  width: min(1180px, 100%);
+  /* Centered: ~10% padding each side → ~80% content width */
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
-  padding: 0 0 3rem;
+  box-sizing: border-box;
+  padding: 0 10% 4.5rem;
   position: relative;
 }
 
@@ -131,7 +141,15 @@
     filter var(--dag-dur) var(--dag-ease);
   /* Leave room for sticky header + matrix chrome when jumping */
   scroll-margin-top: 11rem;
-  scroll-margin-bottom: 20vh;
+  scroll-margin-bottom: 12vh;
+}
+
+/* Last story band (often L7 Ask): slight extra hit area without huge empty gap */
+.matrix-home .dag-level.is-last-band,
+.matrix-home .dag-levels > .dag-level[data-dag-level]:not([data-dag-level="rest"]):last-of-type {
+  min-height: 0;
+  padding-bottom: 0.75rem;
+  scroll-margin-bottom: 16vh;
 }
 
 /* Connector rail between level bands */

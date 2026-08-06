@@ -43,6 +43,19 @@ export function normalizeDagLevels(
 }
 
 /**
+ * Vertical slack past the focus line before a level counts as "reached".
+ * Enough for short final bands (L7 Ask) without needing huge page bottom pad.
+ */
+const LEVEL_REACH_SLACK_PX = 100;
+
+/**
+ * Near document end, force last story level current so L7 lights without
+ * large empty space above the footer.
+ */
+const SCROLL_END_PROGRESS = 0.9;
+const SCROLL_END_REMAINING_PX = 220;
+
+/**
  * Pick the active level index from live DOM geometry.
  * Focus line sits under sticky header+minimap so triggers match on-screen rows.
  *
@@ -57,9 +70,10 @@ function measureActiveIndex(): {
   if (typeof window === "undefined") {
     return { activeIdx: 0, progress: 0 };
   }
-  const nodes = document.querySelectorAll<HTMLElement>(
-    ".dag-level[data-dag-level]",
-  );
+  // Story bands only — skip orphan "rest" rows so L7 remains the last unlock.
+  const nodes = [
+    ...document.querySelectorAll<HTMLElement>(".dag-level[data-dag-level]"),
+  ].filter((el) => el.getAttribute("data-dag-level") !== "rest");
   if (nodes.length === 0) {
     return { activeIdx: 0, progress: 0 };
   }
@@ -71,13 +85,16 @@ function measureActiveIndex(): {
     ? chrome.getBoundingClientRect().bottom
     : 56;
   const focusY = chromeBottom + 24;
+  const reachLine = focusY + LEVEL_REACH_SLACK_PX;
 
   let best = 0;
-  // Highest level whose top has crossed the focus line wins (story unlock).
+  // Highest level whose top has crossed the (relaxed) focus line wins.
+  // Also treat a band as reached if its midpoint is above the focus line —
+  // short CTA/Ask rows otherwise never unlock.
   nodes.forEach((el, i) => {
     const r = el.getBoundingClientRect();
-    // Level is "reached" once its header crosses under chrome focus.
-    if (r.top <= focusY + 40) best = i;
+    const mid = r.top + Math.min(r.height * 0.35, 80);
+    if (r.top <= reachLine || mid <= focusY + 48) best = i;
   });
 
   const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
@@ -86,6 +103,18 @@ function measureActiveIndex(): {
     document.documentElement.scrollHeight - window.innerHeight,
   );
   const progress = Math.max(0, Math.min(1, scrollTop / max));
+  const remaining = max - scrollTop;
+
+  // Last band (usually L7 Ask): expand light-up at scroll end so it is hit
+  // even when there is little content below the CTA.
+  const lastIdx = nodes.length - 1;
+  if (
+    lastIdx > 0 &&
+    (progress >= SCROLL_END_PROGRESS || remaining <= SCROLL_END_REMAINING_PX)
+  ) {
+    best = Math.max(best, lastIdx);
+  }
+
   return { activeIdx: best, progress };
 }
 

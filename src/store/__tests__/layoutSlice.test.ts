@@ -38,31 +38,31 @@ describe("layoutSlice demo session", () => {
   })
 
   it("enterDemo sets shortId + isDemoSession from URL j", () => {
-    store.getState().enterDemo("andrew_weltel_showcase_4")
+    store.getState().enterDemo("andrew_opencat_showcase_4")
     const s = store.getState()
     expect(s.isDemoSession).toBe(true)
-    expect(s.shortId).toBe("andrew_weltel_showcase_4")
+    expect(s.shortId).toBe("andrew_opencat_showcase_4")
     expect(s.workingLayout).toBeNull()
   })
 
   it("enterDemo same id is a no-op (keeps working layout)", () => {
-    store.getState().enterDemo("andrew_weltel_showcase_4")
+    store.getState().enterDemo("andrew_opencat_showcase_4")
     store.getState().setWorkingLayout({
       layout: makeLayout("showcase"),
       source: "live",
-      shortId: "andrew_weltel_showcase_4",
+      shortId: "andrew_opencat_showcase_4",
     })
     const before = store.getState().workingLayout
-    store.getState().enterDemo("andrew_weltel_showcase_4")
+    store.getState().enterDemo("andrew_opencat_showcase_4")
     expect(store.getState().workingLayout).toBe(before)
   })
 
   it("enterDemo new id clears working layout", () => {
-    store.getState().enterDemo("andrew_weltel_showcase_4")
+    store.getState().enterDemo("andrew_opencat_showcase_4")
     store.getState().setWorkingLayout({
       layout: makeLayout("showcase"),
       source: "bake",
-      shortId: "andrew_weltel_showcase_4",
+      shortId: "andrew_opencat_showcase_4",
     })
     store.getState().enterDemo("other_job_1")
     expect(store.getState().shortId).toBe("other_job_1")
@@ -70,7 +70,7 @@ describe("layoutSlice demo session", () => {
   })
 
   it("setWorkingLayout ignores snapshot", () => {
-    store.getState().enterDemo("andrew_weltel_showcase_4")
+    store.getState().enterDemo("andrew_opencat_showcase_4")
     store.getState().setWorkingLayout({
       layout: makeLayout(),
       source: "snapshot",
@@ -79,20 +79,20 @@ describe("layoutSlice demo session", () => {
   })
 
   it("setWorkingLayout preserves shortId across expansions", () => {
-    store.getState().enterDemo("andrew_weltel_showcase_4")
+    store.getState().enterDemo("andrew_opencat_showcase_4")
     const expanded = makeLayout("scoped")
     store.getState().setWorkingLayout({
       layout: expanded,
       source: "live",
     })
     const s = store.getState()
-    expect(s.shortId).toBe("andrew_weltel_showcase_4")
+    expect(s.shortId).toBe("andrew_opencat_showcase_4")
     expect(s.workingLayout).toEqual(expanded)
     expect(s.workingSource).toBe("live")
   })
 
   it("clearDemo resets the session", () => {
-    store.getState().enterDemo("andrew_weltel_showcase_4")
+    store.getState().enterDemo("andrew_opencat_showcase_4")
     store.getState().clearDemo()
     const s = store.getState()
     expect(s.isDemoSession).toBe(false)
@@ -101,7 +101,7 @@ describe("layoutSlice demo session", () => {
   })
 
   it("bakeTheme + themeOverride: Home clears override conceptually", () => {
-    store.getState().enterDemo("andrew_weltel_showcase_4")
+    store.getState().enterDemo("andrew_opencat_showcase_4")
     store.getState().setBakeTheme("neon")
     store.getState().setThemeOverride("paper")
     expect(store.getState().bakeTheme).toBe("neon")

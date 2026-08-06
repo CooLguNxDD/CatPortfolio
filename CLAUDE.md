@@ -10,7 +10,8 @@
 - **Runtime backend config:** `src/config/runtimeConfig.ts` fetches `public/config.json` (unhashed, patchable post-deploy without a rebuild) at startup for the OCT backend base URL, `/mcp` API key, and **`askTimeoutMs`** (MCP SDK idle timeout for Andrew's AI `run_graph`; default **600000** ms / 10 min, reset by server progress keepalives). GitHub Pages has no build-time env injection. Falls back to `VITE_OCT_URL` / `VITE_OCT_API_KEY` / `VITE_ASK_TIMEOUT_MS`, then safe defaults. Gated in `src/main.tsx` before first render; `src/api/octClient.ts::octBaseUrl()` prefers it, falling back to the build-time env var if not yet loaded. Docker injects the same fields via `docker-entrypoint.sh` (`OCT_BASE_URL`, `OCT_API_KEY`, `OCT_ASK_TIMEOUT_MS`).
 - **Local Docker:** `docker compose` serves nginx on **localhost:11000** with `base: /CatPortfolio/`. After editing `design/layout.yaml`, run `compile:layout` **and rebuild the image** — bind-mount alone will not update a baked nginx root if the image copied `dist/` at build time.
 - **MCP tool call timeouts:** `octClient.callTool` passes SDK `RequestOptions` (`timeout`, `resetTimeoutOnProgress: true`, `onprogress`) — not a bare `Promise.race`. The SDK default is 60s; without `onprogress` the client never sends a `progressToken`, so the server skips keepalives and long agent turns die with "Request timed out".
-- **`?j=` job-specific pre-baked layout:** the `/` route's `validateSearch` accepts an optional `j` (job short id, minted server-side by the OpenCat backend's "bake & send" pipeline — see `Weltel-Mcp-Full/CLAUDE.md`). `src/content/loadLayout.ts::loadJobLayout(jobId)` fetches `GET /api/portfolio/public/layout/{jobId}` from the OCT backend and falls back to the baked snapshot on any failure — never hard-fails, since this backs a public HR-facing resume link. `src/routes/HomePage.tsx` renders the baked-only path byte-for-byte unchanged when `j` is absent.
+- **`?j=` job-specific pre-baked layout:** the `/` route's `validateSearch` accepts an optional `j` (job short id, minted server-side by the OpenCat backend's "bake & send" pipeline — see `OpenCat-Mcp-Full/CLAUDE.md`). Short ids are `{slug}_{≥10-char alnum}` (not 3-digit). `src/content/loadLayout.ts::loadJobLayout(jobId)` fetches `GET /api/portfolio/public/layout/{jobId}` from the OCT backend and falls back to the baked snapshot on any failure — never hard-fails, since this backs a public HR-facing resume link. `src/routes/HomePage.tsx` renders the baked-only path byte-for-byte unchanged when `j` is absent.
+- **nginx proxy (`nginx.conf`):** local Docker serves the SPA under `/CatPortfolio/` and reverse-proxies **`/api/`** and **`/mcp`** to the host OpenCat server (`host.docker.internal:10000`) so the browser stays same-origin (no CORS for Ask / job layouts). 600s read/send timeouts; Authorization forwarded on `/mcp`.
 - **Chat-driven live layout re-render (`/ask`):** `ChatPanel.tsx` fires `src/content/loadLayout.ts::loadLayoutForQuery(userMessage)` alongside (not blocking) each chat turn — a fast, public REST call (`GET /api/portfolio/public/layout-for-query?query=...`, no MCP round-trip) that deterministically infers audience from the chat text server-side. On a `"live"` result it writes directly into the `["layout","default"]` TanStack Query cache (`queryClient.setQueryData`) so `AskPage`'s `LayoutRenderer` updates immediately without an invalidate/refetch. Agentic path: `extractCarryLayout` Zod-validates `response.carry.layout` (drops malformed agent JSON); if `meta.theme` is a registered theme id, `ChatPanel` applies it via the Zustand preferences store. Soft directive nudges creative redesigns toward OCT `design_layout` (layout-design-builder skill). OCT matrix defaults: `hero` → `kpiGrid` → `cards` → `starStory` with `meta.dag` stamping.
 - **One-shot CLI agent (when OCT core LLM is `claude-cli` / `agy-cli`):** `askOct` still calls `run_graph` once; OpenCat short-circuits the whole turn to a single headless CLI agent spawn (`core_graph/goap_agent/oneshot.py`) and returns `{status, message, meta.cli}`. `extractCliMeta` + ChatPanel surface an `one-shot cli · claude|agy` pill (parity with admin playground `McpMode`). Layout carry is best-effort on oneshot — REST `loadLayoutForQuery` remains the layout fallback. Backend mints an admin child token for the CLI (does not inherit the public deny-all gateway API key).
 - **Job-search agent live status:** `src/api/agentStatus.ts::fetchAgentStatus` polls the public, privacy-safe `GET /api/portfolio/public/agent-status` (never applicant PII — just `{job_id, status, updated_at}`); `src/components/AgentStatusPill.tsx` (TanStack Query `refetchInterval: 8000`) renders it, mounted in `AskPage.tsx`. No SSE — polling only, by design (see backend CLAUDE.md).
@@ -23,7 +24,7 @@
 3. New dependencies → add to Tech Stack below.
 4. Use the `@/` alias for cross-directory imports; relative imports within a directory.
 5. Lint before committing: `npm run lint`; tests: `npm run test`
-6. **Layout contract rules:** unknown block type = skipped, never crashes (registry is the whitelist). `layout.json` must pass `LayoutSchema` — validation fails loud at load. New block type = new Zod schema member + new reviewed component + barrel export + registry entry + tests + Python mirror sync. Never auto-deploy unreviewed generated layout — the commit/PR is the gate. The layout contract is mirrored server-side in `Weltel-Mcp-Full/utils/ui_layout_schema.py` — any `schema.ts` change must update both files together, or flag pending sync via `design/pending-mirror/<yyyy-mm-dd>-<type>.md` (enforced by `scripts/__tests__/mirror-drift.test.ts` against `design/mirror-manifest.json`).
+6. **Layout contract rules:** unknown block type = skipped, never crashes (registry is the whitelist). `layout.json` must pass `LayoutSchema` — validation fails loud at load. New block type = new Zod schema member + new reviewed component + barrel export + registry entry + tests + Python mirror sync. Never auto-deploy unreviewed generated layout — the commit/PR is the gate. The layout contract is mirrored server-side in `OpenCat-Mcp-Full/utils/ui_layout_schema.py` — any `schema.ts` change must update both files together, or flag pending sync via `design/pending-mirror/<yyyy-mm-dd>-<type>.md` (enforced by `scripts/__tests__/mirror-drift.test.ts` against `design/mirror-manifest.json`).
 7. **Never edit `src/content/layout.json` directly** — edit `design/layout.yaml` and run `npm run compile:layout`. CI fails PRs where they're out of sync.
 8. Generated changes (agent runs) always go through a PR on a `portfolio-gen/<date>-<slug>` branch — never push to `main`, never modify `.github/workflows/deploy.yml`.
 
@@ -64,7 +65,7 @@ CatPortfolio/
 │   ├── api/                  # MCP Client integration
 │   │   ├── octClient.ts      # StreamableHTTPClientTransport client
 │   │   ├── instructions.ts   # System prompts and message wrapping
-│   │   ├── harness.ts        # askOct runner and markdown extractor
+│   │   ├── harness.ts        # askOct + Zod GraphEnvelope / BakeMeta / CliMeta extractors
 │   │   └── __tests__/        # Harness and client unit tests
 │   ├── assets/               # hero.png
 │   ├── lib/utils.ts          # cn helper
@@ -82,6 +83,9 @@ CatPortfolio/
 │   ├── layout.yaml           # Matrix layout source (meta.dag L0–L7) → layout.json
 │   ├── design.md             # Design contract: tokens + matrix/card rules + voice/audience
 │   ├── sources.yaml          # External context sources configuration
+│   ├── prototypes/           # Optional job/domain layout drafts (YAML). Old WelTel-themed
+│   │                         # prototypes removed; recreate from ../weltelprojects/ material
+│   │                         # (WelTel job work ≠ OpenCat Tunnel — keep streams separate)
 │   ├── mirror-manifest.json  # Block types known to the Python mirror (mirror-drift test)
 │   └── pending-mirror/       # (created on demand) Pydantic patches awaiting OCT-side sync
 ├── scripts/
@@ -131,7 +135,7 @@ npm run gen:layout [-- --audience=<recruiter|hiring-manager|peer|default>]
 | Tests | Vitest |
 | Linter | oxlint |
 | Layout source | `design/layout.yaml` (yaml pkg) → `compile:layout` → `layout.json` |
-| Layout generation | tsx seed script → OCT `/portfolio/layout`; agent flow via `portfolio-gen` Claude Code plugin (Weltel-Mcp-Full) |
+| Layout generation | tsx seed script → OCT `/portfolio/layout`; agent flow via `portfolio-gen` Claude Code plugin (OpenCat-Mcp-Full) |
 | Deploy | GitHub Pages via Actions (SPA 404 fallback) |
 
 ## Generation Pipeline (headless agent)
@@ -139,8 +143,8 @@ npm run gen:layout [-- --audience=<recruiter|hiring-manager|peer|default>]
 Two modes, one contract — both end in a PR (never a push to `main`):
 
 - **Local:** install the harness plugin once —
-  `claude plugin marketplace add C:\Weltel\Secret\Weltel-Mcp-Full` then
-  `claude plugin install portfolio-gen@weltel-oct` — and run
+  `claude plugin marketplace add C:\OpenCat\Secret\OpenCat-Mcp-Full` then
+  `claude plugin install portfolio-gen@opencat-oct` — and run
   `/portfolio-gen "<brief>"` in a Claude Code session here. The agent edits
   `design/layout.yaml` (and can create new block types via the block-authoring
   checklist), runs the full gate, then branches + opens a PR with `gh`.
@@ -148,8 +152,8 @@ Two modes, one contract — both end in a PR (never a push to `main`):
   `get_projects`, `get_star_stories`); otherwise it uses committed `design/` files.
 - **Pipeline:** `gh workflow run portfolio-gen.yml -f brief="..." -f audience=recruiter`
   (or Actions UI). Uses `anthropics/claude-code-action@v1` with the plugin
-  sparse-checked-out from Weltel-Mcp-Full. Requires repo secrets
-  `ANTHROPIC_API_KEY` and `OCT_REPO_TOKEN` (read-only PAT for Weltel-Mcp-Full).
+  sparse-checked-out from OpenCat-Mcp-Full. Requires repo secrets
+  `ANTHROPIC_API_KEY` and `OCT_REPO_TOKEN` (read-only PAT for OpenCat-Mcp-Full).
 - Guardrails: `ci.yml` must pass on the PR (layout sync, lint, tests, build,
   mirror-drift); recommend branch protection on `main` requiring it.
 

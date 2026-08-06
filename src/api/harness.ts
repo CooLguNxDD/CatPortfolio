@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { getSharedClient, resetSharedClient, type OctToolResult } from "./octClient.ts";
 import { getAskTimeoutMs } from "../config/runtimeConfig.ts";
 import { wrapMessage } from "./instructions.ts";
@@ -8,11 +9,58 @@ import { LayoutSchema, type Layout } from "../content/schema.ts";
  * spawn (core LLM provider claude-cli / agy-cli → oneshot). Mirrors the
  * admin playground "one-shot cli" pill payload under response.meta.cli.
  */
-export type CliMeta = {
-  agent: string;
-  provider?: string;
-  model?: string | null;
-};
+export const CliMetaSchema = z.object({
+  agent: z.string().min(1),
+  provider: z.string().optional(),
+  model: z.string().nullable().optional(),
+});
+export type CliMeta = z.infer<typeof CliMetaSchema>;
+
+/** Bake metadata from run_graph / bake_portfolio_for_job envelopes. */
+export const BakeMetaSchema = z.object({
+  shortId: z.string().min(1),
+  queryParam: z.string().optional(),
+  audience: z.string().optional(),
+});
+export type BakeMeta = z.infer<typeof BakeMetaSchema>;
+
+/**
+ * Loose run_graph envelope — only fields the FE cares about.
+ * Passes through unknown keys; used to replace ad-hoc Record crawls.
+ */
+export const GraphEnvelopeSchema = z
+  .object({
+    status: z.string().optional(),
+    summary: z.string().optional(),
+    message: z.union([z.string(), z.record(z.unknown())]).optional(),
+    content: z.unknown().optional(),
+    layout: z.unknown().optional(),
+    carry: z
+      .object({
+        layout: z.unknown().optional(),
+      })
+      .passthrough()
+      .optional(),
+    meta: z
+      .object({
+        cli: CliMetaSchema.optional(),
+      })
+      .passthrough()
+      .optional(),
+    cli: CliMetaSchema.optional(),
+    data: z.unknown().optional(),
+    step_results: z.array(z.unknown()).optional(),
+    response: z.unknown().optional(),
+    working_memory: z.record(z.unknown()).optional(),
+    short_id: z.string().optional(),
+    shortId: z.string().optional(),
+    query_param: z.string().optional(),
+    queryParam: z.string().optional(),
+    audience: z.string().optional(),
+  })
+  .passthrough();
+
+export type GraphEnvelope = z.infer<typeof GraphEnvelopeSchema>;
 
 export type AskResult =
   | { ok: true; markdown: string; raw?: unknown; cli?: CliMeta | null }
@@ -26,17 +74,28 @@ export type AskResult =
 /** Pull oneshot CLI metadata from a run_graph envelope, if present. */
 export function extractCliMeta(data: unknown): CliMeta | null {
   if (!data || typeof data !== "object") return null;
-  const obj = data as Record<string, any>;
-  const candidates = [obj?.meta?.cli, obj?.response?.meta?.cli, obj?.cli];
+  const root = GraphEnvelopeSchema.safeParse(data);
+  const obj = root.success ? root.data : (data as Record<string, unknown>);
+  const response =
+    obj.response && typeof obj.response === "object"
+      ? (obj.response as Record<string, unknown>)
+      : null;
+  const candidates = [
+    (obj.meta as { cli?: unknown } | undefined)?.cli,
+    response && typeof response.meta === "object"
+      ? (response.meta as { cli?: unknown }).cli
+      : undefined,
+    obj.cli,
+  ];
   for (const c of candidates) {
-    if (!c || typeof c !== "object") continue;
-    const agent = typeof c.agent === "string" ? c.agent.trim() : "";
-    if (!agent) continue;
-    return {
-      agent,
-      provider: typeof c.provider === "string" ? c.provider : undefined,
-      model: typeof c.model === "string" ? c.model : null,
-    };
+    const parsed = CliMetaSchema.safeParse(c);
+    if (parsed.success) {
+      return {
+        agent: parsed.data.agent.trim(),
+        provider: parsed.data.provider,
+        model: parsed.data.model ?? null,
+      };
+    }
   }
   return null;
 }
@@ -179,14 +238,7 @@ export function extractCarryTheme(layout: Layout | null | undefined): string | n
   return typeof theme === "string" && theme.trim() ? theme.trim() : null;
 }
 
-/** Bake metadata from run_graph / bake_portfolio_for_job envelopes. */
-export type BakeMeta = {
-  shortId: string;
-  queryParam?: string;
-  audience?: string;
-};
-
-/** Extracts bake metadata from layout responses. */
+/** Extracts bake metadata from layout responses (Zod-validated). */
 export function extractBakeMeta(data: unknown): BakeMeta | null {
   if (!data || typeof data !== "object") return null;
   const obj = data as Record<string, any>;
@@ -200,7 +252,6 @@ export function extractBakeMeta(data: unknown): BakeMeta | null {
     obj.response?.data,
     obj.response?.content,
   ];
-  // step_results entries
   for (const bag of [obj.step_results, obj.response?.step_results, obj.data]) {
     if (Array.isArray(bag)) {
       for (let i = bag.length - 1; i >= 0; i--) bags.push(bag[i]);
@@ -214,7 +265,7 @@ export function extractBakeMeta(data: unknown): BakeMeta | null {
       (typeof e.shortId === "string" && e.shortId) ||
       null;
     if (!sid) continue;
-    return {
+    const parsed = BakeMetaSchema.safeParse({
       shortId: sid,
       queryParam:
         typeof e.query_param === "string"
@@ -223,7 +274,8 @@ export function extractBakeMeta(data: unknown): BakeMeta | null {
             ? e.queryParam
             : `j=${sid}`,
       audience: typeof e.audience === "string" ? e.audience : undefined,
-    };
+    });
+    if (parsed.success) return parsed.data;
   }
   return null;
 }
@@ -232,6 +284,7 @@ async function performCall(userMessage: string, sessionId: string): Promise<OctT
   const client = await getSharedClient();
   // Idle budget from runtime config (public/config.json askTimeoutMs).
   // Passed through to MCP SDK RequestOptions; server keepalives reset the window.
+  // Caller may already have appended a system directive; wrapMessage still runs.
   return await client.callTool(
     "run_graph",
     {
@@ -266,9 +319,22 @@ function isConfirmationNeeded(data: unknown): boolean {
   return status === "confirmation_needed";
 }
 
-export async function askOct(userMessage: string, sessionId: string): Promise<AskResult> {
+/**
+ * Ask OpenCat via run_graph.
+ *
+ * @param directive Optional system directive already (or to be) appended for
+ *   confirm round-trips — when confirmation_needed, the continuation re-sends
+ *   the same directive so patch intent is not dropped.
+ */
+export async function askOct(
+  userMessage: string,
+  sessionId: string,
+  directive: string = "",
+): Promise<AskResult> {
+  const dir = typeof directive === "string" ? directive : "";
+  const fullMessage = dir ? `${userMessage}${dir}` : userMessage;
   try {
-    let result = await performCall(userMessage, sessionId);
+    let result = await performCall(fullMessage, sessionId);
     if (result.isError) {
       const textBlock = result.content.find((c) => c.type === "text");
       const errMsg = textBlock?.text || "Unknown tool error";
@@ -277,7 +343,7 @@ export async function askOct(userMessage: string, sessionId: string): Promise<As
     // Portfolio has no MCP elicitation UI — auto-continue headless once.
     if (isConfirmationNeeded(result.data)) {
       result = await performCall(
-        "Yes, proceed with the plan and finish the visitor's request.",
+        `Yes, proceed with the plan and finish the visitor's request.${dir}`,
         sessionId
       );
       if (result.isError) {

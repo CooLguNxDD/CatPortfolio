@@ -277,6 +277,53 @@ const CostSim = z.object({
   props: z.object({}).default({}),
 });
 
+/**
+ * Declarative canvas-2D visual (OD matrix L3, alongside archDiagram/flowAnim).
+ * Preset + grounded data, NOT a general drawing DSL: no arbitrary paths,
+ * colors, or expressions -- mirrors flowAnim's nodes/edges shape, server-
+ * derived from real projects (see OpenCat-Mcp-Full block_builder.py's
+ * "scene2d" branch). `renderer` is a Literal union deliberately left open
+ * for "webgl" later (a schema widening, not a rewrite) -- three.js is not
+ * added until that path ships.
+ */
+const Scene2d = z.object({
+  type: z.literal("scene2d"),
+  id: z.string(),
+  layout: BlockLayout,
+  props: z.object({
+    renderer: z.literal("2d").default("2d"),
+    preset: z.enum(["orbit", "pulse-grid", "particle-field"]),
+    title: z.string().optional(),
+    nodes: z
+      .array(
+        z.object({
+          id: z.string(),
+          label: z.string(),
+          group: z.string().optional(),
+        }),
+      )
+      .default([]),
+    edges: z
+      .array(
+        z.object({
+          from: z.string(),
+          to: z.string(),
+          label: z.string().optional(),
+        }),
+      )
+      .default([]),
+    palette: AccentId.optional(),
+    motion: z
+      .object({
+        speed: z.number().min(0.1).max(3).default(1),
+        loop: z.boolean().default(true),
+        intensity: z.number().min(0).max(2).default(1),
+      })
+      .default({}),
+    caption: z.string().optional(),
+  }),
+});
+
 /** Composite DSL — recursive containers + typed leaves (depth ≤ 3, ≤ 40 nodes). */
 const CompositeLayoutSpec = z.object({
   kind: z.enum(["grid", "stack", "split", "cards"]),
@@ -291,7 +338,10 @@ type CompositeNode = {
   [key: string]: unknown;
 };
 
-const LEAF_KINDS = new Set([
+// Exported (not just module-private) so scripts/__tests__/mirror-drift.test.ts
+// can assert design/mirror-manifest.json's copy matches the actual source of
+// truth, instead of drifting independently the way THEME_VAR_ALLOWLIST did.
+export const LEAF_KINDS = new Set([
   "metric",
   "sparkline",
   "badgeCloud",
@@ -309,7 +359,9 @@ const LEAF_KINDS = new Set([
   "link",
   "stat",
 ]);
-const CONTAINER_KINDS = new Set(["grid", "stack", "split", "cards"]);
+export const CONTAINER_KINDS = new Set(["grid", "stack", "split", "cards"]);
+export const COMPOSITE_MAX_DEPTH = 3;
+export const COMPOSITE_MAX_NODES = 40;
 
 const CompositeNodeSchema: z.ZodType<CompositeNode> = z.lazy(() =>
   z
@@ -358,16 +410,16 @@ const Composite = z.object({
     })
     .superRefine((props, ctx) => {
       const { count, maxDepth } = countComposite(props.children, 1);
-      if (maxDepth > 3) {
+      if (maxDepth > COMPOSITE_MAX_DEPTH) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "composite children exceed max depth 3",
+          message: `composite children exceed max depth ${COMPOSITE_MAX_DEPTH}`,
         });
       }
-      if (count > 40) {
+      if (count > COMPOSITE_MAX_NODES) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `composite children exceed max nodes 40 (got ${count})`,
+          message: `composite children exceed max nodes ${COMPOSITE_MAX_NODES} (got ${count})`,
         });
       }
     }),
@@ -507,6 +559,20 @@ export const LayoutSchema = z.object({
      * blocks into horizontal bands; missing → simple stagger fallback.
      */
     dag: DagMeta.optional(),
+    /** Job-bake framing (OCT job_tailor) — optional. */
+    jobCompany: z.string().optional(),
+    jobRole: z.string().optional(),
+    jobBriefHash: z.string().optional(),
+    tailored: z.boolean().optional(),
+    contentFingerprint: z.string().optional(),
+    composePath: z.string().optional(),
+    structureMode: z.string().optional(),
+    recipeId: z.string().optional(),
+    juryComposite: z.number().optional(),
+    evidencePackHash: z.string().optional(),
+    planSource: z.string().optional(),
+    enrichment: z.string().optional(),
+    patchedBlockIds: z.array(z.string()).optional(),
   }),
   blocks: z.array(
     z.discriminatedUnion("type", [
@@ -527,6 +593,7 @@ export const LayoutSchema = z.object({
       McpSandbox,
       CostSim,
       Composite,
+      Scene2d,
     ]),
   ),
 });

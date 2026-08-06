@@ -1,6 +1,6 @@
 ---
 # Design tokens the agent must respect when authoring themes or block components.
-# Same convention as Weltel-Mcp-Full/frontend/cat-admin-frontend/DESIGN.md frontmatter.
+# Same convention as OpenCat-Mcp-Full/frontend/cat-admin-frontend/DESIGN.md frontmatter.
 theme:
   name: "Cat Portfolio — Cozy Cyberpunk"
   color_space: oklch
@@ -96,7 +96,7 @@ meta:
 ## New block types
 
 Creating a new block type follows the block-authoring checklist (see the
-`portfolio-gen` Claude Code plugin in Weltel-Mcp-Full): Zod schema member +
+`portfolio-gen` Claude Code plugin in OpenCat-Mcp-Full): Zod schema member +
 component in `src/blocks/` + barrel export + registry entry + tests +
 Python mirror sync (`design/pending-mirror/`) + CLAUDE.md update. The
 runtime whitelist (`src/render/registry.ts`) and fail-loud `LayoutSchema`

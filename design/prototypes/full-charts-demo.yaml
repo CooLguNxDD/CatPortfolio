@@ -1,0 +1,142 @@
+# Full charts & metrics console layout prototype.
+# Aligns with CRAP principles: Proximity (groups charts in visual bands),
+# Contrast (bright series against cozy dark backgrounds), Alignment (story level sequences),
+# and explicit separation of WelTel Job metrics vs. Personal OSS projects.
+
+version: 1
+theme: cozy
+meta:
+  audience: peer
+  generatedAt: "2026-08-03T07:00:00Z"
+  dag:
+    levels:
+      - level: 0
+        label: Intro
+        at: 0
+        nodes: [h1]
+      - level: 1
+        label: KPIs
+        at: 0.25
+        nodes: [kpi-master]
+      - level: 2
+        label: Visualizations
+        at: 0.6
+        nodes: [chart-aws, chart-tools, chart-commits, chart-latency]
+      - level: 3
+        label: CTA
+        at: 0.9
+        nodes: [cta-block]
+
+blocks:
+  - type: hero
+    id: h1
+    props:
+      name: Andrew Liang (the cat)
+      tagline: Systems Engineer & Data Visualizer
+      pitch: >-
+        Unified Metrics Dashboard detailing AWS optimizations, tool categorization, 
+        commit density, and protocol latency distributions.
+      links:
+        - label: GitHub Profile
+          href: https://github.com/CooLguNxDD
+
+  - type: kpiGrid
+    id: kpi-master
+    props:
+      items:
+        - label: AWS Bill Drop
+          value: "-30%"
+          delta: "$4,150 → $2,800/mo"
+          spark: [4150, 3600, 3000, 2800]
+        - label: Clinical MCP Tools
+          value: "42"
+          delta: "FastMCP Schema"
+          spark: [10, 24, 35, 42]
+        - label: Mobile Commits
+          value: "531+"
+          delta: "GraphQL Amplify"
+          spark: [80, 220, 370, 531]
+        - label: Portfolio Blocks
+          value: "18"
+          delta: "Zod Validated"
+          spark: [4, 8, 12, 18]
+
+  - type: chart
+    id: chart-aws
+    props:
+      kind: line
+      title: AWS Monthly Cost Trend
+      caption: WelTel Job · 6-Month DevOps Optimization Wave
+      unit: USD / month
+      series:
+        - name: Monthly Bill
+          points:
+            - { x: "Feb", y: 4150 }
+            - { x: "Mar", y: 3900 }
+            - { x: "Apr", y: 3400 }
+            - { x: "May", y: 3000 }
+            - { x: "Jun", y: 2800 }
+            - { x: "Jul", y: 2800 }
+
+  - type: chart
+    id: chart-tools
+    props:
+      kind: donut
+      title: Clinical AI Tool Categories
+      caption: WelTel Job · 42 Active FastMCP Tools
+      unit: Tools
+      series:
+        - name: Categories
+          points:
+            - { x: "Alerts", y: 12 }
+            - { x: "EHR Query", y: 15 }
+            - { x: "Diagnostics", y: 8 }
+            - { x: "Prescriptions", y: 7 }
+
+  - type: chart
+    id: chart-commits
+    props:
+      kind: bar
+      title: Project Commit Densities
+      caption: WelTel Job Tracks vs. Personal OSS Repos
+      unit: Commits
+      series:
+        - name: Commits
+          points:
+            - { x: "WelTel AI", y: 395 }
+            - { x: "WelTel Ops", y: 570 }
+            - { x: "WelTel Mob", y: 531 }
+            - { x: "Platform", y: 105 }
+            - { x: "OpenCat OSS", y: 240 }
+
+  - type: chart
+    id: chart-latency
+    props:
+      kind: radar
+      title: Systems Latency Profile
+      caption: OpenCat Tunnel vs. Monolithic REST Relays
+      unit: ms
+      series:
+        - name: OpenCat
+          points:
+            - { x: "Schema Parse", y: 18 }
+            - { x: "FastMCP exec", y: 21 }
+            - { x: "pgvector Match", y: 12 }
+        - name: Legacy REST
+          points:
+            - { x: "Schema Parse", y: 42 }
+            - { x: "FastMCP exec", y: 10 }
+            - { x: "pgvector Match", y: 20 }
+
+  - type: card
+    id: cta-block
+    props:
+      eyebrow: Dashboard complete
+      title: Metrics Evaluation Ready
+      body: >-
+        This dashboard confirms cloud cost optimizations and tool routing latencies.
+        Return to the main hub index to explore other prototypes.
+      domain: platform
+      links:
+        - label: Return to Main Hub
+          href: ../index.html

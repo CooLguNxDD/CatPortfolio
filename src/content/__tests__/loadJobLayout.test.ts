@@ -25,7 +25,7 @@ describe("loadJobLayout", () => {
       throw new Error("runtime_config_not_loaded");
     });
 
-    const result = await loadJobLayout("weltel_successor_992");
+    const result = await loadJobLayout("opencat_successor_992");
     expect(result.source).toBe("snapshot");
     expect(result.layout).toStrictEqual(loadBaked());
   });
@@ -33,7 +33,7 @@ describe("loadJobLayout", () => {
   it("falls back to baked snapshot when the base URL is empty", async () => {
     vi.mocked(getOctBaseUrl).mockReturnValue("");
 
-    const result = await loadJobLayout("weltel_successor_992");
+    const result = await loadJobLayout("opencat_successor_992");
     expect(result.source).toBe("snapshot");
     expect(result.layout).toStrictEqual(loadBaked());
   });
@@ -49,11 +49,11 @@ describe("loadJobLayout", () => {
       json: async () => liveLayout,
     }) as unknown as typeof fetch;
 
-    const result = await loadJobLayout("weltel_successor_992");
+    const result = await loadJobLayout("opencat_successor_992");
     expect(result.source).toBe("bake");
     expect(result.layout).toStrictEqual(liveLayout);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      "http://localhost:10000/api/portfolio/public/layout/weltel_successor_992",
+      "http://localhost:10000/api/portfolio/public/layout/opencat_successor_992",
       expect.any(Object)
     );
   });
@@ -69,7 +69,7 @@ describe("loadJobLayout", () => {
   it("falls back to baked snapshot on a timeout/network error", async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("network error")) as unknown as typeof fetch;
 
-    const result = await loadJobLayout("weltel_successor_992");
+    const result = await loadJobLayout("opencat_successor_992");
     expect(result.source).toBe("snapshot");
     expect(result.layout).toStrictEqual(loadBaked());
   });
@@ -80,7 +80,7 @@ describe("loadJobLayout", () => {
       json: async () => ({ not: "a valid layout" }),
     }) as unknown as typeof fetch;
 
-    const result = await loadJobLayout("weltel_successor_992");
+    const result = await loadJobLayout("opencat_successor_992");
     expect(result.source).toBe("snapshot");
     expect(result.layout).toStrictEqual(loadBaked());
   });
