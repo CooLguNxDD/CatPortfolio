@@ -1,0 +1,122 @@
+# Peer-focused layout prototype.
+# Aligns with CRAP principles: Contrast (highlighted code blocks),
+# Repetition (matching component boxes), Alignment (topological level progression),
+# and clear documentation of architectural decisions and vector tool routing.
+
+version: 1
+theme: cozy
+meta:
+  audience: peer
+  generatedAt: "2026-08-03T07:00:00Z"
+  dag:
+    levels:
+      - level: 0
+        label: Intro
+        at: 0
+        nodes: [h1]
+      - level: 1
+        label: System Flow
+        at: 0.2
+        nodes: [arch-flow]
+      - level: 2
+        label: Sandbox
+        at: 0.5
+        nodes: [mcp-sandbox]
+      - level: 3
+        label: Code Spec
+        at: 0.75
+        nodes: [code-snippet]
+      - level: 4
+        label: ADRs
+        at: 0.9
+        nodes: [adr-prose]
+
+blocks:
+  - type: hero
+    id: h1
+    props:
+      name: Andrew Liang (the cat)
+      tagline: Systems Architect & AI Infrastructure Engineer
+      pitch: >-
+        Technical blueprint detailing pgvector routing, FastMCP tool design, 
+        and infrastructure pipelines built across WelTel job tracks and personal open-source repositories.
+      links:
+        - label: GitHub Profile
+          href: https://github.com/CooLguNxDD
+        - label: OpenCat Tunnel OSS
+          href: https://github.com/CooLguNxDD/OpenCat-Mcp-Full
+
+  - type: flowAnim
+    id: arch-flow
+    props:
+      title: OpenCat Tunnel Semantic Tool Routing
+      animate: true
+      nodes:
+        - id: client
+          label: Console / CLI
+          group: client
+        - id: gateway
+          label: OpenCat MCP
+          group: infra
+        - id: router
+          label: pgvector Router
+          group: core
+        - id: tool
+          label: 42 Clinical Tools
+          group: exec
+      edges:
+        - from: client
+          to: gateway
+          label: natural query
+        - from: gateway
+          to: router
+          label: cosine search
+        - from: router
+          to: tool
+          label: FastMCP invoke
+        - from: tool
+          to: client
+          label: latency output
+
+  - type: mcpSandbox
+    id: mcp-sandbox
+    props: {}
+
+  - type: codeSnippet
+    id: code-snippet
+    props:
+      lang: ts
+      caption: Zod Layout Block validation (CatPortfolio self-rendering loop)
+      code: |-
+        import { z } from "zod";
+
+        export const CardBlock = z.object({
+          type: z.literal("card"),
+          id: z.string(),
+          props: z.object({
+            title: z.string().optional(),
+            eyebrow: z.string().optional(),
+            body: z.string().optional(),
+            domain: z.enum(["ai", "devops", "mobile", "platform"]).optional(),
+            tech: z.string().optional(),
+            metrics: z.array(z.object({ label: z.string(), value: z.string() })).optional()
+          })
+        });
+
+  - type: prose
+    id: adr-prose
+    props:
+      markdown: |-
+        ## Architectural Decision Records (ADRs)
+
+        ### ADR-01: AI/MCP — Custom pgvector Semantic Router vs. Monolithic REST Wrappers
+
+        * **Context:** WelTel's 42 clinical capabilities exceed context constraints on LLM agent endpoints.
+        * **Decision:** Embed tools inside `pgvector`, retrieve top matching tools using cosine similarity, and invoke FastMCP nodes on demand.
+        * **Consequence:** Gateway remains provider-agnostic. Prompts stay clean and fast. Specialist sub-agents handle heavy analysis.
+
+        ### ADR-02: DevOps — Self-Hosted EKS Runners vs. SaaS Builders
+
+        * **Context:** High organization hosting bills ($4k/mo+) and developer runner queue latency.
+        * **Decision:** Shift Dockerized pipelines to self-hosted Kubernetes EKS runner node groups using Terraform.
+        * **Consequence:** Decreased monthly cloud spend to $2,800 (-30%) while doubling deployment caching speeds.

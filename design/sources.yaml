@@ -24,7 +24,7 @@ sources:
 
   - id: oct-repo
     kind: github
-    ref: CooLguNxDD/Weltel-Mcp-Full
+    ref: CooLguNxDD/OpenCat-Mcp-Full
     use: [meta]
 
   # Examples of other kinds (uncomment and fill in to activate):

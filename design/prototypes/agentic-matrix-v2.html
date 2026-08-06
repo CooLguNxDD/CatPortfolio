@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Andrew Liang — Agentic Systems Portfolio · Matrix v2</title>
+<meta name="description" content="OpenCat-first agentic portfolio: capability matrix, impact charts, employment vs OSS streams." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: oklch(12% 0.03 260);
+  --surface: oklch(17% 0.035 260);
+  --surface-2: oklch(21% 0.04 260);
+  --fg: oklch(96% 0.01 100);
+  --muted: oklch(72% 0.03 260);
+  --border: oklch(30% 0.04 260);
+  --accent: oklch(72% 0.16 220);
+  --accent-soft: oklch(72% 0.16 220 / 0.18);
+  --ai: oklch(72% 0.16 300);
+  --devops: oklch(75% 0.14 145);
+  --platform: oklch(72% 0.12 200);
+  --oss: oklch(78% 0.14 330);
+  --job: oklch(78% 0.12 70);
+  --font: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --max: min(1180px, 90vw);
+  --pad: clamp(1rem, 3vw, 2rem);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--fg);
+  background:
+    radial-gradient(1000px 500px at 8% -5%, oklch(30% 0.1 300 / 0.35), transparent 55%),
+    radial-gradient(800px 420px at 95% 10%, oklch(28% 0.09 220 / 0.3), transparent 50%),
+    var(--bg);
+  line-height: 1.55;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(oklch(100% 0 0 / 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(100% 0 0 / 0.02) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, black 40%, transparent 95%);
+}
+.shell { position: relative; z-index: 1; max-width: var(--max); margin: 0 auto; padding: 1.25rem var(--pad) 4rem; }
+
+/* Sticky chrome */
+.chrome {
+  position: sticky; top: 0; z-index: 40;
+  display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start;
+  padding: 0.65rem 0 0.85rem;
+  background: linear-gradient(to bottom, oklch(12% 0.03 260 / 0.96), oklch(12% 0.03 260 / 0.85));
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid oklch(100% 0 0 / 0.06);
+  margin-bottom: 1.25rem;
+}
+.brand { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: baseline; }
+.brand h1 { margin: 0; font-size: 0.95rem; letter-spacing: 0.02em; }
+.brand .tag { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+.badge {
+  font-family: var(--mono); font-size: 0.68rem; padding: 0.2rem 0.5rem;
+  border-radius: 999px; border: 1px solid var(--border); color: var(--accent);
+  background: var(--accent-soft);
+}
+.minimap {
+  display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end;
+}
+.minimap a {
+  font-family: var(--mono); font-size: 0.65rem; text-decoration: none;
+  color: var(--muted); padding: 0.28rem 0.5rem; border-radius: 999px;
+  border: 1px solid transparent;
+}
+.minimap a:hover, .minimap a.is-active {
+  color: var(--fg); border-color: var(--border); background: var(--surface);
+}
+.filters { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
+.filters button {
+  font-family: var(--mono); font-size: 0.68rem; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+  border-radius: 999px; padding: 0.28rem 0.65rem;
+}
+.filters button[aria-pressed="true"] {
+  color: var(--fg); border-color: var(--accent); background: var(--accent-soft);
+}
+
+/* Level bands */
+.level {
+  margin: 1.75rem 0 2.25rem;
+  padding: 1.15rem 1.2rem 1.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, oklch(18% 0.035 260 / 0.9), var(--surface));
+  box-shadow: 0 0 0 1px oklch(100% 0 0 / 0.02) inset;
+}
+.level.is-dim { opacity: 0.55; filter: saturate(0.75); }
+.level-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 0.75rem; margin-bottom: 1rem;
+}
+.level-id {
+  font-family: var(--mono); font-size: 0.7rem; color: var(--accent);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.level-title { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.level-lede { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.88rem; max-width: 62ch; }
+
+/* Hero */
+.hero {
+  display: grid; grid-template-columns: 1.4fr 0.9fr; gap: 1.25rem; align-items: stretch;
+}
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; }
+  .chrome { grid-template-columns: 1fr; }
+  .minimap { justify-content: flex-start; }
+}
+.kicker {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--accent);
+  letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 0.5rem;
+}
+.hero h2 { margin: 0 0 0.5rem; font-size: clamp(1.55rem, 3vw, 2.1rem); line-height: 1.15; }
+.hero .pitch { color: var(--muted); max-width: 52ch; margin: 0 0 1rem; }
+.links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.links a {
+  font-family: var(--mono); font-size: 0.75rem; color: var(--fg); text-decoration: none;
+  border: 1px solid var(--border); border-radius: 999px; padding: 0.4rem 0.75rem;
+  background: var(--surface-2);
+}
+.links a:hover { border-color: var(--accent); color: var(--accent); }
+.hero-panel {
+  border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem;
+  background: var(--surface-2);
+}
+.hero-panel h3 { margin: 0 0 0.65rem; font-size: 0.8rem; font-family: var(--mono); color: var(--muted); font-weight: 500; }
+.stream-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
+.stream-list li {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 0.55rem; align-items: center;
+  font-size: 0.85rem;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot.oss { background: var(--oss); }
+.dot.job { background: var(--job); }
+.stream-list .kind { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); }
+
+/* KPI strip */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.65rem;
+}
+@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 520px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.kpi {
+  border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem 0.8rem;
+  background: var(--surface-2);
+}
+.kpi .v { font-family: var(--mono); font-size: 1.15rem; font-weight: 600; color: var(--accent); }
+.kpi .l { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; }
+
+/* Charts */
+.chart-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;
+}
+@media (max-width: 800px) { .chart-row { grid-template-columns: 1fr; } }
+.chart-card {
+  border: 1px solid var(--border); border-radius: 12px; padding: 0.85rem 0.95rem 1rem;
+  background: var(--surface-2);
+}
+.chart-card h3 { margin: 0 0 0.15rem; font-size: 0.92rem; }
+.chart-card p { margin: 0 0 0.75rem; font-size: 0.78rem; color: var(--muted); }
+.bars { display: grid; gap: 0.55rem; }
+.bar-row { display: grid; grid-template-columns: 7.5rem 1fr 2.4rem; gap: 0.5rem; align-items: center; font-size: 0.75rem; }
+.bar-row span:first-child { color: var(--muted); font-family: var(--mono); font-size: 0.68rem; }
+.bar-track { height: 10px; border-radius: 999px; background: oklch(100% 0 0 / 0.06); overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--ai)); }
+.bar-fill.devops { background: linear-gradient(90deg, var(--devops), oklch(80% 0.1 180)); }
+.bar-fill.job { background: linear-gradient(90deg, var(--job), oklch(82% 0.12 50)); }
+.bar-row strong { font-family: var(--mono); font-size: 0.72rem; text-align: right; }
+
+/* Dual compare chart */
+.compare {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem;
+}
+.compare .col {
+  text-align: center; padding: 0.75rem; border-radius: 10px;
+  border: 1px solid var(--border); background: oklch(100% 0 0 / 0.02);
+}
+.compare .num { font-family: var(--mono); font-size: 1.35rem; font-weight: 600; }
+.compare .num.bad { color: oklch(70% 0.16 25); }
+.compare .num.good { color: var(--devops); }
+.compare .lbl { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; }
+.spark {
+  display: flex; align-items: flex-end; gap: 3px; height: 48px; margin-top: 0.65rem;
+}
+.spark i {
+  display: block; flex: 1; border-radius: 2px 2px 0 0;
+  background: var(--accent); opacity: 0.75;
+}
+
+/* Capability matrix */
+.matrix-wrap { overflow-x: auto; }
+table.cap-matrix {
+  width: 100%; border-collapse: collapse; min-width: 640px;
+  font-size: 0.8rem;
+}
+.cap-matrix th, .cap-matrix td {
+  border: 1px solid var(--border); padding: 0.55rem 0.6rem; text-align: center;
+}
+.cap-matrix th {
+  background: oklch(100% 0 0 / 0.03); font-family: var(--mono); font-size: 0.68rem;
+  font-weight: 500; color: var(--muted);
+}
+.cap-matrix th:first-child, .cap-matrix td:first-child {
+  text-align: left; color: var(--fg); font-weight: 500;
+}
+.cell {
+  display: inline-flex; width: 1.35rem; height: 1.35rem; border-radius: 4px;
+  align-items: center; justify-content: center; font-family: var(--mono); font-size: 0.65rem;
+}
+.cell.s3 { background: oklch(72% 0.16 220 / 0.45); color: var(--fg); }
+.cell.s2 { background: oklch(72% 0.16 220 / 0.22); color: var(--fg); }
+.cell.s1 { background: oklch(100% 0 0 / 0.06); color: var(--muted); }
+.cell.s0 { background: transparent; color: oklch(100% 0 0 / 0.15); }
+.legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.7rem; font-size: 0.72rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+
+/* Project cards */
+.cards {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.85rem;
+}
+@media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
+.card {
+  border: 1px solid var(--border); border-radius: 12px; padding: 0.95rem 1rem;
+  background: var(--surface-2); display: flex; flex-direction: column; gap: 0.45rem;
+}
+.card[data-rank="1"] {
+  border-color: oklch(72% 0.16 220 / 0.55);
+  box-shadow: 0 0 0 1px oklch(72% 0.16 220 / 0.2), 0 0 32px oklch(72% 0.16 220 / 0.08);
+}
+.card .eyebrow {
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.04em;
+  display: flex; justify-content: space-between; gap: 0.5rem;
+}
+.card .eyebrow .rank { color: var(--accent); }
+.card h3 { margin: 0; font-size: 1.02rem; }
+.card .body { margin: 0; color: var(--muted); font-size: 0.86rem; flex: 1; }
+.metrics { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.metrics span {
+  font-family: var(--mono); font-size: 0.68rem; padding: 0.25rem 0.45rem;
+  border-radius: 6px; background: oklch(100% 0 0 / 0.04); border: 1px solid var(--border);
+}
+.tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.tags span {
+  font-size: 0.65rem; color: var(--muted); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.15rem 0.45rem;
+}
+.card a {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--accent); text-decoration: none;
+  margin-top: 0.25rem;
+}
+.kind-chip {
+  font-family: var(--mono); font-size: 0.62rem; padding: 0.12rem 0.4rem; border-radius: 999px;
+}
+.kind-chip.oss { background: oklch(78% 0.14 330 / 0.2); color: var(--oss); }
+.kind-chip.job { background: oklch(78% 0.12 70 / 0.2); color: var(--job); }
+
+/* Architecture */
+.arch-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 0.9rem; }
+@media (max-width: 800px) { .arch-grid { grid-template-columns: 1fr; } }
+.flow {
+  display: grid; gap: 0.45rem; font-family: var(--mono); font-size: 0.72rem;
+}
+.flow .node {
+  border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.7rem;
+  background: oklch(100% 0 0 / 0.03);
+}
+.flow .node.core { border-color: oklch(72% 0.16 220 / 0.5); background: var(--accent-soft); }
+.flow .arrow { text-align: center; color: var(--muted); font-size: 0.8rem; }
+.mermaid-fake {
+  border: 1px dashed var(--border); border-radius: 12px; padding: 1rem;
+  font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
+  line-height: 1.7;
+}
+.mermaid-fake .hl { color: var(--accent); }
+
+/* STAR */
+.star {
+  border-left: 3px solid var(--accent); padding: 0.25rem 0 0.25rem 1rem;
+}
+.star h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.star dl { margin: 0; display: grid; gap: 0.55rem; }
+.star dt { font-family: var(--mono); font-size: 0.68rem; color: var(--accent); }
+.star dd { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.88rem; }
+
+/* CTA */
+.cta-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.cta-row button, .cta-row a {
+  font-family: var(--mono); font-size: 0.78rem; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--fg);
+  border-radius: 999px; padding: 0.55rem 0.9rem; text-decoration: none;
+}
+.cta-row a.primary, .cta-row button.primary {
+  background: var(--accent-soft); border-color: oklch(72% 0.16 220 / 0.5); color: var(--accent);
+}
+
+.note {
+  margin-top: 2rem; padding: 0.85rem 1rem; border-radius: 10px;
+  border: 1px solid var(--border); background: oklch(100% 0 0 / 0.02);
+  font-size: 0.78rem; color: var(--muted);
+}
+.note strong { color: var(--fg); }
+footer {
+  margin-top: 2rem; font-family: var(--mono); font-size: 0.68rem; color: var(--muted);
+  text-align: center;
+}
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="chrome">
+    <div>
+      <div class="brand">
+        <h1>🐱 Cat Portfolio · Matrix v2</h1>
+        <span class="tag">agentic systems · OpenCat-first</span>
+        <span class="badge">prototype · OD</span>
+      </div>
+      <div class="filters" role="group" aria-label="Visitor persona">
+        <button type="button" data-persona="all" aria-pressed="true">All</button>
+        <button type="button" data-persona="recruiter" aria-pressed="false">Recruiter TL;DR</button>
+        <button type="button" data-persona="architect" aria-pressed="false">Staff Architect</button>
+        <button type="button" data-persona="exec" aria-pressed="false">Exec ROI</button>
+      </div>
+    </div>
+    <nav class="minimap" aria-label="Story levels">
+      <a href="#l0" data-level="l0">L0 Intro</a>
+      <a href="#l1" data-level="l1">L1 Impact</a>
+      <a href="#l2" data-level="l2">L2 Matrix</a>
+      <a href="#l3" data-level="l3">L3 Work</a>
+      <a href="#l4" data-level="l4">L4 System</a>
+      <a href="#l5" data-level="l5">L5 Charts</a>
+      <a href="#l6" data-level="l6">L6 Proof</a>
+      <a href="#l7" data-level="l7">L7 Ask</a>
+    </nav>
+  </header>
+
+  <!-- L0 -->
+  <section class="level" id="l0" data-band="intro">
+    <div class="level-head">
+      <div>
+        <div class="level-id">L0 · Intro</div>
+        <h2 class="level-title">Position in 10 seconds</h2>
+        <p class="level-lede">Research-backed skim: role → proof → streams. Recruiters decide in minutes; depth is optional scroll.</p>
+      </div>
+    </div>
+    <div class="hero">
+      <div>
+        <p class="kicker">OpenCat · Agentic systems engineer</p>
+        <h2>Andrew Liang <span style="color:var(--muted);font-weight:500">(the cat)</span></h2>
+        <p class="pitch">I ship <strong style="color:var(--fg)">production agent architectures</strong> — MCP gateways, LangGraph orchestration, OAuth tool platforms — not demos. Flagship OSS: <strong style="color:var(--accent)">OpenCat Tunnel</strong>. Employment impact at WelTel (clinical AI + cloud). Portfolio itself is agentic GenUI.</p>
+        <div class="links">
+          <a href="https://github.com/CooLguNxDD" target="_blank" rel="noreferrer">GitHub</a>
+          <a href="https://github.com/CooLguNxDD/Open-Cat-Tunnel-MCP" target="_blank" rel="noreferrer">OpenCat Tunnel</a>
+          <a href="https://github.com/CooLguNxDD/CatPortfolio" target="_blank" rel="noreferrer">CatPortfolio</a>
+        </div>
+      </div>
+      <aside class="hero-panel">
+        <h3>Two streams · never mixed</h3>
+        <ul class="stream-list">
+          <li><span class="dot oss"></span><span>OpenCat Tunnel MCP</span><span class="kind">OSS · primary</span></li>
+          <li><span class="dot oss"></span><span>CatPortfolio GenUI</span><span class="kind">OSS</span></li>
+          <li><span class="dot job"></span><span>WelTel AI Layer</span><span class="kind">Job</span></li>
+          <li><span class="dot job"></span><span>WelTel DevOps / Platform</span><span class="kind">Job</span></li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+
+  <!-- L1 -->
+  <section class="level" id="l1" data-band="impact" data-for="recruiter,exec,architect,all">
+    <div class="level-head">
+      <div>
+        <div class="level-id">L1 · Impact</div>
+        <h2 class="level-title">Headline metrics before projects</h2>
+        <p class="level-lede">Data-first strip — same numbers recruiters quote later in the page.</p>
+      </div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="v">LangGraph+MCP</div><div class="l">OpenCat stack</div></div>
+      <div class="kpi"><div class="v">OAuth 2.0</div><div class="l">Two-layer auth</div></div>
+      <div class="kpi"><div class="v">~395</div><div class="l">WelTel MCP commits</div></div>
+      <div class="kpi"><div class="v">42</div><div class="l">Clinical tools</div></div>
+      <div class="kpi"><div class="v">−30%</div><div class="l">AWS bill cut</div></div>
+      <div class="kpi"><div class="v">?j=</div><div class="l">Job-bake short ids</div></div>
+    </div>
+  </section>
+
+  <!-- L2 Capability matrix -->
+  <section class="level" id="l2" data-band="matrix" data-for="architect,all">
+    <div class="level-head">
+      <div>
+        <div class="level-id">L2 · Capability matrix</div>
+        <h2 class="level-title">Skills × streams (not a laundry list)</h2>
+        <p class="level-lede">Strategic curation: show depth where it exists. 3 = shipped ownership, 2 = strong contrib, 1 = exposure.</p>
+      </div>
+    </div>
+    <div class="matrix-wrap">
+      <table class="cap-matrix" aria-label="Capability matrix">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>OpenCat OSS</th>
+            <th>WelTel AI</th>
+            <th>WelTel Infra</th>
+            <th>CatPortfolio</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Agent orchestration (LangGraph / GOAP)</td>
+            <td><span class="cell s3">3</span></td>
+            <td><span class="cell s3">3</span></td>
+            <td><span class="cell s1">1</span></td>
+            <td><span class="cell s2">2</span></td>
+          </tr>
+          <tr>
+            <td>MCP / tool platforms</td>
+            <td><span class="cell s3">3</span></td>
+            <td><span class="cell s3">3</span></td>
+            <td><span class="cell s1">1</span></td>
+            <td><span class="cell s2">2</span></td>
+          </tr>
+          <tr>
+            <td>Auth (OAuth / JWT / scopes)</td>
+            <td><span class="cell s3">3</span></td>
+            <td><span class="cell s2">2</span></td>
+            <td><span class="cell s1">1</span></td>
+            <td><span class="cell s1">1</span></td>
+          </tr>
+          <tr>
+            <td>Cloud cost / SRE</td>
+            <td><span class="cell s1">1</span></td>
+            <td><span class="cell s1">1</span></td>
+            <td><span class="cell s3">3</span></td>
+            <td><span class="cell s0">·</span></td>
+          </tr>
+          <tr>
+            <td>GenUI / layout contracts</td>
+            <td><span class="cell s2">2</span></td>
+            <td><span class="cell s1">1</span></td>
+            <td><span class="cell s0">·</span></td>
+            <td><span class="cell s3">3</span></td>
+          </tr>
+          <tr>
+            <td>RAG / vectors / eval mindset</td>
+            <td><span class="cell s2">2</span></td>
+            <td><span class="cell s3">3</span></td>
+            <td><span class="cell s0">·</span></td>
+            <td><span class="cell s1">1</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <span><span class="cell s3">3</span> Owned / shipped</span>
+      <span><span class="cell s2">2</span> Strong</span>
+      <span><span class="cell s1">1</span> Touch</span>
+      <span><span class="cell s0">·</span> N/A</span>
+    </div>
+  </section>
+
+  <!-- L3 Projects -->
+  <section class="level" id="l3" data-band="work" data-for="recruiter,architect,exec,all">
+    <div class="level-head">
+      <div>
+        <div class="level-id">L3 · Ranked work</div>
+        <h2 class="level-title">OpenCat first · employment as proof of production</h2>
+        <p class="level-lede">Curate 4. Rank flagship OSS above side bots. Label job vs OSS so HR doesn’t confuse employers.</p>
+      </div>
+    </div>
+    <div class="cards">
+      <article class="card" data-rank="1">
+        <div class="eyebrow"><span class="kind-chip oss">OSS · primary</span><span class="rank">#1</span></div>
+        <h3>OpenCat Tunnel MCP</h3>
+        <p class="body">Personal OSS MCP gateway: LangGraph agent runtime, OAuth 2.0 two-layer auth, FastMCP plugins, GOAP planning, portfolio specialist bake pipeline. Production agentic multi-tool orchestration — not WelTel product code.</p>
+        <div class="metrics">
+          <span>stack · LangGraph+MCP</span>
+          <span>auth · OAuth 2.0</span>
+          <span>mode · agent runtime</span>
+        </div>
+        <div class="tags"><span>MCP</span><span>LangGraph</span><span>GOAP</span><span>OAuth</span><span>agentic</span></div>
+        <a href="https://github.com/CooLguNxDD/Open-Cat-Tunnel-MCP" target="_blank" rel="noreferrer">github.com/CooLguNxDD/Open-Cat-Tunnel-MCP →</a>
+      </article>
+      <article class="card" data-rank="2">
+        <div class="eyebrow"><span class="kind-chip job">Job · WelTel</span><span class="rank">#2</span></div>
+        <h3>WelTel AI Layer</h3>
+        <p class="body">Greenfield WelTel MCP Server (~395 commits, 42 clinical tools), Clinician AI Command Center (streaming + tool calling), in-house code-review agent. Employment impact — separate from OpenCat OSS.</p>
+        <div class="metrics">
+          <span>MCP commits · ~395</span>
+          <span>clinical tools · 42</span>
+          <span>initiatives · 3</span>
+        </div>
+        <div class="tags"><span>WelTel</span><span>MCP</span><span>pgvector</span><span>LangGraph</span></div>
+        <a href="https://github.com/CooLguNxDD/Weltel-MCP" target="_blank" rel="noreferrer">related OSS mirror →</a>
+      </article>
+      <article class="card" data-rank="3">
+        <div class="eyebrow"><span class="kind-chip oss">OSS</span><span class="rank">#3</span></div>
+        <h3>CatPortfolio</h3>
+        <p class="body">Agentic portfolio SPA (React 19 + Vite + TS): Zod layout contract, matrix meta.dag, live /ask GenUI, ?j= job-baked resumes composed by OpenCat LayoutPlan.</p>
+        <div class="metrics">
+          <span>UI · GenUI matrix</span>
+          <span>bake · ?j= short_id</span>
+          <span>stack · React 19</span>
+        </div>
+        <div class="tags"><span>GenUI</span><span>React</span><span>agentic</span></div>
+        <a href="https://github.com/CooLguNxDD/CatPortfolio" target="_blank" rel="noreferrer">github.com/CooLguNxDD/CatPortfolio →</a>
+      </article>
+      <article class="card" data-rank="4">
+        <div class="eyebrow"><span class="kind-chip job">Job · WelTel</span><span class="rank">#4</span></div>
+        <h3>WelTel DevOps &amp; Cloud</h3>
+        <p class="body">Infra + deploy pipelines, self-hosted org runners, Terraform multi-AZ. AWS monthly cost $4k+ → ~$2.8k (−30%).</p>
+        <div class="metrics">
+          <span>infra commits · 570+</span>
+          <span>AWS · $4k→$2.8k</span>
+          <span>savings · −30%</span>
+        </div>
+        <div class="tags"><span>AWS</span><span>Terraform</span><span>EKS</span><span>CI/CD</span></div>
+        <a href="https://github.com/CooLguNxDD" target="_blank" rel="noreferrer">GitHub profile →</a>
+      </article>
+    </div>
+  </section>
+
+  <!-- L4 System -->
+  <section class="level" id="l4" data-band="system" data-for="architect,all">
+    <div class="level-head">
+      <div>
+        <div class="level-id">L4 · System view</div>
+        <h2 class="level-title">How the agent stack fits</h2>
+        <p class="level-lede">Architecture-first for staff reviewers: orchestration plane, not a feature dump.</p>
+      </div>
+    </div>
+    <div class="arch-grid">
+      <div class="flow">
+        <div class="node core">OpenCat Tunnel · agent runtime (LangGraph + GOAP)</div>
+        <div class="arrow">↓ MCP tools · OAuth scopes · plugins</div>
+        <div class="node">Portfolio specialist · discover → compose → bake</div>
+        <div class="arrow">↓ short_id layouts · public ?j=</div>
+        <div class="node">CatPortfolio SPA · matrix GenUI renderer</div>
+        <div class="arrow">∥ parallel employment proof</div>
+        <div class="node">WelTel AI · 42 clinical tools · clinician command center</div>
+      </div>
+      <div class="mermaid-fake">
+        <div class="hl">graph TD</div>
+        ROOT["Andrew · agentic systems"] --> OCT["OpenCat Tunnel MCP"]<br/>
+        ROOT --> WAI["WelTel AI Layer"]<br/>
+        ROOT --> CP["CatPortfolio"]<br/>
+        ROOT --> WDV["WelTel DevOps"]<br/>
+        OCT --> GOAP["GOAP + LangGraph"]<br/>
+        OCT --> OAUTH["OAuth 2.0 RS256"]<br/>
+        WAI --> MCP["42 MCP tools"]<br/>
+        CP --> BAKE["?j= job bake"]
+      </div>
+    </div>
+  </section>
+
+  <!-- L5 Charts -->
+  <section class="level" id="l5" data-band="charts" data-for="exec,architect,all">
+    <div class="level-head">
+      <div>
+        <div class="level-id">L5 · Evidence charts</div>
+        <h2 class="level-title">Proof that isn’t a paragraph</h2>
+        <p class="level-lede">Impact visuals: relative effort, cost outcome, and stream balance.</p>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <h3>Relative shipped weight</h3>
+        <p>Normalized narrative weight for agentic hiring (not vanity stars).</p>
+        <div class="bars">
+          <div class="bar-row"><span>OpenCat</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><strong>100</strong></div>
+          <div class="bar-row"><span>WelTel AI</span><div class="bar-track"><div class="bar-fill" style="width:88%"></div></div><strong>88</strong></div>
+          <div class="bar-row"><span>CatPortfolio</span><div class="bar-track"><div class="bar-fill" style="width:72%"></div></div><strong>72</strong></div>
+          <div class="bar-row"><span>DevOps</span><div class="bar-track"><div class="bar-fill devops" style="width:65%"></div></div><strong>65</strong></div>
+          <div class="bar-row"><span>Pullfrog</span><div class="bar-track"><div class="bar-fill job" style="width:18%"></div></div><strong>18</strong></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>AWS cost outcome (WelTel)</h3>
+        <p>Baseline → optimized monthly cloud spend.</p>
+        <div class="compare">
+          <div class="col"><div class="num bad">$4.1k</div><div class="lbl">Before</div></div>
+          <div class="col"><div class="num good">$2.8k</div><div class="lbl">After · −30%</div></div>
+        </div>
+        <div class="spark" aria-hidden="true">
+          <i style="height:90%"></i><i style="height:88%"></i><i style="height:85%"></i>
+          <i style="height:78%"></i><i style="height:70%"></i><i style="height:62%"></i>
+          <i style="height:58%"></i><i style="height:55%"></i>
+        </div>
+      </div>
+    </div>
+    <div class="chart-row" style="margin-top:0.9rem">
+      <div class="chart-card">
+        <h3>Tool / agent surface</h3>
+        <p>Where agentic depth lives across streams.</p>
+        <div class="bars">
+          <div class="bar-row"><span>Clinical tools</span><div class="bar-track"><div class="bar-fill" style="width:84%"></div></div><strong>42</strong></div>
+          <div class="bar-row"><span>MCP plugins</span><div class="bar-track"><div class="bar-fill" style="width:70%"></div></div><strong>OCT</strong></div>
+          <div class="bar-row"><span>Layout blocks</span><div class="bar-track"><div class="bar-fill" style="width:60%"></div></div><strong>GenUI</strong></div>
+          <div class="bar-row"><span>Infra commits</span><div class="bar-track"><div class="bar-fill devops" style="width:95%"></div></div><strong>570+</strong></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Visitor paths (designed)</h3>
+        <p>Persona → band focus (prototype interaction above).</p>
+        <div class="bars">
+          <div class="bar-row"><span>Recruiter</span><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><strong>L0–L3</strong></div>
+          <div class="bar-row"><span>Architect</span><div class="bar-track"><div class="bar-fill" style="width:85%"></div></div><strong>L2–L5</strong></div>
+          <div class="bar-row"><span>Exec</span><div class="bar-track"><div class="bar-fill devops" style="width:55%"></div></div><strong>L1+L5</strong></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- L6 STAR -->
+  <section class="level" id="l6" data-band="proof" data-for="architect,recruiter,all">
+    <div class="level-head">
+      <div>
+        <div class="level-id">L6 · Proof story</div>
+        <h2 class="level-title">One STAR, not twelve paragraphs</h2>
+        <p class="level-lede">Problem → approach → result. Annotated decisions over process theater.</p>
+      </div>
+    </div>
+    <div class="star">
+      <h3>Job-bake portfolio for agentic hiring (OpenCat + CatPortfolio)</h3>
+      <dl>
+        <dt>Situation</dt>
+        <dd>Static portfolios ignore the posting. HR opens a resume PDF and never sees the systems that match agent architectures.</dd>
+        <dt>Task</dt>
+        <dd>Pre-tailor a public layout per job (?j=short_id) using live discovery + LayoutPlan, ranked OpenCat-first for AI agentic roles.</dd>
+        <dt>Action</dt>
+        <dd>Built specialist pipeline (discover → compose → jury → bake), lexical+priority ranking so primary OSS outranks side bots, matrix DAG with charts and interactives.</dd>
+        <dt>Result</dt>
+        <dd>HR link renders neon job-matched matrix in one fetch — no chat at read time. Evidence blocks: MCP sandbox, cost sim, capability matrix, ranked cards.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- L7 -->
+  <section class="level" id="l7" data-band="ask" data-for="recruiter,architect,exec,all">
+    <div class="level-head">
+      <div>
+        <div class="level-id">L7 · Ask</div>
+        <h2 class="level-title">Next conversation, not a form wall</h2>
+        <p class="level-lede">Suggested prompts map to depth bands — mirrors production /ask.</p>
+      </div>
+    </div>
+    <div class="cta-row">
+      <a class="primary" href="#l3">See ranked work</a>
+      <button type="button">How does OpenCat orchestrate tools?</button>
+      <button type="button">Show the AWS −30% path</button>
+      <button type="button">What ships in a job bake?</button>
+    </div>
+  </section>
+
+  <div class="note">
+    <strong>Prototype rationale (from research):</strong> scannable in minutes; metrics before narrative;
+    capability matrix instead of skill clouds; 3–4 curated case cards with job/OSS labels;
+    progressive depth via matrix levels; charts as evidence; single STAR for ownership.
+    Production path: map bands → <code style="font-family:var(--mono)">meta.dag</code> + Chart/KpiGrid/Card blocks in CatPortfolio.
+  </div>
+  <footer>CatPortfolio Agentic Matrix v2 · Open Design · 2026</footer>
+</div>
+<script>
+(function () {
+  const levels = [...document.querySelectorAll('.level')];
+  const links = [...document.querySelectorAll('.minimap a')];
+  const buttons = [...document.querySelectorAll('.filters button')];
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      const id = e.target.id;
+      links.forEach((a) => a.classList.toggle('is-active', a.dataset.level === id));
+    });
+  }, { rootMargin: '-35% 0px -50% 0px', threshold: 0.01 });
+  levels.forEach((l) => io.observe(l));
+
+  function applyPersona(p) {
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.persona === p)));
+    levels.forEach((sec) => {
+      const raw = sec.getAttribute('data-for');
+      if (!raw || p === 'all') {
+        sec.hidden = false;
+        sec.classList.remove('is-dim');
+        return;
+      }
+      const ok = raw.split(',').map((s) => s.trim()).includes(p);
+      // Keep structure; dim off-persona for architects who still scroll
+      sec.hidden = false;
+      sec.classList.toggle('is-dim', !ok);
+    });
+  }
+  buttons.forEach((b) => b.addEventListener('click', () => applyPersona(b.dataset.persona)));
+})();
+</script>
+</body>
+</html>

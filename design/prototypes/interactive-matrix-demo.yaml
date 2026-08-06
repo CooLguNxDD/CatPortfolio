@@ -1,0 +1,84 @@
+# Interactive matrix & skill radar layout prototype.
+# Aligns with CRAP principles: Proximity (inspector grouped next to control buttons),
+# Contrast (bright domain overlays against cozy backgrounds), Alignment (levels 0-3),
+# and explicit separation of WelTel Job tracks vs. Personal OSS projects.
+
+version: 1
+theme: cozy
+meta:
+  audience: peer
+  generatedAt: "2026-08-03T07:00:00Z"
+  dag:
+    levels:
+      - level: 0
+        label: Intro
+        at: 0
+        nodes: [h1]
+      - level: 1
+        label: Heatmap
+        at: 0.3
+        nodes: [heatmap-block]
+      - level: 2
+        label: Skill Radar
+        at: 0.65
+        nodes: [skills-block]
+      - level: 3
+        label: CTA
+        at: 0.9
+        nodes: [cta-block]
+
+blocks:
+  - type: hero
+    id: h1
+    props:
+      name: Andrew Liang (the cat)
+      tagline: Interactive Systems & Metrics Lab
+      pitch: >-
+        Interactive activity sandbox displaying commit logs, skill vectors, 
+        and architectural decision audit records.
+      links:
+        - label: GitHub Profile
+          href: https://github.com/CooLguNxDD
+
+  - type: card
+    id: heatmap-block
+    props:
+      eyebrow: Interactive Grid · Audit Logs
+      title: Contribution Activity Matrix
+      body: >-
+        Interactive heatmap representing commit frequency. Filter logs by WelTel (Job) 
+        and OpenCat (OSS), and inspect individual commit telemetry hashes.
+      domain: devops
+      tech: "React Git WebGL"
+
+  - type: composite
+    id: skills-block
+    props:
+      title: Professional Vector Radar
+      layout:
+        kind: grid
+        cols: 2
+        gap: md
+      children:
+        - kind: card
+          title: Skills Radar Profile
+          eyebrow: Interactive Toggle
+          body: Toggle between AI, DevOps, Mobile, and Platform domains to recalculate skill intensity.
+          domain: platform
+        - kind: card
+          title: Audit Matrix Inspector
+          eyebrow: Active Telemetry
+          body: Click heatmap cells in L1 to populate raw commit messages.
+          domain: ai
+
+  - type: card
+    id: cta-block
+    props:
+      eyebrow: Lab complete
+      title: Ready for integration
+      body: >-
+        Proceed back to the hub layout renderer to load production matrix schemas.
+      domain: platform
+      links:
+        - label: Return to main hub
+          href: ../index.html

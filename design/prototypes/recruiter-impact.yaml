@@ -1,0 +1,169 @@
+# Recruiter-focused layout prototype.
+# Aligns with CRAP design principles: Contrast (large stats vs descriptions),
+# Repetition (consistent badges/metrics/cards), Alignment (DAG story flow),
+# Proximity (grouped tags/metrics), and explicit separation of WelTel Job tracks vs. Personal OSS.
+
+version: 1
+theme: cozy
+meta:
+  audience: recruiter
+  generatedAt: "2026-08-03T07:00:00Z"
+  dag:
+    levels:
+      - level: 0
+        label: Intro
+        at: 0
+        nodes: [h1]
+      - level: 1
+        label: Impact
+        at: 0.15
+        nodes: [kpis]
+      - level: 2
+        label: Cost Chart
+        at: 0.45
+        nodes: [chart-cost]
+      - level: 3
+        label: Domain Tracks
+        at: 0.7
+        nodes: [proj-ai, proj-devops, proj-mobile, proj-platform]
+      - level: 4
+        label: Ask
+        at: 0.9
+        nodes: [ask-cta]
+
+blocks:
+  - type: hero
+    id: h1
+    props:
+      name: Andrew Liang (the cat)
+      tagline: Systems & AI Infrastructure Engineer
+      pitch: >-
+        Operational metrics-first showcase highlighting cloud cost drop, 
+        clinical AI integrations, and mobile development tracks at WelTel Healthcare 
+        alongside personal open-source projects.
+      links:
+        - label: GitHub Profile
+          href: https://github.com/CooLguNxDD
+        - label: OpenCat Tunnel
+          href: https://github.com/CooLguNxDD/OpenCat-Mcp-Full
+
+  - type: kpiGrid
+    id: kpis
+    props:
+      items:
+        - label: WelTel AWS bill
+          value: "$4.1k → $2.8k"
+          delta: "-30% monthly (job DevOps)"
+          spark: [4150, 3700, 3100, 2800]
+        - label: WelTel clinical tools
+          value: "42 live tools"
+          delta: "AWS ECS gateway (job AI)"
+          spark: [5, 18, 32, 42]
+        - label: WelTel Mobile commits
+          value: "531+ commits"
+          delta: "RN Amplify GraphQL (job)"
+          spark: [50, 180, 390, 531]
+        - label: OpenCat Tunnel OSS
+          value: "LangGraph core"
+          delta: "Plugin runtime (personal OSS)"
+          spark: [10, 25, 45, 60]
+
+  - type: chart
+    id: chart-cost
+    props:
+      kind: bar
+      title: AWS Monthly Cost Reduction (WelTel Job Track)
+      caption: EKS self-hosted runner fleets + NAT gateway consolidation
+      unit: USD / month
+      series:
+        - name: Pre-Optimization
+          points: [{ x: "Legacy setup", y: 4150 }]
+        - name: Post-Optimization
+          points: [{ x: "Optimized stack", y: 2800 }]
+
+  - type: card
+    id: proj-ai
+    props:
+      eyebrow: WelTel · AI (job)
+      title: MCP & Clinician AI Center
+      body: >-
+        Greenfield WelTel MCP (~395 commits) · 42 clinical tools · multi-provider
+        Command Center streaming · Pullfrog code-review agent.
+      domain: ai
+      tech: "FastMCP LangGraph pgvector OAuth"
+      tags: [WelTel, MCP, clinician-AI, job]
+      badges:
+        - label: "Job track · AI lead"
+      metrics:
+        - label: MCP commits
+          value: "~395"
+        - label: clinical tools
+          value: "42"
+
+  - type: card
+    id: proj-devops
+    props:
+      eyebrow: WelTel · DevOps (job)
+      title: EKS & Cloud Infrastructure
+      body: >-
+        Self-hosted org runners · multi-AZ VPC · ~570+ infra commits ·
+        AWS monthly bill $4k+ → ~$2.8k (−30%).
+      domain: devops
+      tech: "EKS Terraform AWS Docker"
+      tags: [WelTel, AWS, Terraform, job]
+      badges:
+        - label: "Job track · cost optimization"
+      metrics:
+        - label: infra commits
+          value: "570+"
+        - label: cost change
+          value: "-$1.2k/mo"
+
+  - type: card
+    id: proj-mobile
+    props:
+      eyebrow: WelTel · Mobile (job)
+      title: React Native & Amplify
+      body: >-
+        Mobile chat foundation · Amplify GraphQL real-time chat · media & push deep-links ·
+        531+ commits · 39+ tickets.
+      domain: mobile
+      tech: "React-Native GraphQL Amplify"
+      tags: [WelTel, React-Native, Amplify, job]
+      badges:
+        - label: "Job track · mobile lead"
+      metrics:
+        - label: mobile commits
+          value: "531+"
+        - label: tickets
+          value: "39+"
+
+  - type: card
+    id: proj-platform
+    props:
+      eyebrow: Personal OSS
+      title: OpenCat Tunnel
+      body: >-
+        Pluggable LangGraph host platform. Supports OAuth 2.0 relays, terminal tunneling,
+        and baked dynamic layouts.
+      domain: platform
+      tech: "Python React FastMCP LangGraph"
+      tags: [OSS, LangGraph, agent-gateway]
+      badges:
+        - label: "Creator · Personal OSS"
+          tone: neon
+      metrics:
+        - label: role
+          value: "Architect"
+        - label: status
+          value: "Open-source"
+
+  - type: quickActions
+    id: ask-cta
+    props:
+      prompt: "Quick actions for recruiters:"
+      actions:
+        - label: "Email Andrew"
+          prompt: "How can I contact Andrew Liang for recruitment?"
+        - label: "Run Ask AI Chat"
+          prompt: "Tell me more about Andrew's clinical AI work."

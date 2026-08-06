@@ -12,7 +12,7 @@ export function Hero({ name, tagline, pitch, links }: HeroProps) {
     >
       <div className="flex-1 space-y-4 min-w-0">
         <div className="text-[0.72rem] font-mono uppercase tracking-[0.16em] text-(--fg-subtle)">
-          WelTel · Systems &amp; AI
+          OpenCat · Systems &amp; AI
         </div>
         <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-(--fg) leading-[1.1]">
           {name}
