@@ -1,6 +1,7 @@
 /**
- * Procedural low-poly fish meshes — ported from Open Design tank3d.html `buildFish`.
- * Geometry is cached per form; materials are per-specimen so filter tint stays independent.
+ * Procedural low-poly cyber-aquatic meshes with modular component design.
+ * Spec-driven from GenUI domain mappings (ai, devops, mobile, platform).
+ * Supports organic S-curve spine undulation, ribbon fins, cyber-flora, and interactive mascot.
  */
 
 import * as THREE from "three"
@@ -24,44 +25,43 @@ export interface BuiltFish {
   fin: THREE.MeshStandardMaterial
   glow: THREE.PointLight
   form: FishForm
+  spineSegments: THREE.Object3D[]
+  pecL?: THREE.Object3D
+  pecR?: THREE.Object3D
+  tentacles?: THREE.Object3D[]
 }
 
 function makeMaterials(color: THREE.Color, glow: number) {
-  // Low metalness so ambient/hemi lights actually lift the mesh (PBR metals stay black).
   const body = new THREE.MeshStandardMaterial({
     color,
     emissive: color,
-    emissiveIntensity: glow * 0.65,
-    roughness: 0.55,
-    metalness: 0.05,
+    emissiveIntensity: Math.max(0.2, glow * 0.75),
+    roughness: 0.45,
+    metalness: 0.08,
     transparent: true,
-    opacity: 1,
+    opacity: 0.98,
     flatShading: true,
   })
   const fin = new THREE.MeshStandardMaterial({
     color,
     emissive: color,
-    emissiveIntensity: glow * 0.9,
+    emissiveIntensity: Math.max(0.35, glow * 1.1),
     transparent: true,
-    opacity: 0.9,
-    roughness: 0.4,
-    metalness: 0.02,
+    opacity: 0.85,
+    roughness: 0.3,
+    metalness: 0.05,
     side: THREE.DoubleSide,
     flatShading: true,
   })
   return { body, fin }
 }
 
-/**
- * Eyes read as "creature" more than any amount of body detail — a fish without
- * them looks like a floating cone. Cheap: two spheres, no per-specimen material.
- */
 const EYE_WHITE = new THREE.MeshStandardMaterial({
   color: 0xf2f7fa,
-  roughness: 0.35,
+  roughness: 0.25,
   metalness: 0,
 })
-const EYE_PUPIL = new THREE.MeshBasicMaterial({ color: 0x0a0f14 })
+const EYE_PUPIL = new THREE.MeshBasicMaterial({ color: 0x050810 })
 
 function addEyes(g: THREE.Group, forward: number, spread: number, up = 0.18, r = 0.16) {
   for (const side of [-1, 1] as const) {
@@ -72,6 +72,7 @@ function addEyes(g: THREE.Group, forward: number, spread: number, up = 0.18, r =
     eye.scale.setScalar(r)
     eye.position.set(side * spread, up, forward)
     g.add(eye)
+
     const pupil = new THREE.Mesh(
       cached("pupil", () => new THREE.SphereGeometry(1, 6, 5)),
       EYE_PUPIL,
@@ -82,34 +83,9 @@ function addEyes(g: THREE.Group, forward: number, spread: number, up = 0.18, r =
   }
 }
 
-/** Paired pectoral fins — the caller flaps them via `name`. */
-function addPectorals(
-  g: THREE.Group,
-  fin: THREE.MeshStandardMaterial,
-  x: number,
-  z: number,
-  scale = 1,
-) {
-  for (const side of [-1, 1] as const) {
-    const pec = new THREE.Mesh(
-      cached("pectoral", () => {
-        const c = new THREE.ConeGeometry(0.3, 0.9, 3)
-        c.rotateZ(Math.PI / 2)
-        return c
-      }),
-      fin,
-    )
-    pec.position.set(side * x, -0.05, z)
-    pec.rotation.y = side * 0.4
-    pec.scale.setScalar(scale)
-    pec.name = side < 0 ? "pecL" : "pecR"
-    g.add(pec)
-  }
-}
-
 function addHitSphere(g: THREE.Group) {
   const hit = new THREE.Mesh(
-    cached("hit", () => new THREE.SphereGeometry(2.2, 8, 6)),
+    cached("hit", () => new THREE.SphereGeometry(2.4, 8, 6)),
     new THREE.MeshBasicMaterial({
       transparent: true,
       opacity: 0,
@@ -120,218 +96,239 @@ function addHitSphere(g: THREE.Group) {
   g.add(hit)
 }
 
-function buildForm(form: FishForm, body: THREE.MeshStandardMaterial, fin: THREE.MeshStandardMaterial) {
-  const g = new THREE.Group()
+function buildForm(
+  form: FishForm,
+  body: THREE.MeshStandardMaterial,
+  fin: THREE.MeshStandardMaterial,
+): {
+  group: THREE.Group
+  spineSegments: THREE.Object3D[]
+  pecL?: THREE.Object3D
+  pecR?: THREE.Object3D
+  tentacles?: THREE.Object3D[]
+} {
+  const group = new THREE.Group()
+  const spineSegments: THREE.Object3D[] = []
+  let pecL: THREE.Object3D | undefined
+  let pecR: THREE.Object3D | undefined
+  const tentacles: THREE.Object3D[] = []
+
   switch (form) {
-    case "grouper":
-    case "tuna":
-    case "shark": {
-      const b = new THREE.Mesh(
-        cached("cone", () => {
-          const c = new THREE.ConeGeometry(0.8, 2.6, 8)
-          c.rotateX(Math.PI / 2)
-          return c
-        }),
-        body,
-      )
-      g.add(b)
-      const tail = new THREE.Mesh(
-        cached("tailfin", () => new THREE.ConeGeometry(0.85, 1.3, 3)),
-        fin,
-      )
-      tail.rotation.x = -Math.PI / 2
-      tail.position.z = -1.9
-      tail.name = "tail"
-      g.add(tail)
-      const dors = new THREE.Mesh(
-        cached("dorsal", () => new THREE.ConeGeometry(0.45, 1.2, 3)),
-        fin,
-      )
-      dors.position.set(0, 0.7, -0.2)
-      g.add(dors)
-      addPectorals(g, fin, 0.62, 0.35, 1.1)
-      addEyes(g, 1.02, 0.4, 0.24, 0.18)
-      break
-    }
-    case "manta": {
+    // 1. AI & AGENTS: Cyber-Manta Ray with glowing circuit dorsal ridges and antennae
+    case "manta":
+    case "grouper": {
       const s = new THREE.Shape()
-      s.moveTo(0, 1.3)
-      s.lineTo(2.4, -0.4)
-      s.lineTo(0, -1.4)
-      s.lineTo(-2.4, -0.4)
+      s.moveTo(0, 1.4)
+      s.lineTo(2.5, -0.3)
+      s.lineTo(0, -1.6)
+      s.lineTo(-2.5, -0.3)
       s.closePath()
-      const wing = cached("manta", () => {
+
+      const wingGeo = cached("manta_wing", () => {
         const e = new THREE.ExtrudeGeometry(s, {
-          depth: 0.22,
+          depth: 0.28,
           bevelEnabled: true,
-          bevelSize: 0.1,
-          bevelThickness: 0.1,
+          bevelSize: 0.12,
+          bevelThickness: 0.12,
           bevelSegments: 1,
           steps: 1,
         })
         e.rotateX(Math.PI / 2)
         return e
       })
-      const m = new THREE.Mesh(wing, body)
-      m.name = "wing"
-      g.add(m)
-      break
-    }
-    case "eel": {
-      for (let i = 0; i < 6; i++) {
-        const seg = new THREE.Mesh(
-          cached("eelseg", () => new THREE.SphereGeometry(0.42, 8, 6)),
-          body,
-        )
-        seg.position.z = -i * 0.62
-        seg.scale.set(1, 1 - i * 0.07, 1)
-        seg.name = `seg${i}`
-        g.add(seg)
-      }
-      break
-    }
-    case "pufferfish": {
-      const b = new THREE.Mesh(
-        cached("puff", () => new THREE.IcosahedronGeometry(1.05, 1)),
+
+      const head = new THREE.Mesh(
+        cached("manta_head", () => {
+          const c = new THREE.ConeGeometry(0.7, 1.8, 6)
+          c.rotateX(Math.PI / 2)
+          return c
+        }),
         body,
       )
-      b.name = "puff"
-      g.add(b)
-      for (let i = 0; i < 12; i++) {
-        const spike = new THREE.Mesh(
-          cached("spike", () => new THREE.ConeGeometry(0.13, 0.6, 4)),
-          fin,
-        )
-        const a = (i / 12) * Math.PI * 2
-        const ty = i % 2 ? 0.5 : -0.4
-        spike.position.set(Math.cos(a) * 1.0, ty, Math.sin(a) * 1.0)
-        spike.lookAt(spike.position.clone().multiplyScalar(2))
-        g.add(spike)
-      }
+      head.position.z = 0.6
+      head.name = "spine_head"
+      group.add(head)
+      spineSegments.push(head)
+
+      const wing = new THREE.Mesh(wingGeo, body)
+      wing.name = "spine_mid"
+      group.add(wing)
+      spineSegments.push(wing)
+
+      // Tail spine
+      const tail = new THREE.Mesh(
+        cached("manta_tail", () => new THREE.CylinderGeometry(0.06, 0.02, 2.4, 5)),
+        fin,
+      )
+      tail.position.set(0, 0, -2.4)
+      tail.rotation.x = Math.PI / 2
+      tail.name = "spine_tail"
+      group.add(tail)
+      spineSegments.push(tail)
+
+      // Cyber Lure Antenna
+      const rod = new THREE.Mesh(
+        cached("manta_rod", () => new THREE.CylinderGeometry(0.03, 0.03, 1.2, 4)),
+        fin,
+      )
+      rod.position.set(0, 0.6, 1.2)
+      rod.rotation.x = 0.5
+      group.add(rod)
+
+      const lure = new THREE.Mesh(
+        cached("manta_lure", () => new THREE.SphereGeometry(0.2, 8, 6)),
+        new THREE.MeshBasicMaterial({ color: 0xfffbeb }),
+      )
+      lure.position.set(0, 1.1, 1.7)
+      group.add(lure)
+
+      addEyes(group, 1.1, 0.55, 0.22, 0.18)
       break
     }
-    case "crab": {
-      const b = new THREE.Mesh(
-        cached("crabbody", () => {
-          const s = new THREE.SphereGeometry(1, 10, 8)
-          s.scale(1.2, 0.55, 1)
+
+    // 2. DEVOPS & INFRA: Armored Cyber-Eel / Nautilus with segmented kinetic shell plates
+    case "eel": {
+      for (let i = 0; i < 7; i++) {
+        const segMat = i % 2 === 0 ? body : fin
+        const seg = new THREE.Mesh(
+          cached(`eel_seg_${i}`, () => new THREE.SphereGeometry(0.48 * (1 - i * 0.08), 8, 6)),
+          segMat,
+        )
+        seg.position.z = -i * 0.58
+        seg.name = `spine_seg_${i}`
+        group.add(seg)
+        spineSegments.push(seg)
+      }
+      addEyes(group, 0.25, 0.32, 0.18, 0.14)
+      break
+    }
+
+    // 3. MOBILE: Agile Streamlined Neon Dartfish with glowing ribbon fins
+    case "angelfish":
+    case "tetra":
+    case "tuna":
+    case "shark": {
+      const head = new THREE.Mesh(
+        cached("dart_head", () => {
+          const s = new THREE.SphereGeometry(0.85, 10, 8)
+          s.scale(0.35, 0.9, 1.2)
           return s
         }),
         body,
       )
-      g.add(b)
-      for (let i = 0; i < 6; i++) {
-        const leg = new THREE.Mesh(
-          cached("leg", () => new THREE.CylinderGeometry(0.08, 0.05, 1.4, 5)),
+      head.position.z = 0.4
+      head.name = "spine_head"
+      group.add(head)
+      spineSegments.push(head)
+
+      const mid = new THREE.Mesh(
+        cached("dart_mid", () => {
+          const s = new THREE.SphereGeometry(0.7, 8, 6)
+          s.scale(0.28, 0.75, 1.0)
+          return s
+        }),
+        body,
+      )
+      mid.position.z = -0.5
+      mid.name = "spine_mid"
+      group.add(mid)
+      spineSegments.push(mid)
+
+      // Dorsal ribbon fin
+      const topFin = new THREE.Mesh(
+        cached("dart_topfin", () => new THREE.ConeGeometry(0.45, 1.6, 3)),
+        fin,
+      )
+      topFin.position.set(0, 0.95, -0.2)
+      topFin.rotation.x = -0.65
+      group.add(topFin)
+
+      // Dual tail flukes
+      const tail = new THREE.Mesh(
+        cached("dart_tail", () => new THREE.ConeGeometry(0.7, 1.4, 3)),
+        fin,
+      )
+      tail.position.set(0, 0, -1.4)
+      tail.rotation.x = Math.PI / 2
+      tail.name = "spine_tail"
+      group.add(tail)
+      spineSegments.push(tail)
+
+      // Pectoral fins
+      for (const side of [-1, 1] as const) {
+        const pec = new THREE.Mesh(
+          cached("dart_pec", () => {
+            const c = new THREE.ConeGeometry(0.35, 1.1, 3)
+            c.rotateZ(Math.PI / 2)
+            return c
+          }),
           fin,
         )
-        const side = i < 3 ? -1 : 1
-        leg.position.set(side * 1.1, -0.25, -0.7 + (i % 3) * 0.7)
-        leg.rotation.z = side * 0.9
-        g.add(leg)
+        pec.position.set(side * 0.42, -0.05, 0.35)
+        pec.rotation.y = side * 0.45
+        group.add(pec)
+        if (side < 0) pecL = pec
+        else pecR = pec
       }
+
+      addEyes(group, 0.85, 0.24, 0.22, 0.16)
       break
     }
-    case "jellyfish": {
+
+    // 4. PLATFORM: Translucent Bioluminescent Jellyfish / Octo with glowing tentacles
+    case "jellyfish":
+    default: {
       const dome = new THREE.Mesh(
-        cached("dome", () =>
-          new THREE.SphereGeometry(1.0, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.58),
+        cached("jelly_dome", () =>
+          new THREE.SphereGeometry(1.1, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.58),
         ),
         fin,
       )
-      dome.name = "dome"
-      g.add(dome)
-      for (let i = 0; i < 7; i++) {
+      dome.name = "jelly_dome"
+      group.add(dome)
+      spineSegments.push(dome)
+
+      const core = new THREE.Mesh(
+        cached("jelly_core", () => new THREE.SphereGeometry(0.45, 8, 6)),
+        body,
+      )
+      core.position.y = -0.2
+      group.add(core)
+
+      for (let i = 0; i < 8; i++) {
         const ten = new THREE.Mesh(
-          cached("tentacle", () => new THREE.CylinderGeometry(0.05, 0.012, 2.2, 5)),
+          cached("jelly_ten", () => new THREE.CylinderGeometry(0.045, 0.015, 2.6, 5)),
           fin,
         )
-        const a = (i / 7) * Math.PI * 2
-        ten.position.set(Math.cos(a) * 0.55, -1.1, Math.sin(a) * 0.55)
-        ten.name = `ten${i}`
-        g.add(ten)
+        const a = (i / 8) * Math.PI * 2
+        ten.position.set(Math.cos(a) * 0.6, -1.3, Math.sin(a) * 0.6)
+        ten.name = `tentacle_${i}`
+        group.add(ten)
+        tentacles.push(ten)
       }
       break
     }
-    case "anglerfish": {
-      const b = new THREE.Mesh(
-        cached("anglerbody", () => {
-          const s = new THREE.SphereGeometry(1.1, 10, 8)
-          s.scale(1, 0.85, 1.35)
-          return s
-        }),
-        body,
-      )
-      g.add(b)
-      const rod = new THREE.Mesh(
-        cached("rod", () => new THREE.CylinderGeometry(0.05, 0.05, 2.2, 4)),
-        fin,
-      )
-      rod.position.set(0, 1.3, 0.6)
-      rod.rotation.x = 0.7
-      g.add(rod)
-      const lure = new THREE.Mesh(
-        cached("lure", () => new THREE.SphereGeometry(0.26, 8, 6)),
-        new THREE.MeshBasicMaterial({ color: 0xfff3b0 }),
-      )
-      lure.position.set(0, 2.2, 1.5)
-      lure.name = "lure"
-      g.add(lure)
-      break
-    }
-    default: {
-      // angelfish / clownfish / tetra / sardine
-      const b = new THREE.Mesh(
-        cached("disc", () => {
-          const s = new THREE.SphereGeometry(0.9, 12, 10)
-          s.scale(0.32, 1, 1.15)
-          return s
-        }),
-        body,
-      )
-      g.add(b)
-      const top = new THREE.Mesh(
-        cached("topfin", () => new THREE.ConeGeometry(0.5, 1.4, 3)),
-        fin,
-      )
-      top.position.set(0, 0.95, -0.15)
-      top.rotation.x = -0.7
-      g.add(top)
-      const tail = new THREE.Mesh(
-        cached("tailfin2", () => new THREE.ConeGeometry(0.55, 1.0, 3)),
-        fin,
-      )
-      tail.rotation.x = Math.PI / 2
-      tail.position.z = -1.2
-      tail.name = "tail"
-      g.add(tail)
-      addPectorals(g, fin, 0.34, 0.3, 0.85)
-      addEyes(g, 0.72, 0.22, 0.3, 0.15)
-      break
-    }
   }
-  addHitSphere(g)
-  return g
+
+  addHitSphere(group)
+  return { group, spineSegments, pecL, pecR, tentacles }
 }
 
-/** Build one lead fish mesh (school siblings handled by caller if needed). */
 export function buildFishMesh(
   data: FishSpecimenInput,
   color: THREE.Color,
 ): BuiltFish {
   const form = resolveFishForm(data.species)
   const { body, fin } = makeMaterials(color, data.glow)
-  const group = buildForm(form, body, fin)
-  const glow = new THREE.PointLight(color, data.glow * 1.4, 7)
+  const { group, spineSegments, pecL, pecR, tentacles } = buildForm(form, body, fin)
+  const glow = new THREE.PointLight(color, Math.max(0.6, data.glow * 1.6), 8)
   group.add(glow)
   group.userData = { slug: data.slug, data, form }
-  return { group, body, fin, glow, form }
+  return { group, body, fin, glow, form, spineSegments, pecL, pecR, tentacles }
 }
 
 /**
- * Procedural caustic texture — the dappled light pattern the surface casts on
- * the seabed. Generated once on a canvas (no external asset, no shader), then
- * scrolled/rotated per frame by the renderer.
+ * Procedural caustic texture fallback.
  */
 export function buildCausticTexture(size = 256): THREE.Texture | null {
   if (typeof document === "undefined") return null
@@ -341,8 +338,6 @@ export function buildCausticTexture(size = 256): THREE.Texture | null {
   if (!ctx) return null
   ctx.fillStyle = "#000000"
   ctx.fillRect(0, 0, size, size)
-  // Sum a few sine bands at different angles → interference cells that read as
-  // water caustics once tiled and drifted.
   const img = ctx.getImageData(0, 0, size, size)
   const d = img.data
   for (let y = 0; y < size; y++) {
@@ -367,8 +362,7 @@ export function buildCausticTexture(size = 256): THREE.Texture | null {
 }
 
 /**
- * Soft round sprite for Points clouds. Without a map, `PointsMaterial` draws
- * hard squares — bubbles and marine snow read as floating pixels.
+ * Soft round sprite for Points clouds (bubbles & bio-particles).
  */
 export function buildPointSprite(size = 64): THREE.Texture | null {
   if (typeof document === "undefined") return null
@@ -376,42 +370,43 @@ export function buildPointSprite(size = 64): THREE.Texture | null {
   canvas.width = canvas.height = size
   const ctx = canvas.getContext("2d")
   if (!ctx) return null
+  ctx.clearRect(0, 0, size, size)
   const r = size / 2
   const grad = ctx.createRadialGradient(r, r, 0, r, r, r)
-  grad.addColorStop(0, "rgba(255,255,255,1)")
-  grad.addColorStop(0.45, "rgba(255,255,255,0.55)")
-  grad.addColorStop(1, "rgba(255,255,255,0)")
+  grad.addColorStop(0, "rgba(255, 255, 255, 1)")
+  grad.addColorStop(0.35, "rgba(255, 255, 255, 0.75)")
+  grad.addColorStop(0.7, "rgba(255, 255, 255, 0.2)")
+  grad.addColorStop(1, "rgba(255, 255, 255, 0)")
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, size, size)
-  return new THREE.CanvasTexture(canvas)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.needsUpdate = true
+  return tex
 }
 
-/** A swaying seaweed stalk; caller animates via `userData.segments`. */
+/** Swaying multi-stem kelp forest with organic wave sway. */
 export function buildSeaweed(
   height: number,
   color: THREE.Color,
   seed: number,
 ): THREE.Group {
   const stalk = new THREE.Group()
-  const segs = 6
+  const segs = 7
   const mat = new THREE.MeshStandardMaterial({
     color,
     emissive: color,
-    emissiveIntensity: 0.12,
-    roughness: 0.85,
-    metalness: 0,
+    emissiveIntensity: 0.18,
+    roughness: 0.75,
+    metalness: 0.05,
     side: THREE.DoubleSide,
     flatShading: true,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.94,
   })
   const segH = height / segs
   for (let i = 0; i < segs; i++) {
-    const w = 0.42 * (1 - i / (segs + 2))
-    const blade = new THREE.Mesh(
-      new THREE.BoxGeometry(w, segH, 0.08),
-      mat,
-    )
+    const w = 0.5 * (1 - i / (segs + 3))
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(w, segH, 0.08), mat)
     blade.position.y = segH * (i + 0.5)
     blade.name = `seg${i}`
     stalk.add(blade)
@@ -420,38 +415,74 @@ export function buildSeaweed(
   return stalk
 }
 
-/** Soft coral fan — static seabed prop in an accent tint. */
+/** Glowing fiber-optic branching corals with neon tips. */
 export function buildCoral(color: THREE.Color, scale = 1): THREE.Group {
   const coral = new THREE.Group()
   const mat = new THREE.MeshStandardMaterial({
     color,
     emissive: color,
-    emissiveIntensity: 0.22,
-    roughness: 0.7,
-    metalness: 0.02,
+    emissiveIntensity: 0.45,
+    roughness: 0.5,
+    metalness: 0.1,
     flatShading: true,
   })
-  const arms = 5
+  const tipMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.9,
+  })
+
+  const arms = 6
   for (let i = 0; i < arms; i++) {
     const a = (i / arms) * Math.PI * 2
-    const arm = new THREE.Mesh(new THREE.ConeGeometry(0.26, 2.2, 5), mat)
-    arm.position.set(Math.cos(a) * 0.5, 1.0, Math.sin(a) * 0.5)
-    arm.rotation.z = Math.cos(a) * 0.35
-    arm.rotation.x = -Math.sin(a) * 0.35
+    const arm = new THREE.Mesh(new THREE.ConeGeometry(0.28, 2.4, 5), mat)
+    arm.position.set(Math.cos(a) * 0.55, 1.1, Math.sin(a) * 0.55)
+    arm.rotation.z = Math.cos(a) * 0.4
+    arm.rotation.x = -Math.sin(a) * 0.4
     coral.add(arm)
+
+    // Glowing fiber-optic tip bulb
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), tipMat)
+    tip.position.set(Math.cos(a) * 1.1, 2.2, Math.sin(a) * 1.1)
+    coral.add(tip)
   }
-  const base = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), mat)
+  const base = new THREE.Mesh(new THREE.SphereGeometry(0.65, 8, 6), mat)
   base.scale.y = 0.5
   coral.add(base)
   coral.scale.setScalar(scale)
   return coral
 }
 
-/** Low-poly cat on the rim — ported from tank3d `buildCat`. */
+/** Glowing cyber-crystal / relic shard on seabed. */
+export function buildCyberCrystal(color: THREE.Color, scale = 1): THREE.Group {
+  const crystal = new THREE.Group()
+  const mat = new THREE.MeshStandardMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: 0.65,
+    roughness: 0.2,
+    metalness: 0.3,
+    transparent: true,
+    opacity: 0.92,
+    flatShading: true,
+  })
+  const mesh = new THREE.Mesh(
+    cached("crystal_geo", () => {
+      const geo = new THREE.OctahedronGeometry(1.2, 0)
+      geo.scale(0.6, 2.2, 0.6)
+      return geo
+    }),
+    mat,
+  )
+  mesh.position.y = 1.0
+  crystal.add(mesh)
+  crystal.scale.setScalar(scale)
+  return crystal
+}
+
+/** Low-poly cat on the rim with animatable tail, ears, and paw. */
 export function buildCatMesh(waterY: number): THREE.Group {
   const cat = new THREE.Group()
-  // Mid-tone fur with a lift: at 0x1b2a44 the cat was indistinguishable from
-  // the night-dive background it sits against.
   const fur = new THREE.MeshStandardMaterial({
     color: 0x4a5f80,
     emissive: 0x1d2a44,
@@ -465,40 +496,57 @@ export function buildCatMesh(waterY: number): THREE.Group {
     emissiveIntensity: 0.5,
     roughness: 0.6,
   })
-  // Built centred on the group origin. The caller owns where the cat sits —
-  // baking an x offset in here as well put it a full head-width off frame.
+
   const head = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 12), fur)
   cat.add(head)
+
   for (const side of [-1, 1] as const) {
     const ear = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.2, 4), fur)
     ear.position.set(side * 1.6, 2.8, 0)
     ear.rotation.z = side * 0.25
+    ear.name = side < 0 ? "earL" : "earR"
     cat.add(ear)
+
     const eye = new THREE.Mesh(
       new THREE.SphereGeometry(0.62, 10, 8),
       new THREE.MeshStandardMaterial({
         color: 0xfbbf24,
         emissive: 0xf59e0b,
-        emissiveIntensity: 0.8,
+        emissiveIntensity: 0.85,
       }),
     )
     eye.position.set(side * 1.1, 0.4, 2.6)
+    eye.name = side < 0 ? "eyeL" : "eyeR"
     cat.add(eye)
   }
+
   const nose = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.5, 4), pink)
   nose.position.set(0, -0.4, 3.1)
   nose.rotation.x = Math.PI / 2
   cat.add(nose)
-  // Foreleg hangs down past the chin toward the water rather than across the
-  // face — at 0.6rad it read as a stick laid over the head.
+
+  // Paw
   const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.68, 5.2, 8), fur)
   arm.position.set(-2.6, -3.6, 1.8)
   arm.rotation.z = 0.22
   arm.name = "paw"
   cat.add(arm)
+
   const pad = new THREE.Mesh(new THREE.SphereGeometry(1.05, 12, 10), fur)
   pad.position.set(-3.3, -6.0, 1.9)
-  cat.add(pad)
+  arm.add(pad)
+
+  // Animated tail
+  const tailGroup = new THREE.Group()
+  tailGroup.position.set(2.4, -1.0, -1.8)
+  tailGroup.name = "cat_tail"
+  for (let i = 0; i < 4; i++) {
+    const tSeg = new THREE.Mesh(new THREE.SphereGeometry(0.5 - i * 0.08, 8, 6), fur)
+    tSeg.position.set(i * 0.6, Math.sin(i * 0.8) * 0.4, -i * 0.5)
+    tailGroup.add(tSeg)
+  }
+  cat.add(tailGroup)
+
   cat.position.set(0, waterY + 3.6, 0)
   return cat
 }

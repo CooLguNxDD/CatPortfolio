@@ -1,144 +1,106 @@
 /**
- * Fish tank controller hook — composes layout model + transient store.
- * Views stay presentational; all filter/scene math lives here or in pure helpers.
+ * Fish tank controller — wires the interaction bus to the zustand store once,
+ * and exposes read-only derived view data. Components no longer call setters
+ * on this controller; they `fishBus.emit(...)` directly (see fish/fishBus.ts)
+ * — this hook is the single reducer translating those commands into store
+ * writes, plus the `scene`/`domains`/`curationLabel` math that isn't part of
+ * the store (it's derived from the layout, not interaction state).
+ *
+ * Focus (`?f=`) is NOT handled here — HomePage owns the router round trip
+ * and syncs `store.focus` directly (see routes/HomePage.tsx), since this
+ * hook has no router access and only ever has one caller (FishTankStage).
  */
 
-import { useCallback, useEffect, useMemo } from "react"
-import { useShallow } from "zustand/react/shallow"
+import { useEffect, useMemo } from "react"
 import type { Layout } from "@/content/schema"
-import {
-  domainsInSchool,
-  filterFish,
-  fishLitFactor,
-  matchesFish,
-  normalizeQuery,
-  type FishFilter,
-} from "@/fish/matchFish"
-import {
-  findFishBySlug,
-  fishIndexOf,
-  sceneFromLayout,
-  type FishSceneConfig,
-} from "@/fish/sceneFromLayout"
+import { domainsInSchool, matchesFish } from "@/fish/matchFish"
+import { findFishBySlug, fishIndexOf, sceneFromLayout, type FishSceneConfig } from "@/fish/sceneFromLayout"
+import { fishBus } from "@/fish/fishBus"
+import { deriveScene, type TankState } from "@/fish/tankMachine"
 import { useFishTankStore } from "@/store"
+import type { FishTankChrome as ChromeMode } from "@/store/fishTankSlice"
 import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
-
-export interface UseFishTankOptions {
-  layout: Layout | null | undefined
-  /** Shareable route focus (`?f=`) — wins over local store focus. */
-  routeFocus?: string | null
-  /** When route focus changes externally, keep store localFocus in sync for release. */
-  onRouteFocusChange?: (slug: string | null) => void
-}
 
 export interface FishTankController {
   scene: FishSceneConfig
   fish: FishSpecimenInput[]
-  filtered: FishSpecimenInput[]
   litCount: number
   domains: string[]
-  filter: FishFilter
-  query: string
-  domain: string | null
-  chrome: "3d" | "flat"
+  chrome: ChromeMode
+  tankState: TankState
   tankScene: "surface" | "tank"
-  stageProgress: number
   bakeActive: boolean
   curationLabel: string | null
   focusedSlug: string | null
   focusedFish: FishSpecimenInput | null
   focusedIndex: number
-  setQuery: (q: string) => void
-  setDomain: (d: string | null) => void
-  toggleDomain: (d: string) => void
-  setChrome: (c: "3d" | "flat") => void
-  dive: () => void
-  surface: () => void
-  setScene: (s: "surface" | "tank") => void
-  focusFish: (slug: string | null) => void
-  applyBake: () => void
-  clearBake: () => void
-  dismissCuration: () => void
-  isLit: (f: FishSpecimenInput) => boolean
-  litFactor: (f: FishSpecimenInput) => number
 }
 
-/** Controller for stage + block chrome. */
-export function useFishTank({
-  layout,
-  routeFocus = null,
-  onRouteFocusChange,
-}: UseFishTankOptions): FishTankController {
+/** Wires bus commands → store once, then exposes derived read-only view data. */
+export function useFishTank(layout: Layout | null | undefined): FishTankController {
   const scene = useMemo(() => sceneFromLayout(layout), [layout])
 
-  const ui = useFishTankStore(
-    useShallow((s) => ({
-      tankScene: s.scene,
-      stageProgress: s.stageProgress,
-      chrome: s.chrome,
-      query: s.query,
-      domain: s.domain,
-      localFocus: s.localFocus,
-      bakeActive: s.bakeActive,
-      curationDismissed: s.curationDismissed,
-      setScene: s.setScene,
-      dive: s.dive,
-      surface: s.surface,
-      setChrome: s.setChrome,
-      setQuery: s.setQuery,
-      setDomain: s.setDomain,
-      toggleDomain: s.toggleDomain,
-      setLocalFocus: s.setLocalFocus,
-      applyBake: s.applyBake,
-      clearBake: s.clearBake,
-      dismissCuration: s.dismissCuration,
-      resetFishTankUi: s.resetFishTankUi,
-    })),
-  )
+  const tankState = useFishTankStore((s) => s.state)
+  const chrome = useFishTankStore((s) => s.chrome)
+  const query = useFishTankStore((s) => s.query)
+  const domain = useFishTankStore((s) => s.domain)
+  const focusedSlug = useFishTankStore((s) => s.focus)
+  const bakeActive = useFishTankStore((s) => s.bakeActive)
+  const curationDismissed = useFishTankStore((s) => s.curationDismissed)
 
-  // Reset transient UI when layout identity changes (new bake / home).
+  // Command handler: every chrome/canvas control emits intent onto the bus
+  // (never calls a setter directly) — this is the one place that applies it.
   useEffect(() => {
-    return () => {
-      ui.resetFishTankUi()
+    const store = useFishTankStore.getState
+    function onDive() {
+      store().dive()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount cleanup only
+    function onSurface() {
+      store().surface()
+    }
+    function onChrome(mode: ChromeMode) {
+      store().setChrome(mode)
+    }
+    function onQuery(q: string) {
+      store().setQuery(q)
+    }
+    function onDomain(d: string) {
+      store().toggleDomain(d)
+    }
+    function onBakeApply() {
+      store().applyBake()
+    }
+    function onBakeDismiss() {
+      store().dismissCuration()
+    }
+    fishBus.on("tank:dive", onDive)
+    fishBus.on("tank:surface", onSurface)
+    fishBus.on("view:chrome", onChrome)
+    fishBus.on("filter:query", onQuery)
+    fishBus.on("filter:domain", onDomain)
+    fishBus.on("bake:apply", onBakeApply)
+    fishBus.on("bake:dismiss", onBakeDismiss)
+    return () => {
+      fishBus.off("tank:dive", onDive)
+      fishBus.off("tank:surface", onSurface)
+      fishBus.off("view:chrome", onChrome)
+      fishBus.off("filter:query", onQuery)
+      fishBus.off("filter:domain", onDomain)
+      fishBus.off("bake:apply", onBakeApply)
+      fishBus.off("bake:dismiss", onBakeDismiss)
+    }
   }, [])
 
-  const focusedSlug = routeFocus ?? ui.localFocus
-
-  const filter: FishFilter = useMemo(
-    () => ({
-      query: ui.query,
-      domain: ui.domain,
-      highlightSlugs: scene.highlightSlugs,
-      bakeActive: ui.bakeActive || scene.highlightSlugs.length > 0,
-    }),
-    [ui.query, ui.domain, scene.highlightSlugs, ui.bakeActive],
-  )
-
-  // When layout already has highlights (WelTel default), treat as soft bake for dimming.
-  const effectiveBake =
-    ui.bakeActive ||
-    (scene.highlightSlugs.length > 0 && !ui.curationDismissed)
-
-  const filterWithBake: FishFilter = useMemo(
-    () => ({
-      ...filter,
-      bakeActive: effectiveBake && scene.highlightSlugs.length > 0,
-    }),
-    [filter, effectiveBake, scene.highlightSlugs.length],
-  )
-
-  const filtered = useMemo(
-    () => filterFish(scene.fish, filterWithBake),
-    [scene.fish, filterWithBake],
-  )
+  // Reset transient UI when the stage unmounts (new bake / leaving tank mode).
+  useEffect(() => {
+    return () => {
+      useFishTankStore.getState().resetFishTankUi()
+    }
+  }, [])
 
   const litCount = useMemo(
-    () =>
-      scene.fish.filter((f) => matchesFish(f, { query: ui.query, domain: ui.domain }))
-        .length,
-    [scene.fish, ui.query, ui.domain],
+    () => scene.fish.filter((f) => matchesFish(f, { query, domain })).length,
+    [scene.fish, query, domain],
   )
 
   const domains = useMemo(() => domainsInSchool(scene.fish), [scene.fish])
@@ -153,72 +115,22 @@ export function useFishTank({
     [scene.fish, focusedSlug],
   )
 
-  const curationLabel =
-    ui.curationDismissed
-      ? null
-      : scene.curationLabel ||
-        (ui.bakeActive ? "Bake highlight active" : null)
-
-  const focusFish = useCallback(
-    (slug: string | null) => {
-      if (onRouteFocusChange) {
-        onRouteFocusChange(slug)
-        return
-      }
-      ui.setLocalFocus(slug)
-    },
-    [onRouteFocusChange, ui.setLocalFocus],
-  )
-
-  const surface = useCallback(() => {
-    focusFish(null)
-    ui.surface()
-  }, [focusFish, ui.surface])
-
-  const applyBake = useCallback(() => ui.applyBake(true), [ui.applyBake])
-
-  const isLit = useCallback(
-    (f: FishSpecimenInput) =>
-      matchesFish(f, { query: ui.query, domain: ui.domain }),
-    [ui.query, ui.domain],
-  )
-
-  const litFactor = useCallback(
-    (f: FishSpecimenInput) => fishLitFactor(f, filterWithBake, focusedSlug),
-    [filterWithBake, focusedSlug],
-  )
+  const curationLabel = curationDismissed
+    ? null
+    : scene.curationLabel || (bakeActive ? "Bake highlight active" : null)
 
   return {
     scene,
     fish: scene.fish,
-    filtered,
     litCount,
     domains,
-    filter: filterWithBake,
-    query: ui.query,
-    domain: ui.domain,
-    chrome: ui.chrome,
-    tankScene: ui.tankScene,
-    stageProgress: ui.stageProgress,
-    bakeActive: effectiveBake,
+    chrome,
+    tankState,
+    tankScene: deriveScene(tankState),
+    bakeActive,
     curationLabel,
     focusedSlug,
     focusedFish,
     focusedIndex,
-    setQuery: ui.setQuery,
-    setDomain: ui.setDomain,
-    toggleDomain: ui.toggleDomain,
-    setChrome: ui.setChrome,
-    dive: ui.dive,
-    surface,
-    setScene: ui.setScene,
-    focusFish,
-    applyBake,
-    clearBake: ui.clearBake,
-    dismissCuration: ui.dismissCuration,
-    isLit,
-    litFactor,
   }
 }
-
-export { normalizeQuery, sceneFromLayout }

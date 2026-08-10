@@ -1,60 +1,59 @@
 /**
- * Two-scene overlay chrome (surface hero + submerged HUD).
- * Presentational — controller supplies labels/counts/handlers.
+ * Fixed HUD layers over the WebGL canvas — surface hero + submerged toolbar.
+ *
+ * Dive progress (`--t`, `data-off`) is a bus-only 60fps observation, applied
+ * directly to DOM refs so a dive never re-renders this component (see
+ * fish/fishBus.ts). `query`/`domain` are discrete store state, read via the
+ * zustand hook (normal React re-render, but only a handful of times per
+ * interaction — not per frame). Every control emits onto the bus rather than
+ * taking callback props; the command handler lives in hooks/useFishTank.ts.
  */
 
+import { useEffect, useRef } from "react"
+import { useFishTankStore } from "@/store"
+import { fishBus } from "@/fish/fishBus"
+import { createFrameChannel } from "@/fish/frameChannel"
+import { deriveScene } from "@/fish/tankMachine"
 import { DOMAIN_LABEL } from "@/blocks/fishTankTokens"
 import { cn } from "@/lib/utils"
 
 export interface FishTankChromeProps {
-  stageProgress: number
-  tankScene: "surface" | "tank"
   litCount: number
   total: number
-  query: string
-  domain: string | null
   domains: string[]
   curationLabel: string | null
-  onQuery: (q: string) => void
-  onToggleDomain: (d: string) => void
-  onDive: () => void
-  onSurface: () => void
-  onDismissCuration: () => void
-  onBake?: () => void
+  /** Simulated bake affordance — omitted when the caller has no bake demo. */
+  showBake?: boolean
 }
 
 /** Fixed HUD layers over the WebGL canvas. */
 export function FishTankChrome({
-  stageProgress,
-  tankScene,
   litCount,
   total,
-  query,
-  domain,
   domains,
   curationLabel,
-  onQuery,
-  onToggleDomain,
-  onDive,
-  onSurface,
-  onDismissCuration,
-  onBake,
+  showBake = true,
 }: FishTankChromeProps) {
-  const t = stageProgress
-  const surfaceOff = t > 0.95
-  const tankOff = t < 0.05
+  const query = useFishTankStore((s) => s.query)
+  const domain = useFishTankStore((s) => s.domain)
+  const tankScene = useFishTankStore((s) => deriveScene(s.state))
+
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const surfaceSectionRef = useRef<HTMLElement | null>(null)
+  const tankSectionRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    const channel = createFrameChannel(fishBus, "tank:progress", 0)
+    return channel.subscribe((t) => {
+      rootRef.current?.style.setProperty("--t", String(t))
+      surfaceSectionRef.current?.setAttribute("data-off", t > 0.95 ? "true" : "false")
+      tankSectionRef.current?.setAttribute("data-off", t < 0.05 ? "true" : "false")
+    })
+  }, [])
 
   return (
-    <div
-      id="ui3d"
-      className="ft-ui3d"
-      style={{ ["--t" as string]: String(t) }}
-      aria-hidden={false}
-    >
-      <section
-        className="ft-scene ft-scene--surface"
-        data-off={surfaceOff ? "true" : "false"}
-      >
+    <div id="ui3d" className="ft-ui3d" ref={rootRef} aria-hidden={false}>
+      <section ref={surfaceSectionRef} className="ft-scene ft-scene--surface" data-off="false">
         <div className="ft-hero">
           <div className="ft-hero-card glass">
             <span className="ft-eyebrow">
@@ -71,10 +70,18 @@ export function FishTankChrome({
               school means it was a team.
             </p>
             <div className="ft-row">
-              <button type="button" className="ft-btn ft-cta" onClick={onDive}>
+              <button
+                type="button"
+                className="ft-btn ft-cta"
+                onClick={() => fishBus.emit("tank:dive")}
+              >
                 Dive into the tank ↓
               </button>
-              <button type="button" className="ft-btn" onClick={onDive}>
+              <button
+                type="button"
+                className="ft-btn"
+                onClick={() => fishBus.emit("tank:dive")}
+              >
                 🐾 Tap the surface
               </button>
             </div>
@@ -83,10 +90,7 @@ export function FishTankChrome({
         <div className="ft-scenecue">scroll or Dive to submerge</div>
       </section>
 
-      <section
-        className="ft-scene ft-scene--tank"
-        data-off={tankOff ? "true" : "false"}
-      >
+      <section ref={tankSectionRef} className="ft-scene ft-scene--tank" data-off="false">
         <div className="ft-waterline">
           <div className="ft-bar">
             <div>
@@ -113,7 +117,7 @@ export function FishTankChrome({
               type="search"
               className="ft-input"
               value={query}
-              onChange={(e) => onQuery(e.target.value)}
+              onChange={(e) => fishBus.emit("filter:query", e.target.value)}
               placeholder="Ask the tank — mcp, terraform, clinician…"
               aria-label="Search projects"
             />
@@ -123,7 +127,7 @@ export function FishTankChrome({
                   key={d}
                   type="button"
                   className={cn("ft-chip", domain === d && "on")}
-                  onClick={() => onToggleDomain(d)}
+                  onClick={() => fishBus.emit("filter:domain", d)}
                 >
                   {DOMAIN_LABEL[d] || d}
                 </button>
@@ -135,11 +139,11 @@ export function FishTankChrome({
               </b>{" "}
               lit
             </div>
-            {onBake ? (
+            {showBake ? (
               <button
                 type="button"
                 className="ft-chip"
-                onClick={onBake}
+                onClick={() => fishBus.emit("bake:apply")}
                 title="Simulate a job-specific bake highlight"
               >
                 ⚡ Bake
@@ -152,7 +156,7 @@ export function FishTankChrome({
           <button
             type="button"
             className="ft-btn ft-surface-btn"
-            onClick={onSurface}
+            onClick={() => fishBus.emit("tank:surface")}
             title="Back to the surface (Esc)"
           >
             ↑ Surface
@@ -163,7 +167,11 @@ export function FishTankChrome({
       {curationLabel ? (
         <div className="ft-curation glass show">
           <b>{curationLabel}</b>
-          <button type="button" className="ft-btn" onClick={onDismissCuration}>
+          <button
+            type="button"
+            className="ft-btn"
+            onClick={() => fishBus.emit("bake:dismiss")}
+          >
             clear
           </button>
         </div>

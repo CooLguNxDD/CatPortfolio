@@ -2,10 +2,23 @@
  * Three.js fish-tank renderer — the only module that imports `three`.
  * Math: fishTankLayout · meshes: fish/speciesMeshes · tokens: fishTankTokens.
  * Dossier/HUD live in React components (react-app-guide: views stay DOM, canvas is WebGL only).
+ *
+ * Interaction wiring (see design/fish/README.md + fish/fishBus.ts): focus,
+ * filter and bake state are read imperatively off the zustand store via
+ * `subscribe` (never through props/refs mirrored at render time); dive
+ * progress and the dossier anchor are bus-only observations, never React
+ * state. `fish` / `immersive` / `themeKey` / `highlightSlugs` stay props —
+ * they only change together with a new layout, which already remounts this
+ * effect via the `fish` identity change.
  */
 
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
+import { useFishTankStore } from "@/store"
+import { fishBus } from "@/fish/fishBus"
+import { createFrameChannel } from "@/fish/frameChannel"
+import { isSubmerged } from "@/fish/tankMachine"
+import { fishLitFactor, type FishFilter } from "@/fish/matchFish"
 import {
   CAT_X,
   CAT_Y,
@@ -16,14 +29,22 @@ import {
   TANK_CENTER_Y,
   TANK_HALF_W,
   TANK_HALF_D,
+  SURFACE_RADIUS,
+  SUBMERGED_RADIUS,
   MAX_ORBIT_RADIUS,
   MIN_ORBIT_RADIUS,
+  DEFAULT_PITCH,
   MAX_PITCH,
   MIN_PITCH,
+  DIVE_PITCH_ARC,
+  FOCUS_STANDOFF_BASE,
+  FOCUS_STANDOFF_SCALE,
+  TARGET_LERP_SPEED,
+  ORBIT_LERP_SPEED,
+  RADIUS_LERP_SPEED,
   clamp,
   computeFishPose,
   stageOrbitTarget,
-  viewOffsetX,
   type FishSpecimenInput,
 } from "./fishTankLayout"
 import {
@@ -36,39 +57,24 @@ import {
 } from "./fishTankTokens"
 import {
   buildCatMesh,
-  buildCausticTexture,
   buildCoral,
+  buildCyberCrystal,
   buildFishMesh,
   buildPointSprite,
   buildSeaweed,
+  type BuiltFish,
 } from "@/fish/speciesMeshes"
+import { createCausticMaterial } from "@/fish/shaders/causticShader"
+import { createHoloReticle } from "@/fish/components/HoloReticle"
 import type { DomainIdType } from "@/content/schema"
 
 export interface FishTankCanvasProps {
   fish: FishSpecimenInput[]
   immersive?: boolean
-  focusedSlug?: string | null
+  /** Bake highlight set — layout-derived, changes together with `fish`. */
   highlightSlugs?: string[]
-  onFocusChange?: (slug: string | null) => void
-  stageProgress?: number
-  /** Controller-supplied dimming; defaults to highlight-only. */
-  litFactor?: (f: FishSpecimenInput) => number
   /** Theme id / accent stamp — remounts lights when the shell theme changes. */
   themeKey?: string
-  /**
-   * Locked fish position in canvas-local px, plus the canvas box, so DOM chrome
-   * can dock beside it and clamp in the SAME space. null when released.
-   */
-  onFocusAnchor?: (
-    anchor: {
-      x: number
-      y: number
-      /** Projected radius of the specimen in px — chrome must clear this. */
-      r: number
-      w: number
-      h: number
-    } | null,
-  ) => void
 }
 
 /** Domain accent → three.js Color (oklch tokens resolved via browser). */
@@ -88,52 +94,42 @@ function shortestAngle(d: number): number {
   return a
 }
 
-function defaultLit(
-  f: FishSpecimenInput,
-  highlight: Set<string>,
-  focused: string | null,
-): number {
-  if (focused && f.slug === focused) return 1
-  if (highlight.size === 0) return 1
-  return highlight.has(f.slug) ? 1.12 : 0.72
-}
-
-/** Default-export lazy canvas — Three WebGL aquarium (no DOM chrome). */
+/** Default-export lazy canvas — Three WebGL aquarium with procedural caustics & organic physics. */
 export default function FishTankCanvas({
   fish,
   immersive = false,
-  focusedSlug = null,
   highlightSlugs = [],
-  onFocusChange,
-  stageProgress = 1,
-  litFactor,
   themeKey = "default",
-  onFocusAnchor,
 }: FishTankCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
-  const focusedRef = useRef(focusedSlug)
-  const stageRef = useRef(stageProgress)
-  const highlightRef = useRef(new Set(highlightSlugs))
-  const onFocusRef = useRef(onFocusChange)
-  const litRef = useRef(litFactor)
-  const onAnchorRef = useRef(onFocusAnchor)
-
-  focusedRef.current = focusedSlug
-  stageRef.current = stageProgress
-  highlightRef.current = new Set(highlightSlugs)
-  onFocusRef.current = onFocusChange
-  litRef.current = litFactor
-  onAnchorRef.current = onFocusAnchor
 
   useEffect(() => {
     const root = hostRef.current
     if (!root) return
     const host: HTMLDivElement = root
 
-    // NOTE: child effects run BEFORE ThemeProvider's parent effect writes the
-    // new CSS vars, so on a theme switch this first sample still sees the OLD
-    // theme. Scene colours are therefore re-applied one frame later via
-    // applyPalette() below — do not "simplify" this into a single read.
+    // Discrete interaction state, read imperatively
+    const focusedRef = { current: useFishTankStore.getState().focus }
+    const filterRef = { current: filterFromStore() }
+    function filterFromStore(): FishFilter {
+      const s = useFishTankStore.getState()
+      return { query: s.query, domain: s.domain, highlightSlugs, bakeActive: s.bakeActive }
+    }
+    const unsubStore = useFishTankStore.subscribe((s) => {
+      focusedRef.current = s.focus
+      filterRef.current = {
+        query: s.query,
+        domain: s.domain,
+        highlightSlugs,
+        bakeActive: s.bakeActive,
+      }
+    })
+    const progressChannel = createFrameChannel(fishBus, "tank:progress", 0)
+    const progRef = { current: progressChannel.get() }
+    const unsubProgress = progressChannel.subscribe((v) => {
+      progRef.current = v
+    })
+
     let palette: TankThemePalette = resolveTankThemePalette()
     const light = palette.light
 
@@ -142,7 +138,10 @@ export default function FishTankCanvas({
     scene.fog = new THREE.FogExp2(palette.fogColor, palette.fogDensity)
 
     const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 400)
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+    })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     host.appendChild(renderer.domElement)
     renderer.domElement.style.width = "100%"
@@ -155,43 +154,30 @@ export default function FishTankCanvas({
     const tank = new THREE.Group()
     scene.add(tank)
 
-    // Two lighting environments, one medium (see resolveTankThemePalette):
-    // light = shallow sunlit lagoon, dark = night dive lit by the surface shaft
-    // plus bioluminescent accents.
-    const ambient = new THREE.AmbientLight(
-      palette.ambientColor,
-      palette.ambientIntensity,
-    )
+    // Lighting setup
+    const ambient = new THREE.AmbientLight(palette.ambientColor, palette.ambientIntensity)
     scene.add(ambient)
-    const hemi = new THREE.HemisphereLight(
-      palette.hemiSky,
-      palette.hemiGround,
-      palette.hemiIntensity,
-    )
+    const hemi = new THREE.HemisphereLight(palette.hemiSky, palette.hemiGround, palette.hemiIntensity)
     hemi.position.set(0, WATER_Y + 10, 0)
     scene.add(hemi)
-    // Key comes straight down through the surface — sunlight in water is a
-    // vertical shaft, not a studio three-point rig.
-    const top = new THREE.DirectionalLight(palette.keyColor, palette.keyIntensity)
+    
+    const top = new THREE.DirectionalLight(palette.keyColor, palette.keyIntensity * 1.2)
     top.position.set(6, WATER_Y + 40, 8)
     scene.add(top)
+
     const fill = new THREE.PointLight(palette.fillColor, palette.fillIntensity, 120)
     fill.position.set(-10, TANK_CENTER_Y + 6, 20)
     scene.add(fill)
-    const accentFill = new THREE.PointLight(palette.accent, light ? 0.55 : 1.5, 70)
+
+    const accentFill = new THREE.PointLight(palette.accent, light ? 0.65 : 1.8, 80)
     accentFill.position.set(14, WATER_Y - 6, -10)
     scene.add(accentFill)
-    // Cold uplight off the bed keeps the deep end from crushing to pure black.
-    const bedBounce = new THREE.PointLight(
-      palette.cyan,
-      light ? 0.35 : 0.7,
-      TANK_HEIGHT,
-    )
+
+    const bedBounce = new THREE.PointLight(palette.cyan, light ? 0.45 : 0.85, TANK_HEIGHT)
     bedBounce.position.set(0, FLOOR_Y + 4, 0)
     scene.add(bedBounce)
 
-    // Depth backdrop: a far wall in the deep tone so fog has something to
-    // dissolve into. Without it, distant water reads as flat page background.
+    // Depth backdrop
     const backdropMat = new THREE.MeshBasicMaterial({
       color: palette.deep,
       side: THREE.BackSide,
@@ -204,7 +190,7 @@ export default function FishTankCanvas({
     backdrop.position.y = TANK_CENTER_Y
     scene.add(backdrop)
 
-    // Glass aligned so surface = top, floor = bottom (not origin-centred mid-floor).
+    // Glass box outline
     const glassH = TANK_HEIGHT + 0.5
     const glassW = TANK_HALF_W * 2
     const glassD = TANK_HALF_D * 2
@@ -213,23 +199,24 @@ export default function FishTankCanvas({
     const glassMat = new THREE.LineBasicMaterial({
       color: palette.glass,
       transparent: true,
-      opacity: light ? 0.18 : 0.24,
+      opacity: light ? 0.22 : 0.32,
     })
     const glass = new THREE.LineSegments(edges, glassMat)
     glass.position.y = TANK_CENTER_Y
     tank.add(glass)
 
-    const waterGeo = new THREE.PlaneGeometry(glassW, glassD, 40, 24)
+    // Water surface plane with harmonic wave displacement
+    const waterGeo = new THREE.PlaneGeometry(glassW, glassD, 48, 32)
     waterGeo.rotateX(-Math.PI / 2)
     const waterMat = new THREE.MeshStandardMaterial({
       color: palette.water,
       transparent: true,
-      opacity: light ? 0.28 : 0.38,
-      roughness: 0.25,
-      metalness: 0.08,
+      opacity: light ? 0.32 : 0.42,
+      roughness: 0.2,
+      metalness: 0.1,
       side: THREE.DoubleSide,
       emissive: new THREE.Color(palette.water),
-      emissiveIntensity: light ? 0.08 : 0.18,
+      emissiveIntensity: light ? 0.1 : 0.22,
     })
     const water = new THREE.Mesh(waterGeo, waterMat)
     water.position.y = WATER_Y
@@ -241,74 +228,72 @@ export default function FishTankCanvas({
     water.userData.base = basePos
     tank.add(water)
 
-    // True seabed at FLOOR_Y (deep), not mid-column.
+    // Undulating Seabed Floor
+    const floorGeo = new THREE.PlaneGeometry(glassW - 0.4, glassD - 0.4, 32, 24)
+    floorGeo.rotateX(-Math.PI / 2)
+    const floorPos = floorGeo.attributes.position.array as Float32Array
+    for (let i = 0; i < floorGeo.attributes.position.count; i++) {
+      const fx = floorPos[i * 3]
+      const fz = floorPos[i * 3 + 2]
+      // Rolling sand dunes & ridges
+      const dy = Math.sin(fx * 0.18) * Math.cos(fz * 0.15) * 0.65 + Math.sin((fx + fz) * 0.3) * 0.25
+      floorPos[i * 3 + 1] = dy
+    }
+    floorGeo.computeVertexNormals()
+
     const floorMat = new THREE.MeshStandardMaterial({
       color: palette.floor,
-      roughness: 0.92,
+      roughness: 0.88,
       metalness: 0.05,
+      flatShading: true,
     })
-    const floor = new THREE.Mesh(
-      new THREE.BoxGeometry(glassW - 0.4, 0.55, glassD - 0.4),
-      floorMat,
-    )
+    const floor = new THREE.Mesh(floorGeo, floorMat)
     floor.position.y = FLOOR_Y
     tank.add(floor)
 
-    // Caustics: the surface's dappled light on the bed. Scrolled per frame.
-    const caustic = buildCausticTexture()
-    let causticMat: THREE.MeshBasicMaterial | null = null
-    if (caustic) {
-      causticMat = new THREE.MeshBasicMaterial({
-        map: caustic,
-        transparent: true,
-        opacity: palette.causticStrength,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        color: new THREE.Color(palette.sun),
-      })
-      const causticPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(glassW - 1, glassD - 1),
-        causticMat,
-      )
-      causticPlane.rotation.x = -Math.PI / 2
-      causticPlane.position.y = FLOOR_Y + 0.32
-      causticPlane.name = "caustics"
-      tank.add(causticPlane)
-    }
+    // Procedural Voronoi Caustics Shader Plane
+    const causticMat = createCausticMaterial(
+      new THREE.Color(palette.sun),
+      palette.causticStrength * 1.3,
+      palette.causticStrength,
+    )
+    const causticPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(glassW - 0.6, glassD - 0.6),
+      causticMat,
+    )
+    causticPlane.rotation.x = -Math.PI / 2
+    causticPlane.position.y = FLOOR_Y + 0.35
+    causticPlane.name = "caustics"
+    tank.add(causticPlane)
 
-    // God rays: wide translucent cones hanging from the surface. Additive and
-    // depth-write-off so they layer instead of clipping the fish.
-    // God rays. These must stay near-invisible per-surface: additive blending
-    // stacks them, so anything above ~0.05 stops reading as light and starts
-    // reading as solid grey cones sitting in the water.
+    // Volumetric God Rays
     const rayMat = new THREE.MeshBasicMaterial({
       color: palette.sun,
       transparent: true,
-      opacity: palette.rayStrength,
+      opacity: palette.rayStrength * 1.1,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
       fog: false,
     })
     const rays = new THREE.Group()
-    for (let i = 0; i < 7; i++) {
-      // Tall and narrow, open-ended, many radial segments so the silhouette is
-      // a soft column rather than a faceted pyramid.
-      const h = TANK_HEIGHT * (1.15 + (i % 3) * 0.12)
+    for (let i = 0; i < 9; i++) {
+      const h = TANK_HEIGHT * (1.18 + (i % 3) * 0.15)
       const ray = new THREE.Mesh(
-        new THREE.ConeGeometry(1.6 + (i % 4) * 0.55, h, 12, 1, true),
+        new THREE.ConeGeometry(1.8 + (i % 4) * 0.6, h, 14, 1, true),
         rayMat,
       )
       ray.position.set(
-        (i - 3) * (TANK_HALF_W * 0.3),
+        (i - 4) * (TANK_HALF_W * 0.26),
         WATER_Y - h / 2 + 3,
-        ((i % 4) - 1.5) * 9,
+        ((i % 4) - 1.5) * 8.5,
       )
-      ray.rotation.z = (i - 3) * 0.035
+      ray.rotation.z = (i - 4) * 0.032
       rays.add(ray)
     }
     tank.add(rays)
 
+    // Seabed Rocks & Glowing Cyber-Crystals
     const rockGeo = new THREE.DodecahedronGeometry(1, 0)
     const rockMat = new THREE.MeshStandardMaterial({
       color: palette.rock,
@@ -327,320 +312,236 @@ export default function FishTankCanvas({
       tank.add(rock)
     }
 
-    // Seabed planting — depth cues you can swim past, and motion at the edges
-    // of frame so a slow orbit never feels static.
+    // Glowing cyber-crystals
+    const crystalColors = [palette.accent, palette.neon, palette.cyan]
+    for (let i = 0; i < 6; i++) {
+      const col = new THREE.Color(crystalColors[i % crystalColors.length])
+      const crystal = buildCyberCrystal(col, 0.8 + (i % 3) * 0.35)
+      crystal.position.set(
+        (i / 5 - 0.5) * (glassW - 8) + (i % 2 ? 1.5 : -1.5),
+        FLOOR_Y + 0.1,
+        ((i % 3) - 1) * (TANK_HALF_D * 0.4),
+      )
+      crystal.rotation.y = i * 1.1
+      tank.add(crystal)
+    }
+
+    // Seabed Seaweed & Branching Corals
     const weedColor = new THREE.Color(palette.weed)
     const weeds: THREE.Group[] = []
-    for (let i = 0; i < 18; i++) {
-      const stalk = buildSeaweed(5 + (i % 4) * 2.6, weedColor, i)
+    for (let i = 0; i < 20; i++) {
+      const stalk = buildSeaweed(5.5 + (i % 4) * 2.8, weedColor, i)
       stalk.position.set(
-        (i / 17 - 0.5) * (glassW - 4),
+        (i / 19 - 0.5) * (glassW - 4),
         FLOOR_Y + 0.2,
         ((i % 6) - 2.5) * (TANK_HALF_D * 0.32),
       )
       tank.add(stalk)
       weeds.push(stalk)
     }
-    for (let i = 0; i < 5; i++) {
+
+    for (let i = 0; i < 6; i++) {
       const coral = buildCoral(
         new THREE.Color(i % 2 ? palette.accent : palette.neon),
-        0.9 + (i % 3) * 0.4,
+        1.0 + (i % 3) * 0.4,
       )
       coral.position.set(
-        (i - 2) * (TANK_HALF_W * 0.42),
-        FLOOR_Y + 0.4,
-        ((i % 3) - 1) * (TANK_HALF_D * 0.5),
+        (i - 2.5) * (TANK_HALF_W * 0.36),
+        FLOOR_Y + 0.3,
+        ((i % 4) - 1.5) * (TANK_HALF_D * 0.28),
       )
       tank.add(coral)
     }
 
+    // 3D Holographic Reticle for Focused Fish
+    const holoReticle = createHoloReticle()
+    tank.add(holoReticle.group)
+
+    // Interactive Cat Mascot on Rim
     const cat = buildCatMesh(WATER_Y)
-    // Sit the cat on the rim, off to the right of the surface camera target so
-    // it lands beside the hero copy (which owns the left half of the viewport).
     cat.position.x = CAT_X
-    cat.scale.setScalar(1.35)
-    tank.add(cat)
-    // The cat is above the waterline, outside the reach of every underwater
-    // light — without its own key it renders as a black silhouette on a dark
-    // scene, which is exactly "the cat doesn't show up".
-    const catKey = new THREE.PointLight(palette.accent, light ? 1.6 : 2.4, 60)
-    catKey.position.set(CAT_X + 6, CAT_Y + 9, 16)
-    scene.add(catKey)
-    const catFill = new THREE.PointLight(palette.sun, light ? 0.9 : 1.2, 45)
-    catFill.position.set(CAT_X - 8, CAT_Y + 2, 12)
-    scene.add(catFill)
+    scene.add(cat)
 
-    // Marine snow: slow-drifting particulate. The single strongest "this is
-    // water, not air" cue available without a custom shader.
-    const moteCount = 320
-    const motePos = new Float32Array(moteCount * 3)
-    for (let i = 0; i < moteCount; i++) {
-      motePos[i * 3] = (Math.random() - 0.5) * glassW
-      motePos[i * 3 + 1] = FLOOR_Y + Math.random() * TANK_HEIGHT
-      motePos[i * 3 + 2] = (Math.random() - 0.5) * glassD
-    }
-    const moteGeo = new THREE.BufferGeometry()
-    moteGeo.setAttribute("position", new THREE.BufferAttribute(motePos, 3))
-    const pointSprite = buildPointSprite()
-    const moteMat = new THREE.PointsMaterial({
-      color: palette.motes,
-      size: light ? 0.3 : 0.42,
-      map: pointSprite,
-      transparent: true,
-      opacity: light ? 0.3 : 0.7,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    })
-    const motes = new THREE.Points(moteGeo, moteMat)
-    tank.add(motes)
-
-    const bubbleCount = 90
-    const bubblePos = new Float32Array(bubbleCount * 3)
-    const waterCol = WATER_Y - FLOOR_Y
-    for (let i = 0; i < bubbleCount; i++) {
-      bubblePos[i * 3] = (Math.random() - 0.5) * (glassW - 4)
-      bubblePos[i * 3 + 1] = FLOOR_Y + 0.5 + Math.random() * waterCol
-      bubblePos[i * 3 + 2] = (Math.random() - 0.5) * (glassD - 4)
-    }
+    // Particle Systems: Rising Bubbles & Marine Snow
+    const sprite = buildPointSprite(64)
+    const bubbleCount = 70
     const bubbleGeo = new THREE.BufferGeometry()
-    bubbleGeo.setAttribute("position", new THREE.BufferAttribute(bubblePos, 3))
+    const bPos = new Float32Array(bubbleCount * 3)
+    const bSizes = new Float32Array(bubbleCount)
+    for (let i = 0; i < bubbleCount; i++) {
+      bPos[i * 3] = (Math.random() - 0.5) * (glassW - 2)
+      bPos[i * 3 + 1] = FLOOR_Y + Math.random() * TANK_HEIGHT
+      bPos[i * 3 + 2] = (Math.random() - 0.5) * (glassD - 2)
+      bSizes[i] = 1.2 + Math.random() * 1.8
+    }
+    bubbleGeo.setAttribute("position", new THREE.BufferAttribute(bPos, 3))
+    bubbleGeo.setAttribute("size", new THREE.BufferAttribute(bSizes, 1))
     const bubbleMat = new THREE.PointsMaterial({
       color: palette.bubble,
-      size: light ? 0.42 : 0.58,
-      map: pointSprite,
+      size: 1.8,
+      map: sprite || undefined,
       transparent: true,
-      opacity: light ? 0.5 : 0.85,
-      depthWrite: false,
+      opacity: light ? 0.38 : 0.65,
       blending: THREE.AdditiveBlending,
+      depthWrite: false,
     })
     const bubbles = new THREE.Points(bubbleGeo, bubbleMat)
     tank.add(bubbles)
 
-    type FishObj = {
+    const moteCount = 100
+    const moteGeo = new THREE.BufferGeometry()
+    const mPos = new Float32Array(moteCount * 3)
+    for (let i = 0; i < moteCount; i++) {
+      mPos[i * 3] = (Math.random() - 0.5) * (glassW - 1)
+      mPos[i * 3 + 1] = FLOOR_Y + Math.random() * TANK_HEIGHT
+      mPos[i * 3 + 2] = (Math.random() - 0.5) * (glassD - 1)
+    }
+    moteGeo.setAttribute("position", new THREE.BufferAttribute(mPos, 3))
+    const moteMat = new THREE.PointsMaterial({
+      color: palette.motes,
+      size: 0.9,
+      map: sprite || undefined,
+      transparent: true,
+      opacity: light ? 0.25 : 0.45,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+    const motes = new THREE.Points(moteGeo, moteMat)
+    tank.add(motes)
+
+    // Build fish meshes & DOM badge labels
+    const fishObjs: Array<{
       mesh: THREE.Group
       data: FishSpecimenInput
-      body: THREE.MeshStandardMaterial
-      fin: THREE.MeshStandardMaterial
-      glow: THREE.PointLight
+      built: BuiltFish
       label: HTMLDivElement
-    }
-    const fishObjs: FishObj[] = []
+    }> = []
+
     const labelLayer = document.createElement("div")
-    labelLayer.style.cssText =
-      "position:absolute;inset:0;pointer-events:none;overflow:hidden;"
-    host.style.position = host.style.position || "relative"
+    labelLayer.className = "ft-labels-layer pointer-events-none absolute inset-0 overflow-hidden"
     host.appendChild(labelLayer)
 
-    for (const f of fish) {
-      const species = domainColor(f.species)
-      const built = buildFishMesh(f, species)
+    for (const specimen of fish) {
+      const col = domainColor(specimen.species)
+      const built = buildFishMesh(specimen, col)
       tank.add(built.group)
 
-      // Domain hex for theming the label
-      const labelHex = `#${species.getHex().toString(16).padStart(6, "0")}`
-      const labelHexMid = `${labelHex}66` // ~40% alpha for bg
-      const labelHexBorder = `${labelHex}99` // ~60% alpha for border
-
-      // Wrapper — positions the whole label, never clipped by overflow
       const label = document.createElement("div")
-      label.style.cssText = [
-        "position:absolute",
-        "transform:translate(-50%,0)",
-        "display:none",
-        "flex-direction:column",
-        "align-items:center",
-        "gap:0",
-        "pointer-events:none",
-        "user-select:none",
-        "will-change:transform",
-      ].join(";")
+      label.className = "ft-3d-tag absolute pointer-events-none select-none font-mono text-[10px]"
+      label.style.display = "none"
+      label.style.transform = "translate(-50%, -100%)"
+      label.style.transition = "opacity 0.15s ease-out"
 
-      // Vertical connector tick from fish body up to the pill
-      const tick = document.createElement("div")
-      tick.style.cssText = [
-        "width:1px",
-        "height:10px",
-        `background:linear-gradient(to top,${labelHex},transparent)`,
-        "margin-bottom:0",
-        "order:0",
-      ].join(";")
-
-      // Pill: domain badge + title
       const pill = document.createElement("div")
-      pill.style.cssText = [
-        "display:flex",
-        "align-items:center",
-        "gap:5px",
-        "padding:3px 8px 3px 5px",
-        "border-radius:999px",
-        `background:color-mix(in srgb,${labelHex} 14%,rgba(0,0,0,0.55))`,
-        `border:1px solid ${labelHexBorder}`,
-        "backdrop-filter:blur(6px)",
-        "-webkit-backdrop-filter:blur(6px)",
-        `box-shadow:0 0 8px ${labelHexMid},0 2px 10px rgba(0,0,0,.4)`,
-        "white-space:nowrap",
-        "order:1",
-      ].join(";")
+      pill.className = "rounded px-1.5 py-0.5 border flex items-center gap-1 backdrop-blur-xs font-semibold whitespace-nowrap"
+      pill.style.background = "rgba(10, 16, 26, 0.78)"
+      pill.style.borderColor = `${col.getHexString()}88`
+      pill.style.color = `#${col.getHexString()}`
+      pill.style.boxShadow = `0 0 10px rgba(0,0,0,0.5)`
 
-      // Domain badge abbreviation (first 2–3 chars of species, uppercased)
-      const badge = document.createElement("span")
-      const abbr = (f.species ?? "?").slice(0, 3).toUpperCase()
-      badge.textContent = abbr
-      badge.style.cssText = [
-        `color:${labelHex}`,
-        `background:color-mix(in srgb,${labelHex} 22%,transparent)`,
-        `border:1px solid ${labelHexBorder}`,
-        "font:700 8px/1 ui-monospace,monospace",
-        "letter-spacing:.06em",
-        "border-radius:4px",
-        "padding:2px 4px",
-      ].join(";")
+      const tick = document.createElement("span")
+      tick.textContent = specimen.species.slice(0, 3).toUpperCase()
+      tick.className = "text-[8px] opacity-75 font-bold uppercase"
+      pill.appendChild(tick)
 
-      // Project title text
-      const titleEl = document.createElement("span")
-      titleEl.textContent = f.title
-      titleEl.style.cssText = [
-        "color:#fff",
-        "font:600 11px/1.2 ui-monospace,monospace",
-        "letter-spacing:.02em",
-        `text-shadow:0 1px 4px rgba(0,0,0,.8),0 0 12px ${labelHex}88`,
-      ].join(";")
+      const name = document.createElement("span")
+      name.textContent = specimen.title
+      name.className = "text-[10px] text-white"
+      pill.appendChild(name)
 
-      pill.appendChild(badge)
-      pill.appendChild(titleEl)
-      label.appendChild(tick)
       label.appendChild(pill)
       labelLayer.appendChild(label)
 
-      // Keep references to sub-elements for per-frame updates
-      ;(label as HTMLDivElement & { _tick: HTMLDivElement; _pill: HTMLDivElement; _hex: string })._tick = tick
-      ;(label as HTMLDivElement & { _tick: HTMLDivElement; _pill: HTMLDivElement; _hex: string })._pill = pill
-      ;(label as HTMLDivElement & { _tick: HTMLDivElement; _pill: HTMLDivElement; _hex: string })._hex = labelHex
+      ;(label as HTMLDivElement & { _pill: HTMLDivElement; _hex: string })._pill = pill
+      ;(label as HTMLDivElement & { _pill: HTMLDivElement; _hex: string })._hex = `#${col.getHexString()}`
+
       fishObjs.push({
         mesh: built.group,
-        data: f,
-        body: built.body,
-        fin: built.fin,
-        glow: built.glow,
+        data: specimen,
+        built,
         label,
       })
     }
 
-    /**
-     * Re-tint the live scene from freshly sampled CSS vars. Called one frame
-     * after mount (and after any theme switch) because ThemeProvider writes the
-     * new vars in a parent effect that runs after this child effect.
-     */
-    function applyPalette(p: TankThemePalette) {
-      palette = p
-      const lit = p.light
-      scene.background = new THREE.Color(p.bg)
-      if (scene.fog) {
-        scene.fog.color.set(p.fogColor)
-        scene.fog.density = p.fogDensity
+    // Deferred palette resample
+    let paletteFrame = requestAnimationFrame(() => {
+      palette = resolveTankThemePalette()
+      scene.background?.set(palette.bg)
+      if (scene.fog instanceof THREE.FogExp2) {
+        scene.fog.color.set(palette.fogColor)
+        scene.fog.density = palette.fogDensity
       }
-      ambient.color.set(p.ambientColor)
-      ambient.intensity = p.ambientIntensity
-      hemi.color.set(p.hemiSky)
-      hemi.groundColor.set(p.hemiGround)
-      hemi.intensity = p.hemiIntensity
-      top.color.set(p.keyColor)
-      top.intensity = p.keyIntensity
-      fill.color.set(p.fillColor)
-      fill.intensity = p.fillIntensity
-      accentFill.color.set(p.accent)
-      accentFill.intensity = lit ? 0.55 : 1.5
-      bedBounce.color.set(p.cyan)
-      bedBounce.intensity = lit ? 0.35 : 0.7
-      backdropMat.color.set(p.deep)
-      glassMat.color.set(p.glass)
-      glassMat.opacity = lit ? 0.18 : 0.24
-      waterMat.color.set(p.water)
-      waterMat.emissive.set(p.water)
-      waterMat.opacity = lit ? 0.28 : 0.38
-      waterMat.emissiveIntensity = lit ? 0.08 : 0.18
-      floorMat.color.set(p.floor)
-      rockMat.color.set(p.rock)
-      bubbleMat.color.set(p.bubble)
-      bubbleMat.opacity = lit ? 0.5 : 0.85
-      bubbleMat.size = lit ? 0.42 : 0.58
-      moteMat.color.set(p.motes)
-      moteMat.opacity = lit ? 0.3 : 0.7
-      moteMat.size = lit ? 0.3 : 0.42
-      rayMat.color.set(p.sun)
-      if (causticMat) {
-        causticMat.color.set(p.sun)
-        causticMat.opacity = p.causticStrength
-      }
-      for (const weed of weeds) {
-        weed.traverse((o) => {
-          if (o instanceof THREE.Mesh) {
-            const m = o.material
-            if (!Array.isArray(m) && m instanceof THREE.MeshStandardMaterial) {
-              m.color.set(p.weed)
-              m.emissive.set(p.weed)
-            }
-          }
-        })
-      }
-    }
-    const paletteFrame = requestAnimationFrame(() => {
-      if (!disposed) applyPalette(resolveTankThemePalette())
+      ambient.color.set(palette.ambientColor)
+      ambient.intensity = palette.ambientIntensity
+      hemi.color.set(palette.hemiSky)
+      hemi.groundColor.set(palette.hemiGround)
+      hemi.intensity = palette.hemiIntensity
+      top.color.set(palette.keyColor)
+      top.intensity = palette.keyIntensity * 1.2
+      fill.color.set(palette.fillColor)
+      fill.intensity = palette.fillIntensity
+      accentFill.color.set(palette.accent)
+      bedBounce.color.set(palette.cyan)
+      glassMat.color.set(palette.glass)
+      waterMat.color.set(palette.water)
+      waterMat.emissive.set(palette.water)
+      floorMat.color.set(palette.floor)
+      rayMat.color.set(palette.sun)
+      causticMat.uniforms.uColor.value.set(palette.sun)
+      bubbleMat.color.set(palette.bubble)
+      moteMat.color.set(palette.motes)
     })
 
-    const surfaceLook = stageOrbitTarget(0)
-    const orbit = {
-      // Default radius at surface: pulled back wide so the cat + rim reads well.
-      yaw: 0,
-      pitch: 0.1,
-      radius: 36,
-      yawT: 0,
-      pitchT: 0.1,
-      radiusT: 36,
-      target: new THREE.Vector3(surfaceLook.x, surfaceLook.y, surfaceLook.z),
-      targetT: new THREE.Vector3(surfaceLook.x, surfaceLook.y, surfaceLook.z),
-      dragging: false,
-      moved: 0,
-      lx: 0,
-      ly: 0,
-      /** Track previous frame prog to detect surface-return crossing. */
-      prevProg: 0,
-    }
-    const pointer = new THREE.Vector2(-2, -2)
+    // Resize observer
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver((entries) => {
+            for (const entry of entries) {
+              const w = entry.contentRect.width || 640
+              const h = immersive ? entry.contentRect.height || 480 : 320
+              camera.aspect = w / h
+              camera.updateProjectionMatrix()
+              renderer.setSize(w, h)
+            }
+          })
+        : null
+    ro?.observe(host)
+
+    // Interaction handlers
+    const pointer = new THREE.Vector2(-9999, -9999)
     const raycaster = new THREE.Raycaster()
-    const view = { shift: 0, applied: false }
-    let selected: THREE.Group | null = null
     const clock = new THREE.Clock()
     let raf = 0
     let disposed = false
+    let selected: THREE.Group | null = null
+    const lastAnchor = { x: -9999, y: -9999, r: -9999 }
     let lastProg = -1
-    const lastAnchor = { x: -9999, y: -9999, r: 0 }
+
+    const orbit = {
+      yaw: 0,
+      yawT: 0,
+      pitch: DEFAULT_PITCH,
+      pitchT: DEFAULT_PITCH,
+      radius: SURFACE_RADIUS,
+      radiusT: SURFACE_RADIUS,
+      target: new THREE.Vector3(CAT_X, WATER_Y, 0),
+      targetT: new THREE.Vector3(CAT_X, WATER_Y, 0),
+      dragging: false,
+      lx: 0,
+      ly: 0,
+      moved: 0,
+      prevProg: 0,
+    }
+
+    function catchFish(group: THREE.Group) {
+      const slug = group.userData?.slug as string | undefined
+      if (!slug) return
+      fishBus.emit("fish:pick", { slug })
+    }
 
     function release() {
-      selected = null
-      onFocusRef.current?.(null)
+      fishBus.emit("fish:release")
     }
-
-    function catchFish(mesh: THREE.Group) {
-      selected = mesh
-      const data = mesh.userData.data as FishSpecimenInput
-      onFocusRef.current?.(data.slug)
-    }
-
-    function resize() {
-      const w = host.clientWidth || 640
-      const h = immersive ? host.clientHeight || 480 : 320
-      camera.aspect = w / Math.max(1, h)
-      camera.updateProjectionMatrix()
-      renderer.setSize(w, h, false)
-    }
-    resize()
-
-    const ro =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => resize())
-        : null
-    ro?.observe(host)
 
     function onPointerDown(e: PointerEvent) {
       orbit.dragging = true
@@ -650,6 +551,7 @@ export default function FishTankCanvas({
       renderer.domElement.style.cursor = "grabbing"
       renderer.domElement.setPointerCapture?.(e.pointerId)
     }
+
     function onPointerUp(e: PointerEvent) {
       orbit.dragging = false
       renderer.domElement.style.cursor = "grab"
@@ -659,6 +561,7 @@ export default function FishTankCanvas({
         /* ignore */
       }
     }
+
     function onPointerMove(e: PointerEvent) {
       const rect = renderer.domElement.getBoundingClientRect()
       pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
@@ -673,9 +576,9 @@ export default function FishTankCanvas({
         orbit.pitchT = clamp(orbit.pitchT + dy * 0.004, MIN_PITCH, MAX_PITCH)
       }
     }
+
     function onWheel(e: WheelEvent) {
-      // Stage owns surface→dive; canvas only zooms when already submerged.
-      if (stageRef.current < 0.5) return
+      if (!isSubmerged(progRef.current)) return
       e.preventDefault()
       if (selected) return
       orbit.radiusT = clamp(
@@ -684,7 +587,9 @@ export default function FishTankCanvas({
         MAX_ORBIT_RADIUS,
       )
     }
+
     function onClick() {
+      if (!isSubmerged(progRef.current)) return
       if (orbit.moved > 6) return
       raycaster.setFromCamera(pointer, camera)
       const hits = raycaster.intersectObjects(
@@ -715,16 +620,13 @@ export default function FishTankCanvas({
       raf = requestAnimationFrame(animate)
       const dt = Math.min(0.05, clock.getDelta())
       const t = clock.elapsedTime
-      const prog = clamp(stageRef.current, 0, 1)
+      const prog = clamp(progRef.current, 0, 1)
 
-      // Camera reset on surface return: whenever the stage crosses back to the
-      // surface (prog ≤ 0.05) from a deeper position, snap orbit targets back to
-      // the open wide-angle rim framing so accumulated tank rotations don't bleed
-      // through to the surface hero view.
+      // Camera reset on surface return
       if (orbit.prevProg > 0.05 && prog <= 0.05 && !selected) {
         orbit.yawT = 0
-        orbit.pitchT = 0.1
-        orbit.radiusT = 36
+        orbit.pitchT = DEFAULT_PITCH
+        orbit.radiusT = SURFACE_RADIUS
       }
       orbit.prevProg = prog
 
@@ -734,39 +636,51 @@ export default function FishTankCanvas({
         if (match && selected !== match.mesh) selected = match.mesh
       } else if (selected && !want) {
         selected = null
+        if (prog >= 0.95) {
+          orbit.radiusT = SUBMERGED_RADIUS
+        }
       }
 
+      const w = host.clientWidth || 640
+      const h = immersive ? host.clientHeight || 480 : 320
+
       if (selected) {
-        orbit.targetT.copy(selected.position)
-        // Stand off proportionally to the specimen: a flat radius of 9 put the
-        // camera inside big fish. Keeps the whole silhouette in frame.
         const sel = selected.userData.data as FishSpecimenInput
-        orbit.radiusT = 15 + clamp01(sel?.size ?? 0.5) * 7
+        orbit.radiusT = FOCUS_STANDOFF_BASE + clamp01(sel?.size ?? 0.5) * FOCUS_STANDOFF_SCALE
+        const sideOffset = w > 820 ? 4.8 : 0
+        orbit.targetT.set(
+          selected.position.x + Math.cos(orbit.yaw) * sideOffset,
+          selected.position.y,
+          selected.position.z - Math.sin(orbit.yaw) * sideOffset,
+        )
       } else {
         const st = stageOrbitTarget(prog)
         orbit.targetT.set(st.x, st.y, st.z)
-        // At the surface (prog=0) radius=36 matches orbit default for the full
-        // open rim view. Tightens to 24 at full depth so mid-water fish fill frame.
-        const stageRadius = 24 + (1 - prog) * 12
-        orbit.radiusT = clamp(
-          prog < 0.5 ? stageRadius : orbit.radiusT,
-          MIN_ORBIT_RADIUS,
-          MAX_ORBIT_RADIUS,
-        )
+        const stageRadius = SUBMERGED_RADIUS + (1 - prog) * (SURFACE_RADIUS - SUBMERGED_RADIUS)
+        if (prog < 0.95) {
+          orbit.radiusT = stageRadius
+        } else {
+          orbit.radiusT = clamp(orbit.radiusT, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS)
+        }
       }
-      // Focus transitions ease; stage moves do NOT. stageProgress is already an
-      // eased 0→1 from the controller, so lerping the target on top of it added
-      // a second, much slower ramp — the surface framing arrived seconds late
-      // (or never, if frames were throttled) and the cat sat above the frustum.
-      if (selected) orbit.target.lerp(orbit.targetT, 0.06)
-      else orbit.target.copy(orbit.targetT)
-      orbit.yaw += (orbit.yawT - orbit.yaw) * 0.09
-      orbit.pitch += (orbit.pitchT - orbit.pitch) * 0.09
-      orbit.radius += (orbit.radiusT - orbit.radius) * 0.07
+
+      const distToTarget = orbit.target.distanceTo(orbit.targetT)
+      if (selected || distToTarget > 0.08) {
+        orbit.target.lerp(orbit.targetT, TARGET_LERP_SPEED)
+      } else {
+        orbit.target.copy(orbit.targetT)
+      }
+      orbit.yaw += (orbit.yawT - orbit.yaw) * ORBIT_LERP_SPEED
+      orbit.pitch += (orbit.pitchT - orbit.pitch) * ORBIT_LERP_SPEED
+      orbit.radius += (orbit.radiusT - orbit.radius) * RADIUS_LERP_SPEED
 
       const drift = orbit.dragging || selected ? 0 : Math.sin(t * 0.12) * 0.06
       const yaw = orbit.yaw + drift
-      const pitch = clamp(orbit.pitch, MIN_PITCH, MAX_PITCH)
+      const divePitchArc =
+        !selected && prog > 0.01 && prog < 0.99
+          ? Math.sin(prog * Math.PI) * DIVE_PITCH_ARC
+          : 0
+      const pitch = clamp(orbit.pitch + divePitchArc, MIN_PITCH, MAX_PITCH)
       camera.position.set(
         orbit.target.x + Math.sin(yaw) * Math.cos(pitch) * orbit.radius,
         orbit.target.y + Math.sin(pitch) * orbit.radius,
@@ -774,33 +688,18 @@ export default function FishTankCanvas({
       )
       camera.lookAt(orbit.target)
 
-      const w = host.clientWidth || 640
-      const h = immersive ? host.clientHeight || 480 : 320
-      const wantShift = selected && w > 820 ? 1 : 0
-      view.shift += (wantShift - view.shift) * 0.08
-      if (view.shift > 0.002) {
-        camera.setViewOffset(w, h, viewOffsetX(view.shift, w), 0, w, h)
-        view.applied = true
-      } else if (view.applied) {
-        camera.clearViewOffset()
-        view.applied = false
-      }
-
       if (scene.fog instanceof THREE.FogExp2) {
-        // Air is clear; water is not. At the surface (prog→0) the haze thins
-        // right out so the cat on the rim reads crisply against the sky-side of
-        // the scene — at full underwater density it just dissolved into teal.
         const base = palette.fogDensity * (0.18 + 0.82 * prog)
-        const targetDensity = selected ? base * 1.45 : base
+        const targetDensity = selected ? base * 1.35 : base
         scene.fog.density += (targetDensity - scene.fog.density) * 0.05
         scene.fog.color.set(mixHex(palette.bg, palette.fogColor, prog))
       }
-      // Surroundings blend page-background (air, above the rim) → deep water.
       if (Math.abs(prog - lastProg) > 0.004) {
         lastProg = prog
         backdropMat.color.set(mixHex(palette.bg, palette.deep, prog))
       }
 
+      // Water surface wave animation
       const wp = water.geometry.attributes.position
       const base = water.userData.base as Float32Array
       for (let i = 0; i < wp.count; i++) {
@@ -814,15 +713,16 @@ export default function FishTankCanvas({
       }
       wp.needsUpdate = true
 
+      // Bubbles & Marine snow animation
       const bp = bubbles.geometry.attributes.position.array as Float32Array
       for (let i = 1; i < bp.length; i += 3) {
-        bp[i] += dt * 1.6
+        bp[i] += dt * 1.8
+        // subtle wobble
+        bp[i - 1] += Math.sin(t * 3 + bp[i] * 2) * dt * 0.4
         if (bp[i] > WATER_Y - 0.2) bp[i] = FLOOR_Y + 0.4
       }
       bubbles.geometry.attributes.position.needsUpdate = true
 
-      // Marine snow drifts down and sideways — slower than bubbles rise, so the
-      // two layers separate and the column reads as having volume.
       const mp = motes.geometry.attributes.position.array as Float32Array
       for (let i = 0; i < mp.length; i += 3) {
         mp[i] += Math.sin(t * 0.2 + mp[i + 1] * 0.1) * dt * 0.25
@@ -831,39 +731,52 @@ export default function FishTankCanvas({
       }
       motes.geometry.attributes.position.needsUpdate = true
 
-      // Caustics crawl across the bed; rays sway with the surface.
-      if (caustic) {
-        caustic.offset.x = (t * 0.012) % 1
-        caustic.offset.y = (Math.sin(t * 0.08) * 0.1 + t * 0.006) % 1
-      }
+      // Caustics & God rays
+      causticMat.uniforms.uTime.value = t
       rays.rotation.y = Math.sin(t * 0.05) * 0.06
-      rayMat.opacity = palette.rayStrength * (0.75 + Math.sin(t * 0.4) * 0.25)
+      rayMat.opacity = palette.rayStrength * (0.8 + Math.sin(t * 0.4) * 0.2)
 
-      // Seaweed bends as a chain — each segment lags the one below it.
+      // Seaweed swaying
       for (const weed of weeds) {
         const { segs, seed } = weed.userData as { segs: number; seed: number }
         for (let s = 0; s < segs; s++) {
           const seg = weed.getObjectByName(`seg${s}`)
           if (!seg) continue
-          const amp = 0.05 + (s / segs) * 0.16
-          seg.rotation.z = Math.sin(t * 0.7 + seed * 0.9 + s * 0.45) * amp
+          const amp = 0.06 + (s / segs) * 0.18
+          seg.rotation.z = Math.sin(t * 0.75 + seed * 0.9 + s * 0.45) * amp
         }
       }
 
-      // Head sits above the rim, body implied below it — bobbing gently.
+      // Cat mascot animation
       cat.position.y = CAT_Y + Math.sin(t * 0.8) * 0.28
-      // cat head-turn removed (no longer tracks mouse position)
-      // Paw dip when locking a specimen
       const paw = cat.getObjectByName("paw")
       if (paw) {
         const dip = selected ? 0.55 : 0
-        paw.rotation.z = 0.6 + dip
+        paw.rotation.z = 0.22 + dip + Math.sin(t * 1.5) * 0.05
+      }
+      const catTail = cat.getObjectByName("cat_tail")
+      if (catTail) {
+        catTail.rotation.y = Math.sin(t * 1.2) * 0.35
+      }
+      // Blinking eye
+      const eyeL = cat.getObjectByName("eyeL")
+      const eyeR = cat.getObjectByName("eyeR")
+      const blink = Math.sin(t * 0.5) > 0.98 ? 0.1 : 1
+      if (eyeL) eyeL.scale.y = blink
+      if (eyeR) eyeR.scale.y = blink
+
+      // 3D Holographic Reticle Update
+      if (selected) {
+        const selData = selected.userData.data as FishSpecimenInput | undefined
+        holoReticle.update(t, selected.position, selData?.size ?? 0.5, true)
+      } else {
+        holoReticle.update(t, _v, 1, false)
       }
 
-      const hl = highlightRef.current
       const focus = focusedRef.current
-      const litFn = litRef.current
+      const filter = filterRef.current
 
+      // Fish swimming & organic S-curve deformation
       for (const o of fishObjs) {
         const focused = selected === o.mesh
         const pose = computeFishPose(o.data, t, {
@@ -872,9 +785,8 @@ export default function FishTankCanvas({
         })
         o.mesh.position.set(pose.position.x, pose.position.y, pose.position.z)
         o.mesh.rotation.y = pose.yaw
+
         if (!focused) {
-          // Bank into the turn and pitch slightly with vertical drift — a fish
-          // that stays perfectly level reads as a prop on a rail.
           const prev = o.mesh.userData.prevYaw as number | undefined
           const dYaw = prev == null ? 0 : shortestAngle(pose.yaw - prev)
           o.mesh.userData.prevYaw = pose.yaw
@@ -883,38 +795,55 @@ export default function FishTankCanvas({
           o.mesh.rotation.x = Math.sin(t * 1.4 * o.data.speed + o.data.depth * 6) * 0.06
         }
 
-        const lit = litFn
-          ? litFn(o.data)
-          : defaultLit(o.data, hl, focus)
-        const scaleMul = lit > 1 ? 1.12 : lit < 0.5 ? 0.72 : 1
+        // Organic S-Curve Spine & Segment Undulation
+        const { spineSegments, pecL, pecR, tentacles } = o.built
+        const swimSpeed = (o.data.speed || 0.5) * 7.5
+        
+        if (spineSegments.length > 1) {
+          spineSegments.forEach((seg, sIdx) => {
+            const phaseLag = sIdx * 0.65
+            const amp = 0.08 + sIdx * 0.07
+            seg.rotation.y = Math.sin(t * swimSpeed - phaseLag) * amp
+          })
+        }
+
+        // Pectoral fin flapping
+        if (pecL && pecR) {
+          const beat = Math.sin(t * 8 * (0.4 + o.data.speed)) * 0.35
+          pecL.rotation.x = beat
+          pecR.rotation.x = -beat
+        }
+
+        // Jellyfish tentacle wave
+        if (tentacles && tentacles.length > 0) {
+          const dome = spineSegments[0]
+          if (dome) {
+            const pulse = 1 + Math.sin(t * 3.5) * 0.15
+            dome.scale.set(1 / Math.sqrt(pulse), pulse, 1 / Math.sqrt(pulse))
+          }
+          tentacles.forEach((ten, idx) => {
+            ten.rotation.z = Math.sin(t * 3 + idx * 0.8) * 0.25
+            ten.rotation.x = Math.cos(t * 3 + idx * 0.8) * 0.25
+          })
+        }
+
+        const lit = fishLitFactor(o.data, filter, focus)
+        const scaleMul = lit > 1 ? 1.15 : lit < 0.5 ? 0.72 : 1
         o.mesh.scale.setScalar(pose.scale * scaleMul)
 
-        // Stay mostly opaque so ambient lighting reads; dim via emissive/glow.
         const opacityBase = lit < 0.3 ? 0.35 : 0.75 + Math.min(1, lit) * 0.25
-        o.body.opacity = opacityBase
-        o.fin.opacity = 0.45 + Math.min(1, lit) * 0.5
-        o.body.emissiveIntensity =
-          o.data.glow * 0.7 * Math.min(1, lit) * (light ? 0.55 : 0.95)
-        o.fin.emissiveIntensity =
-          o.data.glow * 0.95 * Math.min(1, lit) * (light ? 0.55 : 0.95)
-        o.glow.intensity =
+        o.built.body.opacity = opacityBase
+        o.built.fin.opacity = 0.5 + Math.min(1, lit) * 0.45
+        o.built.body.emissiveIntensity =
+          Math.max(0.25, o.data.glow * 0.85 * Math.min(1, lit) * (light ? 0.6 : 1.1))
+        o.built.fin.emissiveIntensity =
+          Math.max(0.35, o.data.glow * 1.2 * Math.min(1, lit) * (light ? 0.6 : 1.25))
+        o.built.glow.intensity =
           o.data.glow *
-          2.0 *
+          2.4 *
           Math.min(1, lit) *
-          (focused ? 2.6 : 1) *
-          (light ? 0.7 : 1.15)
-
-        const tail = o.mesh.getObjectByName("tail")
-        if (tail && !focused) {
-          tail.rotation.y = Math.sin(t * 11 * o.data.speed) * 0.4
-        }
-        if (!focused) {
-          const beat = Math.sin(t * 7 * (0.4 + o.data.speed)) * 0.3
-          const pecL = o.mesh.getObjectByName("pecL")
-          const pecR = o.mesh.getObjectByName("pecR")
-          if (pecL) pecL.rotation.x = beat
-          if (pecR) pecR.rotation.x = -beat
-        }
+          (focused ? 2.8 : 1) *
+          (light ? 0.75 : 1.25)
 
         _v.copy(o.mesh.position)
         _v.y -= 1.6 * pose.scale
@@ -934,9 +863,7 @@ export default function FishTankCanvas({
           o.label.style.left = `${(_v.x * 0.5 + 0.5) * w}px`
           o.label.style.top = `${(-_v.y * 0.5 + 0.5) * h}px`
           o.label.style.opacity = String(Math.min(1, lit))
-          // Brighten the pill glow for highlighted / focused fish
           const typedLabel = o.label as HTMLDivElement & {
-            _tick: HTMLDivElement
             _pill: HTMLDivElement
             _hex: string
           }
@@ -944,25 +871,21 @@ export default function FishTankCanvas({
             const isHot = focused || lit > 1
             const hex = typedLabel._hex
             typedLabel._pill.style.boxShadow = isHot
-              ? `0 0 14px ${hex}88,0 0 4px ${hex}55,0 2px 10px rgba(0,0,0,.5)`
+              ? `0 0 16px ${hex}aa,0 0 6px ${hex}77,0 2px 12px rgba(0,0,0,.6)`
               : `0 2px 10px rgba(0,0,0,.4)`
             typedLabel._pill.style.borderColor = isHot
-              ? `${hex}cc`
+              ? `${hex}ee`
               : `${hex}99`
           }
         }
       }
 
-      // Publish the locked fish's screen position so the dossier can dock beside
-      // it. Throttled to real movement — this fires into React state.
+      // Publish dossier anchor
       if (selected) {
         _v.copy(selected.position)
         _v.project(camera)
         const ax = (_v.x * 0.5 + 0.5) * w
         const ay = (-_v.y * 0.5 + 0.5) * h
-        // Project a point one bounding-radius above the fish to measure how big
-        // it actually is on screen. Docking off the centre alone put the panel
-        // inside the specimen whenever it was close or large.
         const worldR = 2.4 * selected.scale.x
         _v2.copy(selected.position)
         _v2.y += worldR
@@ -977,12 +900,12 @@ export default function FishTankCanvas({
           lastAnchor.x = ax
           lastAnchor.y = ay
           lastAnchor.r = ar
-          onAnchorRef.current?.({ x: ax, y: ay, r: ar, w, h })
+          fishBus.emit("fish:anchor", { x: ax, y: ay, r: ar, w, h })
         }
       } else if (lastAnchor.x !== -9999) {
         lastAnchor.x = -9999
         lastAnchor.y = -9999
-        onAnchorRef.current?.(null)
+        fishBus.emit("fish:anchor", null)
       }
 
       renderer.render(scene, camera)
@@ -993,6 +916,9 @@ export default function FishTankCanvas({
       disposed = true
       cancelAnimationFrame(raf)
       cancelAnimationFrame(paletteFrame)
+      unsubStore()
+      unsubProgress()
+      fishBus.emit("fish:anchor", null)
       ro?.disconnect()
       renderer.domElement.removeEventListener("pointerdown", onPointerDown)
       renderer.domElement.removeEventListener("pointerup", onPointerUp)
@@ -1000,6 +926,7 @@ export default function FishTankCanvas({
       renderer.domElement.removeEventListener("pointermove", onPointerMove)
       renderer.domElement.removeEventListener("wheel", onWheel)
       renderer.domElement.removeEventListener("click", onClick)
+      holoReticle.dispose()
       renderer.dispose()
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement)
       if (labelLayer.parentNode === host) host.removeChild(labelLayer)
@@ -1012,7 +939,7 @@ export default function FishTankCanvas({
         }
       })
     }
-  }, [fish, immersive, themeKey])
+  }, [fish, immersive, themeKey, highlightSlugs])
 
   return (
     <div

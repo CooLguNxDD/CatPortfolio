@@ -3,7 +3,7 @@
  * Default view is the fish tank when capable; `?v=text` forces the layout.
  */
 
-import { useCallback, useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import { loadBaked } from "@/content/loadLayout"
 import { LayoutRenderer } from "@/render/LayoutRenderer"
@@ -11,6 +11,8 @@ import { useDemoLayoutQuery, useDemoShortId } from "@/hooks/useDemoLayout"
 import { sceneFromLayout } from "@/fish/sceneFromLayout"
 import { FishTankStage } from "@/components/FishTankStage"
 import { FishTankErrorBoundary } from "@/components/FishTankErrorBoundary"
+import { fishBus } from "@/fish/fishBus"
+import { useFishTankStore } from "@/store"
 import {
   prefersReducedMotion,
   probeWebGL2,
@@ -51,24 +53,41 @@ export function HomePage() {
     ...(f ? { f } : {}),
   }
 
-  const onFocusChange = useCallback(
-    (slug: string | null) => {
+  // Router owns `?f=` (see fish/fishBus.ts header). Sync URL → store so the
+  // canvas can subscribe focus without prop drilling, and subscribe the
+  // canvas's pick/release intent → URL, matching the pre-refactor round trip
+  // (focusFish callback → navigate → new focusedSlug prop → canvas), just
+  // through the bus instead of props.
+  useEffect(() => {
+    useFishTankStore.getState().setFocus(f ?? null)
+  }, [f])
+
+  useEffect(() => {
+    function pick({ slug }: { slug: string }) {
+      void navigate({
+        to: "/",
+        search: (prev) => ({ ...((prev || {}) as DemoSearch), f: slug }),
+        replace: true,
+      })
+    }
+    function release() {
       void navigate({
         to: "/",
         search: (prev) => {
-          const p = (prev || {}) as DemoSearch
-          if (!slug) {
-            const next = { ...p }
-            delete next.f
-            return next
-          }
-          return { ...p, f: slug }
+          const next = { ...((prev || {}) as DemoSearch) }
+          delete next.f
+          return next
         },
         replace: true,
       })
-    },
-    [navigate],
-  )
+    }
+    fishBus.on("fish:pick", pick)
+    fishBus.on("fish:release", release)
+    return () => {
+      fishBus.off("fish:pick", pick)
+      fishBus.off("fish:release", release)
+    }
+  }, [navigate])
 
   const hasDag = Boolean(layout?.meta?.dag?.levels?.length)
   const usesSpanGrid =
@@ -130,12 +149,7 @@ export function HomePage() {
             loading demo layout…
           </p>
         ) : null}
-        <FishTankStage
-          layout={layout}
-          focusedSlug={f ?? null}
-          onFocusChange={onFocusChange}
-          demoSearch={demoSearch}
-        />
+        <FishTankStage layout={layout} demoSearch={demoSearch} />
       </FishTankErrorBoundary>
     )
   }

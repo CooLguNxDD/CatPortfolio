@@ -1,9 +1,10 @@
-/** Minimal ambient module when @types/three is not installed. */
+/** Ambient module when @types/three is not installed. */
 declare module "three" {
   export class Color {
     constructor(color?: string | number)
     getHex(): number
-    set(color: string | number): this
+    getHexString(): string
+    set(color: string | number | Color): this
   }
   export class Vector2 {
     x: number
@@ -21,6 +22,7 @@ declare module "three" {
     clone(): Vector3
     project(camera: Camera): this
     lerp(v: Vector3, alpha: number): this
+    distanceTo(v: Vector3): number
     setScalar(s: number): this
     multiplyScalar(s: number): this
   }
@@ -37,6 +39,7 @@ declare module "three" {
     parent: Object3D | null
     userData: Record<string, unknown>
     name: string
+    visible: boolean
     add(...objects: Object3D[]): this
     getObjectByName(name: string): Object3D | undefined
     traverse(cb: (obj: Object3D) => void): void
@@ -66,12 +69,20 @@ declare module "three" {
   }
   export class WebGLRenderer {
     domElement: HTMLCanvasElement
-    constructor(params?: { antialias?: boolean; alpha?: boolean })
+    constructor(params?: Record<string, unknown>)
     setPixelRatio(n: number): void
     setSize(w: number, h: number, updateStyle?: boolean): void
     render(scene: Scene, camera: Camera): void
     dispose(): void
   }
+  export class WebGLRenderTarget {
+    constructor(width: number, height: number, options?: Record<string, unknown>)
+    setSize(width: number, height: number): void
+    dispose(): void
+  }
+  export const HalfFloatType: number
+  export const RGBAFormat: number
+
   export class Clock {
     getDelta(): number
     elapsedTime: number
@@ -89,6 +100,8 @@ declare module "three" {
   export class BufferGeometry {
     attributes: Record<string, BufferAttributeLike>
     setAttribute(name: string, attr: BufferAttribute): void
+    computeVertexNormals(): void
+    setFromPoints(points: Vector3[]): this
     dispose(): void
   }
   export class BufferAttribute {
@@ -97,6 +110,12 @@ declare module "three" {
   }
   export class Material {
     dispose(): void
+  }
+  export class ShaderMaterial extends Material {
+    uniforms: Record<string, { value: unknown }>
+    vertexShader: string
+    fragmentShader: string
+    constructor(params?: Record<string, unknown>)
   }
   export class MeshBasicMaterial extends Material {
     opacity: number
@@ -138,6 +157,11 @@ declare module "three" {
     material: Material | Material[]
     constructor(geometry?: BufferGeometry, material?: Material)
     lookAt(v: Vector3): void
+  }
+  export class Line extends Object3D {
+    geometry: BufferGeometry
+    material: Material
+    constructor(geometry?: BufferGeometry, material?: Material)
   }
   export class Shape {
     moveTo(x: number, y: number): this
@@ -197,6 +221,16 @@ declare module "three" {
     constructor(w?: number, h?: number, ws?: number, hs?: number)
     rotateX(angle: number): this
   }
+  export class RingGeometry extends BufferGeometry {
+    constructor(
+      innerRadius?: number,
+      outerRadius?: number,
+      thetaSegments?: number,
+      phiSegments?: number,
+      thetaStart?: number,
+      thetaLength?: number,
+    )
+  }
   export class ConeGeometry extends BufferGeometry {
     constructor(
       radius?: number,
@@ -232,6 +266,10 @@ declare module "three" {
   export class DodecahedronGeometry extends BufferGeometry {
     constructor(radius?: number, detail?: number)
   }
+  export class OctahedronGeometry extends BufferGeometry {
+    constructor(radius?: number, detail?: number)
+    scale(x: number, y: number, z: number): this
+  }
   export class EdgesGeometry extends BufferGeometry {
     constructor(geometry?: BufferGeometry)
   }
@@ -242,4 +280,40 @@ declare module "three" {
   export const AdditiveBlending: number
   export const RepeatWrapping: number
   export const ClampToEdgeWrapping: number
+}
+
+declare module "three/addons/postprocessing/EffectComposer.js" {
+  import { WebGLRenderer, WebGLRenderTarget } from "three"
+  export class EffectComposer {
+    constructor(renderer: WebGLRenderer, renderTarget?: WebGLRenderTarget)
+    setPixelRatio(pixelRatio: number): void
+    setSize(width: number, height: number): void
+    addPass(pass: unknown): void
+    render(): void
+    dispose(): void
+  }
+}
+
+declare module "three/addons/postprocessing/RenderPass.js" {
+  import { Scene, Camera } from "three"
+  export class RenderPass {
+    constructor(scene: Scene, camera: Camera)
+  }
+}
+
+declare module "three/addons/postprocessing/UnrealBloomPass.js" {
+  import { Vector2 } from "three"
+  export class UnrealBloomPass {
+    resolution: Vector2
+    strength: number
+    radius: number
+    threshold: number
+    constructor(resolution?: Vector2, strength?: number, radius?: number, threshold?: number)
+  }
+}
+
+declare module "three/addons/postprocessing/OutputPass.js" {
+  export class OutputPass {
+    constructor()
+  }
 }

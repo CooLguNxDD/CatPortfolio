@@ -25,11 +25,24 @@ export const SWIM_Y_MAX = WATER_Y - 2.2
 export const SWIM_Y_MIN = FLOOR_Y + 3.5
 export const MAX_ORBIT_RADIUS = 62
 export const MIN_ORBIT_RADIUS = 8
+export const SURFACE_RADIUS = 38
+export const SUBMERGED_RADIUS = 30
+export const DEFAULT_PITCH = 0.1
+export const MAX_PITCH = 1.05
+export const MIN_PITCH = -0.45
+export const DIVE_PITCH_ARC = -0.16
+export const FOCUS_STANDOFF_BASE = 15
+export const FOCUS_STANDOFF_SCALE = 7
+export const TARGET_LERP_SPEED = 0.07
+export const ORBIT_LERP_SPEED = 0.09
+export const RADIUS_LERP_SPEED = 0.07
+export const VIEW_SHIFT_SPEED = 0.08
+export const DIVE_DURATION_MS = 1100
+export const SURFACE_DURATION_MS = 750
+
 /** Where the cat perches on the rim. Shared by the mesh and the surface camera. */
 export const CAT_X = 12
 export const CAT_Y = WATER_Y + 1
-export const MAX_PITCH = 1.05
-export const MIN_PITCH = -0.45
 
 export interface FishSpecimenInput {
   slug: string
