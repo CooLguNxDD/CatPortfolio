@@ -1,0 +1,132 @@
+
+
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<header>
+  <div class="avatar"><span>🐱</span></div>
+  <div class="who">
+    <b>Andrew L.</b>
+    <small>Platform &amp; agent infrastructure · Cat Builder 🐾</small>
+  </div>
+
+  <div class="spacer"></div>
+  <button class="btn" id="bakeBtn" title="Simulate a job-specific bake">⚡ Simulate bake</button>
+  <div class="seg" role="group" aria-label="View mode">
+    <button class="btn on" id="m3d">3D Tank</button>
+    <button class="btn" id="mflat">Flat</button>
+  </div>
+  <button class="btn" id="jsonBtn" title="Inspect fish.json">{ } config</button>
+</header>
+
+<div id="ui3d">
+  <!-- SCENE 1 — the cat on the rim. Hero pinned left so the cat owns the right half. -->
+  <section class="scene" id="scene1">
+    <div class="hero">
+      <div class="card glass">
+        <span class="eyebrow"><i class="pulse"></i> Surface deck · Andrew the cat builder</span>
+        <h2>The cat builds the systems. The tank holds the proof.</h2>
+        <p>Agentic backends, MCP servers, GOAP planners, multi-tenant platforms. Below the waterline every fish is a shipped project.</p>
+        <p><b style="color:var(--ink)">Read the tank:</b> size = scope · depth = age · glow = impact · speed = still alive · color = domain · a school means it was a team.</p>
+        <div class="row">
+          <button class="btn cta" id="diveBtn">Dive into the tank ↓</button>
+          <button class="btn" id="pawBtn">🐾 Tap the surface</button>
+          <a class="btn" href="?flat=1">Recruiter fast view</a>
+        </div>
+      </div>
+    </div>
+    <div class="scenecue" id="cue1">scroll to submerge</div>
+  </section>
+
+  <!-- SCENE 2 — inside the tank. Rim readout top-left, ask bar pinned bottom-centre. -->
+  <section class="scene" id="scene2">
+    <div class="waterline">
+      <div class="bar">
+        <div>
+          <div class="lbl">Aquarium surface rim</div>
+          <div class="sub">Depth <b id="depthRead" style="color:var(--ink);font-family:var(--mono)">-12.0m</b> · <span id="litRead">10 species</span></div>
+        </div>
+        <div class="wave"></div>
+        <div class="sub" style="font-family:var(--mono);font-size:10px">drag orbit · wheel zoom · click a fish · esc to surface</div>
+      </div>
+    </div>
+
+    <div class="tankui">
+      <div class="toolbar glass">
+        <input type="search" id="q" placeholder="Ask the tank — mcp, kubernetes, planner…" aria-label="Search projects" />
+        <div class="chips" id="domains"></div>
+        <div class="count"><b id="cnt">0/0</b> lit</div>
+      </div>
+    </div>
+
+    <button class="btn surfaceBtn" id="surfaceBtn" title="Back to the surface (Esc)">↑ Surface</button>
+  </section>
+</div>
+
+<div id="labels" aria-hidden="true"></div>
+
+<div class="depthmarks" aria-hidden="true">
+  <div>▸ Surface · shipped now</div>
+  <div>▸ Mid water · last year</div>
+  <div>▸ Deep bed · archived</div>
+</div>
+
+<div class="curation glass" id="curation">
+  <b id="curationLabel"></b>
+  <button class="btn" id="curationClear">clear</button>
+</div>
+
+<!-- FLAT GRID: same data, real DOM, indexable, 8-second read -->
+<main id="flat">
+  <span class="eyebrow">⚡ Recruiter fast view · no WebGL required</span>
+  <h2>Project index</h2>
+  <p class="lead">Rendered from the same single-source <code>fish.json</code> the 3D tank consumes. Nothing here is exclusive to the 3D view.</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
+    <input type="search" id="qf" placeholder="Filter by title, tag or tech…" aria-label="Filter projects" />
+    <div class="chips" id="domainsFlat"></div>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<!-- DETAIL MODAL -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="sheet glass" style="position:relative">
+    <div class="scanline"></div>
+    <button class="btn close" id="mClose" aria-label="Release fish">Release ✕</button>
+    <p class="specimen">Specimen locked · <span id="mIndex">01</span></p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="badge" id="mDomain">—</span>
+      <span class="ref" style="margin:0" id="mSpecies">—</span>
+    </div>
+    <h3 id="mTitle">—</h3>
+    <p class="blurb" id="mBlurb">—</p>
+    <div class="sect">Key impact metrics</div>
+    <div class="kv" id="mMetrics"></div>
+    <div class="sect">Architecture context</div>
+    <p class="desc" id="mDesc">—</p>
+    <div class="sect">Stack</div>
+    <div class="tagrow" id="mTags"></div>
+    <div class="foot">
+      <a class="btn cta" id="mLink" href="#" target="_blank" rel="noopener">Repository ↗</a>
+      <span class="ref" id="mRef">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIG DRAWER -->
+<aside class="drawer glass" id="drawer">
+  <div class="hd">
+    <b style="flex:1">fish.json — schema inspector</b>
+    <button class="btn" id="dClose">✕</button>
+  </div>
+  <p class="note">Emitted by <code>bake_portfolio_for_job</code>. Every numeric field is normalized <code>0..1</code>, so the renderer owns all geometry — a bad generation makes an ugly tank, never a broken page.</p>
+  <pre id="jsonOut"></pre>
+  <div class="ft">
+    <button class="btn" id="copyJson">Copy JSON</button>
+    <span class="ref" style="margin-left:auto">schema v1</span>
+  </div>
+</aside>
+
+<noscript><div class="fallback"><h2>Project index</h2><p>This portfolio needs JavaScript for the tank. The flat project list is available at <a href="?flat=1" style="color:#00f3ff">?flat=1</a>.</p></div></noscript>
+
+
+

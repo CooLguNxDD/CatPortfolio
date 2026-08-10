@@ -16,3 +16,4 @@ export { McpSandbox } from "./McpSandbox";
 export { CostSim } from "./CostSimulator";
 export { Composite } from "./Composite";
 export { Scene2d } from "./Scene2d";
+export { FishTank } from "./FishTank";

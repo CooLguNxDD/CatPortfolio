@@ -16,6 +16,7 @@ import {
 import { themeList } from "@/themes/registry"
 import { Button } from "@/components/ui/button"
 import type { DemoSearch } from "@/router"
+import { clearDemoSearch, mergeDemoSearch } from "@/lib/demoSearch"
 
 const ACCENTS: { id: Accent; label: string }[] = [
   { id: "amber", label: "Amber" },
@@ -43,24 +44,32 @@ function App() {
   const setThemeOverride = useLayoutStore((s) => s.setThemeOverride)
 
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const searchJ = useRouterState({
-    select: (s) => (s.location.search as DemoSearch | undefined)?.j,
+  const liveSearch = useRouterState({
+    select: (s) => (s.location.search as DemoSearch | undefined) ?? {},
   })
+  const searchJ = liveSearch?.j
 
-  // If the temporary store has a shortId but URL lost `j`, bake it back.
+  // If the temporary store has a shortId but URL lost `j`, bake it back
+  // without dropping view/focus params (v/f).
   useEffect(() => {
     if (!isDemoSession || !shortId) return
     if (searchJ === shortId) return
     const onAsk = pathname.includes("/ask")
     void navigate({
       to: onAsk ? "/ask" : "/",
-      search: { j: shortId },
+      search: (prev) => mergeDemoSearch(prev as DemoSearch, shortId),
       replace: true,
     })
   }, [isDemoSession, shortId, searchJ, pathname, navigate])
 
-  const demoSearch: DemoSearch =
-    isDemoSession && shortId ? { j: shortId } : {}
+  // Preserve j/v/f across header nav links.
+  const demoSearch: DemoSearch = {
+    ...(liveSearch?.j || (isDemoSession && shortId)
+      ? { j: liveSearch?.j ?? shortId ?? undefined }
+      : {}),
+    ...(liveSearch?.v ? { v: liveSearch.v } : {}),
+    ...(liveSearch?.f ? { f: liveSearch.f } : {}),
+  }
 
   const activeThemeId =
     isDemoSession && themeOverride
@@ -78,7 +87,7 @@ function App() {
     queryClient.removeQueries({ queryKey: ["layout", "default"] })
     void navigate({
       to: pathname.includes("/ask") ? "/ask" : "/",
-      search: {},
+      search: (prev) => clearDemoSearch(prev as DemoSearch),
       replace: true,
     })
   }
@@ -100,7 +109,7 @@ function App() {
       className="app-root min-h-screen flex flex-col bg-(--bg) text-(--fg)"
       {...accentAttr}
     >
-      <header className="sticky top-0 z-10 backdrop-blur-md border-b border-(--hairline) bg-(--bg)/80">
+      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-(--hairline) bg-(--bg)/80">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-6 min-w-0">
             <Link
