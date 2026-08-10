@@ -1,15 +1,22 @@
 /**
  * Full-page fish tank stage — thin view over useFishTank controller.
  * Site nav/theme/accent live in App header only (no second tank header).
+ *
+ * Interaction commands (dive/surface/chrome/focus) are emitted onto the fish
+ * bus rather than called as controller methods — see fish/fishBus.ts. Focus
+ * itself is owned by HomePage (router `?f=` ↔ store.focus round trip); this
+ * component only reads the resolved value off useFishTank for the dossier.
  */
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Link } from "@tanstack/react-router"
 import { FishTankView } from "@/blocks/FishTank"
 import { FishDossier } from "@/components/fish/FishDossier"
 import { FishFlatGrid } from "@/components/fish/FishFlatGrid"
 import { FishTankChrome } from "@/components/fish/FishTankChrome"
 import { useFishTank } from "@/hooks/useFishTank"
+import { fishBus } from "@/fish/fishBus"
+import { canDiveOnScroll } from "@/fish/tankMachine"
 import type { Layout } from "@/content/schema"
 import type { DemoSearch } from "@/router"
 import { cn } from "@/lib/utils"
@@ -17,8 +24,6 @@ import "@/styles/fish-tank.css"
 
 export interface FishTankStageProps {
   layout: Layout
-  focusedSlug?: string | null
-  onFocusChange?: (slug: string | null) => void
   demoSearch?: DemoSearch
   className?: string
 }
@@ -26,45 +31,66 @@ export interface FishTankStageProps {
 /** Immersive aquarium stage composed from modular chrome + canvas. */
 export function FishTankStage({
   layout,
-  focusedSlug = null,
-  onFocusChange,
   demoSearch = {},
   className,
 }: FishTankStageProps) {
-  const tank = useFishTank({
-    layout,
-    routeFocus: focusedSlug,
-    onRouteFocusChange: onFocusChange,
-  })
-  // Screen position of the locked fish — the dossier docks beside it.
-  const [anchor, setAnchor] = useState<
-    { x: number; y: number; r: number; w: number; h: number } | null
-  >(null)
+  const tank = useFishTank(layout)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return
       if (tank.focusedSlug) {
-        tank.focusFish(null)
+        fishBus.emit("fish:release")
         return
       }
-      if (tank.tankScene === "tank") tank.surface()
+      if (tank.tankScene === "tank") fishBus.emit("tank:surface")
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [tank.focusedSlug, tank.tankScene, tank.focusFish, tank.surface])
+  }, [tank.focusedSlug, tank.tankScene])
 
   useEffect(() => {
     if (tank.chrome !== "3d") return
+    let lastWheelTime = 0
+
     function onWheel(e: WheelEvent) {
-      if (tank.tankScene === "surface" && e.deltaY > 0) {
+      const now = performance.now()
+      if (now - lastWheelTime < 250) return
+
+      // On surface, scrolling down triggers the dive into the tank.
+      // In the underwater scene, wheel events are handled exclusively by the 3D canvas for zoom in/out.
+      if (canDiveOnScroll(tank.tankState) && e.deltaY > 10) {
+        lastWheelTime = now
         e.preventDefault()
-        tank.dive()
+        fishBus.emit("tank:dive")
       }
     }
+
+    let touchStartY = 0
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 1) {
+        touchStartY = e.touches[0].clientY
+      }
+    }
+    function onTouchEnd(e: TouchEvent) {
+      if (e.changedTouches.length === 1) {
+        const touchEndY = e.changedTouches[0].clientY
+        const diff = touchStartY - touchEndY // positive = swipe up / scroll down
+        if (canDiveOnScroll(tank.tankState) && diff > 40) {
+          fishBus.emit("tank:dive")
+        }
+      }
+    }
+
     window.addEventListener("wheel", onWheel, { passive: false })
-    return () => window.removeEventListener("wheel", onWheel)
-  }, [tank.chrome, tank.tankScene, tank.dive])
+    window.addEventListener("touchstart", onTouchStart, { passive: true })
+    window.addEventListener("touchend", onTouchEnd, { passive: true })
+    return () => {
+      window.removeEventListener("wheel", onWheel)
+      window.removeEventListener("touchstart", onTouchStart)
+      window.removeEventListener("touchend", onTouchEnd)
+    }
+  }, [tank.chrome, tank.tankState])
 
   if (!tank.fish.length) return null
 
@@ -85,7 +111,7 @@ export function FishTankStage({
           type="button"
           className={cn("ft-chip-btn", tank.chrome === "3d" && "is-on")}
           aria-pressed={tank.chrome === "3d"}
-          onClick={() => tank.setChrome("3d")}
+          onClick={() => fishBus.emit("view:chrome", "3d")}
         >
           3D
         </button>
@@ -93,7 +119,7 @@ export function FishTankStage({
           type="button"
           className={cn("ft-chip-btn", tank.chrome === "flat" && "is-on")}
           aria-pressed={tank.chrome === "flat"}
-          onClick={() => tank.setChrome("flat")}
+          onClick={() => fishBus.emit("view:chrome", "flat")}
         >
           Flat
         </button>
@@ -110,7 +136,7 @@ export function FishTankStage({
         <FishFlatGrid
           fish={tank.fish}
           curationLabel={tank.curationLabel ?? undefined}
-          onSelect={(slug) => tank.focusFish(slug)}
+          onSelect={(slug) => fishBus.emit("fish:pick", { slug })}
         />
       ) : (
         <>
@@ -118,30 +144,15 @@ export function FishTankStage({
             <FishTankView
               fish={tank.fish}
               immersive
-              focusedSlug={tank.focusedSlug}
               highlightSlugs={tank.scene.highlightSlugs}
-              onFocusChange={tank.focusFish}
-              stageProgress={tank.stageProgress}
-              litFactor={tank.litFactor}
-              onFocusAnchor={setAnchor}
               className="relative h-full w-full min-h-[min(70vh,720px)]"
             />
           </div>
           <FishTankChrome
-            stageProgress={tank.stageProgress}
-            tankScene={tank.tankScene}
             litCount={tank.litCount}
             total={tank.fish.length}
-            query={tank.query}
-            domain={tank.domain}
             domains={tank.domains}
             curationLabel={tank.curationLabel}
-            onQuery={tank.setQuery}
-            onToggleDomain={tank.toggleDomain}
-            onDive={tank.dive}
-            onSurface={tank.surface}
-            onDismissCuration={tank.dismissCuration}
-            onBake={tank.applyBake}
           />
           <div className="ft-depthmarks" aria-hidden>
             <div>▸ Surface · shipped now</div>
@@ -155,8 +166,7 @@ export function FishTankStage({
         fish={tank.focusedFish}
         index={tank.focusedIndex}
         total={tank.fish.length}
-        anchor={tank.chrome === "3d" ? anchor : null}
-        onClose={() => tank.focusFish(null)}
+        onClose={() => fishBus.emit("fish:release")}
       />
     </div>
   )

@@ -1,8 +1,11 @@
 /**
  * fishTank block shell — WebGL probe + reduced-motion gate + lazy Three canvas.
  * Mirrors Scene2d → Scene2dCanvas; three is never imported here.
- * Stage/immersive callers use FishTankView with the same canvas.
- * Controller (focus/filter) is optional — block stays pure props from registry.
+ * Stage/immersive callers use FishTankView with the same canvas. Interaction
+ * is bus/store-driven inside the canvas (see fish/fishBus.ts) — a bare inline
+ * registry block like this one never subscribes a stage, so clicking a fish
+ * here only locks the camera locally for one frame (no bus listener exists
+ * to persist it) — this mirrors the pre-refactor inline behavior exactly.
  */
 
 import { lazy, Suspense, useMemo } from "react"
@@ -19,31 +22,24 @@ export interface FishTankViewProps {
   title?: string
   caption?: string
   immersive?: boolean
-  focusedSlug?: string | null
+  /** Bake highlight set — layout-derived; see fishBus.ts for interaction state. */
   highlightSlugs?: string[]
-  onFocusChange?: (slug: string | null) => void
-  stageProgress?: number
-  /** Optional lit factor from controller (0..1+); canvas dims non-matches. */
-  litFactor?: (f: FishSpecimenInput) => number
-  /** Canvas-local position + canvas box of the locked fish (for docking chrome). */
-  onFocusAnchor?: (
-    anchor: { x: number; y: number; r: number; w: number; h: number } | null,
-  ) => void
   className?: string
 }
 
-/** Shared view shell used by the block and the full-page stage. */
+/**
+ * Shared view shell used by the block and the full-page stage. Interaction
+ * (focus, dive progress, dossier anchor) is no longer prop-drilled — the
+ * canvas reads it straight off the zustand store + fish bus (see
+ * fish/fishBus.ts, blocks/FishTankCanvas.tsx). This shell only forwards
+ * identity props: which fish, which layout-derived highlights, which theme.
+ */
 export function FishTankView({
   fish,
   title,
   caption,
   immersive = false,
-  focusedSlug = null,
   highlightSlugs = [],
-  onFocusChange,
-  stageProgress = 1,
-  litFactor,
-  onFocusAnchor,
   className,
 }: FishTankViewProps) {
   const reduced = useReducedMotion()
@@ -96,13 +92,8 @@ export function FishTankView({
         <FishTankCanvas
           fish={fish}
           immersive={immersive}
-          focusedSlug={focusedSlug}
           highlightSlugs={highlightSlugs}
-          onFocusChange={onFocusChange}
-          stageProgress={stageProgress}
-          litFactor={litFactor}
           themeKey={themeKey}
-          onFocusAnchor={onFocusAnchor}
         />
       </Suspense>
       {!immersive && caption ? (
@@ -122,7 +113,6 @@ export function FishTank(props: PropsOf<"fishTank">) {
       caption={props.caption}
       highlightSlugs={props.highlightSlugs ?? []}
       immersive={false}
-      stageProgress={1}
     />
   )
 }

@@ -145,18 +145,18 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
-    visibility 0.45s;
+  transition: visibility 0.3s;
+  will-change: transform, opacity;
 }
 
 .ft-scene--surface {
   opacity: calc(1 - var(--t, 0));
-  transform: translateY(calc(var(--t, 0) * -7vh));
+  transform: translateY(calc(var(--t, 0) * -12vh));
 }
 
 .ft-scene--tank {
   opacity: var(--t, 0);
-  transform: translateY(calc((1 - var(--t, 0)) * 7vh));
+  transform: translateY(calc((1 - var(--t, 0)) * 12vh));
 }
 
 .ft-scene[data-off="true"] {

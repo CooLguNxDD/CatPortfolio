@@ -1,9 +1,13 @@
 /**
  * Specimen analysis panel — docks beside the locked fish like an instrument
  * readout. No full-screen scrim, so the specimen stays visible next to it.
+ *
+ * Dock position tracks the canvas-local anchor the WebGL loop publishes on
+ * `fish:anchor` (see fish/fishBus.ts) — a 60fps-shaped observation while the
+ * camera eases onto a freshly-locked specimen.
  */
 
-import type { CSSProperties } from "react"
+import { useEffect, useRef, type CSSProperties } from "react"
 import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
 import {
   DOMAIN_LABEL,
@@ -12,17 +16,13 @@ import {
 } from "@/blocks/fishTankTokens"
 import type { DomainIdType } from "@/content/schema"
 import { cn } from "@/lib/utils"
+import { fishBus, type FishAnchor } from "@/fish/fishBus"
+import { createFrameChannel } from "@/fish/frameChannel"
 
 export interface FishDossierProps {
   fish: FishSpecimenInput | null
   index?: number
   total?: number
-  /**
-   * Canvas-local screen position of the locked fish. When present the panel
-   * docks to the right of the specimen (analysis-readout style); when absent it
-   * falls back to the fixed rail (flat view, narrow viewports).
-   */
-  anchor?: { x: number; y: number; r: number; w: number; h: number } | null
   onClose: () => void
   className?: string
 }
@@ -51,7 +51,6 @@ export function FishDossier({
   fish,
   index = 1,
   total = 1,
-  anchor = null,
   onClose,
   className,
 }: FishDossierProps) {
@@ -62,69 +61,75 @@ export function FishDossier({
   const href = fish ? linkHref(fish.link) : null
   const specimen = String(index).padStart(2, "0")
 
-  // Dock right of the specimen, flipping to its left when there is no room.
-  // All maths in canvas-local space — the panel is positioned inside the same
-  // box the anchor came from, so clamping against `window` would be wrong.
-  const docked = Boolean(anchor) && (anchor?.w ?? 0) > DOCK_MIN_W
-  let dockStyle: CSSProperties | undefined
-  let leadStyle: CSSProperties | undefined
-  let leadSide: "left" | "right" = "left"
-  if (docked && anchor) {
-    // Clear the specimen's own silhouette, not just its centre point.
-    const clear = anchor.r + GAP
-    const fitsRight = anchor.x + clear + PANEL_W + MARGIN <= anchor.w
-    leadSide = fitsRight ? "left" : "right"
-    const left = fitsRight
-      ? anchor.x + clear
-      : Math.max(MARGIN, anchor.x - clear - PANEL_W)
-    // Vertically centre on the specimen, clamped inside the canvas box.
-    const maxTop = Math.max(MARGIN, anchor.h - PANEL_H - MARGIN)
-    const top = Math.min(Math.max(MARGIN, anchor.y - PANEL_H / 2), maxTop)
-    dockStyle = { left, top, width: PANEL_W }
-    // The connector is a sibling of the panel, not a child: inside the panel it
-    // sat outside the padding box and forced a horizontal scrollbar.
-    const leadLeft = fitsRight ? anchor.x + anchor.r : left + PANEL_W
-    const leadRight = fitsRight ? left : anchor.x - anchor.r
-    leadStyle = {
-      left: leadLeft,
-      top: Math.min(Math.max(top + 26, top + 12), top + PANEL_H - 12),
-      width: Math.max(0, leadRight - leadLeft),
-    }
-  }
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const sheetRef = useRef<HTMLDivElement | null>(null)
+  const leadRef = useRef<HTMLSpanElement | null>(null)
+
+  useEffect(() => {
+    const channel = createFrameChannel(fishBus, "fish:anchor", null)
+    return channel.subscribe((anchor: FishAnchor | null) => {
+      const root = rootRef.current
+      const sheet = sheetRef.current
+      const lead = leadRef.current
+      if (!root || !sheet) return
+
+      const docked = Boolean(anchor) && anchor!.w > DOCK_MIN_W
+      root.dataset.docked = docked ? "true" : "false"
+      if (!docked || !anchor) {
+        sheet.style.removeProperty("left")
+        sheet.style.removeProperty("top")
+        sheet.style.removeProperty("width")
+        delete sheet.dataset.lead
+        return
+      }
+
+      const clear = anchor.r + GAP
+      const fitsRight = anchor.x + clear + PANEL_W + MARGIN <= anchor.w
+      const leadSide: "left" | "right" = fitsRight ? "left" : "right"
+      const left = fitsRight
+        ? Math.min(anchor.w - PANEL_W - MARGIN, Math.max(anchor.x + clear, anchor.w * 0.52))
+        : Math.max(MARGIN, anchor.x - clear - PANEL_W)
+      const maxTop = Math.max(MARGIN, anchor.h - PANEL_H - MARGIN)
+      const top = Math.min(Math.max(MARGIN, anchor.y - PANEL_H / 2), maxTop)
+
+      sheet.style.left = `${left}px`
+      sheet.style.top = `${top}px`
+      sheet.style.width = `${PANEL_W}px`
+      sheet.dataset.lead = leadSide
+
+      if (lead) {
+        const leadLeft = fitsRight ? anchor.x + anchor.r : left + PANEL_W
+        const leadRight = fitsRight ? left : anchor.x - anchor.r
+        lead.dataset.lead = leadSide
+        lead.style.left = `${leadLeft}px`
+        lead.style.top = `${Math.min(Math.max(top + 26, top + 12), top + PANEL_H - 12)}px`
+        lead.style.width = `${Math.max(0, leadRight - leadLeft)}px`
+      }
+    })
+  }, [])
 
   return (
     <div
+      ref={rootRef}
       className={cn("ft-modal", open && "ft-modal--open", className)}
       role="dialog"
       aria-modal={open}
       aria-hidden={!open}
       aria-labelledby="ft-dossier-title"
       data-open={open ? "true" : "false"}
-      data-docked={docked ? "true" : "false"}
+      data-docked="false"
     >
-      {fish && docked ? (
-        <span
-          className="ft-lead"
-          data-lead={leadSide}
-          style={
-            {
-              ...leadStyle,
-              "--ft-panel-accent": `var(--${token}, ${fallback})`,
-            } as CSSProperties
-          }
-          aria-hidden
-        />
-      ) : null}
+      <span
+        ref={leadRef}
+        className="ft-lead"
+        style={{ "--ft-panel-accent": `var(--${token}, ${fallback})` } as CSSProperties}
+        aria-hidden
+      />
       {fish ? (
         <div
+          ref={sheetRef}
           className="ft-sheet glass"
-          style={
-            {
-              ...dockStyle,
-              "--ft-specimen-accent": `var(--${token}, ${fallback})`,
-            } as CSSProperties
-          }
-          data-lead={leadSide}
+          style={{ "--ft-specimen-accent": `var(--${token}, ${fallback})` } as CSSProperties}
         >
           <div className="ft-scanline" aria-hidden />
           <span className="ft-corner ft-corner--tl" aria-hidden />
@@ -155,18 +160,21 @@ export function FishDossier({
             >
               {domainLabel(fish.species)}
             </span>
-            <span className="ft-ref">{fish.species}</span>
+            <span className="ft-ref font-mono text-[10px] tracking-wider">{fish.species.toUpperCase()} // SYS-LOCKED</span>
           </div>
-          <h3 id="ft-dossier-title">{fish.title}</h3>
-          {fish.blurb ? <p className="ft-blurb">{fish.blurb}</p> : null}
+          <h3 id="ft-dossier-title" className="text-xl font-bold tracking-tight">{fish.title}</h3>
+          {fish.blurb ? <p className="ft-blurb text-sm leading-relaxed">{fish.blurb}</p> : null}
           {(fish.metrics?.length ?? 0) > 0 ? (
             <>
-              <div className="ft-sect">Key impact metrics</div>
-              <div className="ft-kv">
+              <div className="ft-sect flex items-center justify-between text-xs font-mono tracking-widest text-(--fg-muted)">
+                <span>KEY IMPACT METRICS</span>
+                <span className="h-1 w-1 rounded-full bg-(--accent-amber) animate-pulse" />
+              </div>
+              <div className="ft-kv grid grid-cols-3 gap-2">
                 {fish.metrics!.map((m) => (
-                  <div key={`${m.label}-${m.value}`}>
-                    <span>{m.label}</span>
-                    <b>{m.value}</b>
+                  <div key={`${m.label}-${m.value}`} className="p-2 rounded bg-(--card)/40 border border-(--hairline)/50">
+                    <span className="text-[10px] text-(--fg-muted) block truncate">{m.label}</span>
+                    <b className="text-base text-(--fg) font-semibold block">{m.value}</b>
                   </div>
                 ))}
               </div>
@@ -174,26 +182,26 @@ export function FishDossier({
           ) : null}
           {fish.description ? (
             <>
-              <div className="ft-sect">Architecture context</div>
-              <p className="ft-desc">{fish.description}</p>
+              <div className="ft-sect text-xs font-mono tracking-widest text-(--fg-muted)">ARCHITECTURE CONTEXT</div>
+              <p className="ft-desc text-xs leading-relaxed opacity-90">{fish.description}</p>
             </>
           ) : null}
           {(fish.tags?.length ?? 0) > 0 ? (
             <>
-              <div className="ft-sect">Stack</div>
-              <div className="ft-tagrow">
+              <div className="ft-sect text-xs font-mono tracking-widest text-(--fg-muted)">DEPLOYED STACK</div>
+              <div className="ft-tagrow flex flex-wrap gap-1.5">
                 {fish.tags!.map((t) => (
-                  <span key={t} className="ft-tag">
-                    {t}
+                  <span key={t} className="ft-tag text-[11px] px-2 py-0.5 rounded-full bg-(--hairline)/40 text-(--fg-muted) border border-(--hairline)">
+                    #{t}
                   </span>
                 ))}
               </div>
             </>
           ) : null}
-          <div className="ft-foot">
+          <div className="ft-foot flex items-center justify-between pt-3 border-t border-(--hairline)">
             {href ? (
               <a
-                className="ft-btn ft-cta"
+                className="ft-btn ft-cta text-xs px-3 py-1.5 rounded-md font-mono"
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -201,7 +209,7 @@ export function FishDossier({
                 Repository ↗
               </a>
             ) : null}
-            <span className="ft-ref">{fish.slug}</span>
+            <span className="ft-ref font-mono text-[10px] opacity-60">{fish.slug}</span>
           </div>
         </div>
       ) : null}

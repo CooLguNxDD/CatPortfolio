@@ -3,45 +3,54 @@
  *
  * Ownership:
  *   - URL `?v=` / `?f=` → shareable route state (TanStack Router)
- *   - scene / filter / bake dimming → this slice (resets on reload)
+ *   - discrete scene state / filter / bake dimming → this slice (resets on reload)
+ *   - 60fps dive progress → fish/diveAnimator, bus-only (never touches this store)
  *   - fish[] payloads → derived from layout (Query / bake / compile)
+ *
+ * Commands arrive here from `useFishTank`'s bus subscription (see
+ * fish/fishBus.ts) rather than being called directly by components — chrome
+ * and the stage emit intent onto the bus, this slice is the reducer.
  */
 
 import type { StateCreator } from "zustand"
 
-/** Surface (cat on rim) vs submerged tank. */
+import { fishBus } from "@/fish/fishBus"
+import { createDiveAnimator } from "@/fish/diveAnimator"
+import { DIVE_DURATION_MS, SURFACE_DURATION_MS } from "@/blocks/fishTankLayout"
+import { next, type TankState } from "@/fish/tankMachine"
+
+/** Legacy two-bucket scene label — derived from TankState, see tankMachine.deriveScene. */
 export type FishTankScene = "surface" | "tank"
 
 /** 3D WebGL layer vs flat DOM index (within tank home mode). */
 export type FishTankChrome = "3d" | "flat"
 
 export interface FishTankSlice {
-  scene: FishTankScene
-  /** 0 = surface, 1 = fully submerged (drives camera lerp). */
-  stageProgress: number
+  state: TankState
   chrome: FishTankChrome
   /** Search box text (not URL — ephemeral). */
   query: string
   /** Domain chip filter, or null = all. */
   domain: string | null
   /**
-   * Local focus override when parent does not own URL `?f=`.
-   * Stage prefers route `focusedSlug` when provided.
+   * Canonical resolved focus slug. Written unconditionally by the router sync
+   * effect (HomePage owns `?f=`) or by the bus command handler for callers
+   * with no router (inline registry block) — see useFishTank.ts.
    */
-  localFocus: string | null
+  focus: string | null
   /** Simulated bake: dim non-highlights + show curation chip. */
   bakeActive: boolean
   /** Cleared curation hides the bake label without touching layout. */
   curationDismissed: boolean
 
-  setScene: (scene: FishTankScene) => void
   dive: () => void
   surface: () => void
   setChrome: (chrome: FishTankChrome) => void
   setQuery: (query: string) => void
   setDomain: (domain: string | null) => void
   toggleDomain: (domain: string) => void
-  setLocalFocus: (slug: string | null) => void
+  /** Unconditional — router is the authority; see tankMachine.ts header. */
+  setFocus: (slug: string | null) => void
   applyBake: (active?: boolean) => void
   clearBake: () => void
   dismissCuration: () => void
@@ -51,80 +60,50 @@ export interface FishTankSlice {
 
 const DEFAULTS: Pick<
   FishTankSlice,
-  | "scene"
-  | "stageProgress"
+  | "state"
   | "chrome"
   | "query"
   | "domain"
-  | "localFocus"
+  | "focus"
   | "bakeActive"
   | "curationDismissed"
 > = {
-  scene: "surface",
-  stageProgress: 0,
+  state: "surface",
   chrome: "3d",
   query: "",
   domain: null,
-  localFocus: null,
+  focus: null,
   bakeActive: false,
   curationDismissed: false,
 }
 
-/** Smooth-step easing: 0→1 input, eased 0→1 output. */
-function smoothstep(t: number): number {
-  const x = Math.max(0, Math.min(1, t))
-  return x * x * (3 - 2 * x)
-}
-
 /** Creates the fish-tank transient UI slice. */
 export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
-  /** Shared rAF handle — cancel before starting a new transition. */
-  let rafHandle = 0
+  const animator = createDiveAnimator(fishBus)
 
-  /**
-   * Animate stageProgress from its current value toward `target` over `durationMs`.
-   * Uses smoothstep so the motion has a cinematic ease-in/ease-out feel.
-   */
-  function animateTo(target: 0 | 1, durationMs: number) {
-    cancelAnimationFrame(rafHandle)
-    const startVal = get().stageProgress
-    const delta = target - startVal
-    if (Math.abs(delta) < 0.002) {
-      set({ stageProgress: target })
-      return
-    }
-    let startTime: number | null = null
-
-    function tick(now: number) {
-      if (!startTime) startTime = now
-      const raw = Math.min((now - startTime) / durationMs, 1)
-      const eased = smoothstep(raw)
-      const progress = startVal + delta * eased
-      set({ stageProgress: progress })
-      if (raw < 1) rafHandle = requestAnimationFrame(tick)
-    }
-
-    rafHandle = requestAnimationFrame(tick)
+  /** Animate to a target progress, then apply the machine's `arrive` event. */
+  function runTransition(target: 0 | 1, durationMs: number) {
+    animator.animateTo(target, durationMs, () => {
+      const arrived = next(get().state, "arrive")
+      if (arrived) set({ state: arrived })
+    })
   }
 
   return {
     ...DEFAULTS,
 
-    setScene: (scene) => {
-      set({ scene, localFocus: scene === "surface" ? null : get().localFocus })
-      animateTo(scene === "tank" ? 1 : 0, scene === "tank" ? 1100 : 750)
-    },
-
     dive: () => {
-      // Set scene label immediately so chrome / FishTankStage key logic fires.
-      set({ scene: "tank" })
-      animateTo(1, 1100)
+      const target = next(get().state, "dive")
+      if (!target) return
+      set({ state: target })
+      runTransition(1, DIVE_DURATION_MS)
     },
 
     surface: () => {
-      // Scene label + focus reset immediately — chrome hides ↑ Surface right away.
-      set({ scene: "surface", localFocus: null })
-      animateTo(0, 750)
+      const target = next(get().state, "surface")
+      if (!target) return
+      set({ state: target, focus: null })
+      runTransition(0, SURFACE_DURATION_MS)
     },
 
     setChrome: (chrome) => set({ chrome }),
@@ -138,7 +117,12 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
       set({ domain: cur === domain ? null : domain })
     },
 
-    setLocalFocus: (slug) => set({ localFocus: slug }),
+    setFocus: (slug) => {
+      set({ focus: slug })
+      const cur = get().state
+      const target = slug ? next(cur, "focus") : next(cur, "release")
+      if (target) set({ state: target })
+    },
 
     applyBake: (active = true) =>
       set({
@@ -159,8 +143,11 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
       }),
 
     resetFishTankUi: () => {
-      cancelAnimationFrame(rafHandle)
+      animator.cancel()
       set({ ...DEFAULTS })
     },
   }
 }
+
+export { deriveScene } from "@/fish/tankMachine"
+export type { TankState } from "@/fish/tankMachine"

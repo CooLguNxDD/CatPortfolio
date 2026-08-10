@@ -6,9 +6,11 @@
  *   - Demo session (`?j=`, themeOverride, working layout) → **in-memory only**
  *     (transient UI; lost on full page reload — URL `?j=` re-seeds identity)
  *   - Layout payloads → TanStack Query (server state)
- *   - Fish tank chrome (scene / filter / bake dim) → in-memory transient
+ *   - Fish tank chrome (scene state / filter / bake dim) → in-memory transient
  *   - Chat pending prompt → non-persisted
- *   - Shareable tank focus / view → URL `?f=` / `?v=` (router), not this store
+ *   - Shareable tank view → URL `?v=` (router); `?f=` focus is router-owned
+ *     but mirrored into `useFishTankStore.focus` so the canvas can subscribe
+ *     it without prop drilling — see fish/fishBus.ts and hooks/useFishTank.ts
  */
 
 import { create } from "zustand"
@@ -72,26 +74,6 @@ export const useLayoutSession = () =>
     })),
   )
 
-/** Shallow selector for tank stage chrome. */
-export const useFishTankUi = () =>
-  useFishTankStore(
-    useShallow((s) => ({
-      scene: s.scene,
-      stageProgress: s.stageProgress,
-      chrome: s.chrome,
-      query: s.query,
-      domain: s.domain,
-      bakeActive: s.bakeActive,
-      dive: s.dive,
-      surface: s.surface,
-      setChrome: s.setChrome,
-      setQuery: s.setQuery,
-      toggleDomain: s.toggleDomain,
-      applyBake: s.applyBake,
-      dismissCuration: s.dismissCuration,
-    })),
-  )
-
 export type {
   Theme,
   Accent,
@@ -105,4 +87,5 @@ export type {
   FishTankSlice,
   FishTankScene,
   FishTankChrome,
+  TankState,
 } from "./fishTankSlice"
