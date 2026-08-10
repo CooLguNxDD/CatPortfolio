@@ -1,21 +1,30 @@
 /**
  * Home — static bake, or `?j=<short_id>` demo layout.
- * URL param is baked into the session store; payload loads via TanStack Query.
- *
- * Main shell is layout-driven:
- * - meta.dag → matrix page frame (width/bands owned by LayoutRenderer)
- * - layout.span/order → fluid 12-col GenUI frame
- * - else → classic stacked max-width column
+ * Default view is the fish tank when capable; `?v=text` forces the layout.
  */
 
-import { useSearch } from "@tanstack/react-router"
+import { useCallback, useMemo } from "react"
+import { useNavigate, useSearch } from "@tanstack/react-router"
 import { loadBaked } from "@/content/loadLayout"
 import { LayoutRenderer } from "@/render/LayoutRenderer"
 import { useDemoLayoutQuery, useDemoShortId } from "@/hooks/useDemoLayout"
+import { sceneFromLayout } from "@/fish/sceneFromLayout"
+import { FishTankStage } from "@/components/FishTankStage"
+import { FishTankErrorBoundary } from "@/components/FishTankErrorBoundary"
+import {
+  prefersReducedMotion,
+  probeWebGL2,
+  resolveViewMode,
+} from "@/routes/viewMode"
 import { cn } from "@/lib/utils"
+import type { DemoSearch } from "@/router"
+
+export { resolveViewMode } from "@/routes/viewMode"
 
 export function HomePage() {
-  const { j } = useSearch({ from: "/" })
+  const navigate = useNavigate()
+  const search = useSearch({ from: "/" })
+  const { j, v, f } = search
   const { shortId, isDemoSession } = useDemoShortId(j)
   const { result, isLoading } = useDemoLayoutQuery(shortId)
 
@@ -26,6 +35,41 @@ export function HomePage() {
         ? result.layout
         : loadBaked()
 
+  const scene = useMemo(() => sceneFromLayout(layout), [layout])
+  const caps = useMemo(
+    () => ({
+      webgl2: probeWebGL2(),
+      reducedMotion: prefersReducedMotion(),
+    }),
+    [],
+  )
+  const mode = resolveViewMode({ v }, caps, scene.fish.length)
+
+  const demoSearch: DemoSearch = {
+    ...(j ? { j } : {}),
+    ...(v ? { v } : {}),
+    ...(f ? { f } : {}),
+  }
+
+  const onFocusChange = useCallback(
+    (slug: string | null) => {
+      void navigate({
+        to: "/",
+        search: (prev) => {
+          const p = (prev || {}) as DemoSearch
+          if (!slug) {
+            const next = { ...p }
+            delete next.f
+            return next
+          }
+          return { ...p, f: slug }
+        },
+        replace: true,
+      })
+    },
+    [navigate],
+  )
+
   const hasDag = Boolean(layout?.meta?.dag?.levels?.length)
   const usesSpanGrid =
     !hasDag &&
@@ -35,16 +79,13 @@ export function HomePage() {
       ),
     )
 
-  return (
+  const textShell = (
     <div
       className={cn(
         "w-full",
-        // Matrix / level-row GenUI — side inset via .matrix-page (10%); no fixed px gutters
         hasDag && "layout-shell layout-shell--matrix pt-4 md:pt-6",
-        // Span-grid GenUI (no dag)
         usesSpanGrid &&
           "layout-shell layout-shell--grid mx-auto max-w-[1180px] px-4 py-6 md:py-8",
-        // Classic stack
         !hasDag &&
           !usesSpanGrid &&
           "layout-shell layout-shell--stack mx-auto max-w-[1180px] px-4 py-6 md:py-8 space-y-6",
@@ -56,9 +97,48 @@ export function HomePage() {
           loading demo layout…
         </p>
       ) : null}
-      {/* Theme sticks across Home/Ask — user header pick is not reset here */}
+      {mode === "text" && scene.fish.length > 0 ? (
+        <div className="mb-4 flex justify-end px-4 md:px-0">
+          <button
+            type="button"
+            className="rounded-full border border-(--hairline) bg-(--card) px-3 py-1 text-xs font-mono text-(--fg-muted) hover:text-(--fg)"
+            onClick={() =>
+              void navigate({
+                to: "/",
+                search: (prev) => {
+                  const p = { ...((prev || {}) as DemoSearch) }
+                  delete p.v
+                  return p
+                },
+                replace: true,
+              })
+            }
+          >
+            View as tank
+          </button>
+        </div>
+      ) : null}
       <LayoutRenderer layout={layout} themeMode="home" />
     </div>
   )
+
+  if (mode === "tank") {
+    return (
+      <FishTankErrorBoundary fallback={textShell}>
+        {isLoading ? (
+          <p className="p-6 text-sm font-mono text-(--fg-muted) animate-pulse">
+            loading demo layout…
+          </p>
+        ) : null}
+        <FishTankStage
+          layout={layout}
+          focusedSlug={f ?? null}
+          onFocusChange={onFocusChange}
+          demoSearch={demoSearch}
+        />
+      </FishTankErrorBoundary>
+    )
+  }
+
+  return textShell
 }
-// Trigger Vite HMR re-evaluation of baked layout.json

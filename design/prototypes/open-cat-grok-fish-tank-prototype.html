@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>open-cat-grok-fish-tank-prototype</title>
+<meta name="description" content="Full-screen low-poly Three.js fish tank background — cat on rim, waving seaweed, swimming fish, bubbles, mouse parallax." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+  }
+}
+</script>
+<style>
+:root {
+  --bg: oklch(0.16 0.02 260);
+  --fg: oklch(0.96 0.015 90);
+  --muted: oklch(0.72 0.03 80);
+  --subtle: oklch(0.55 0.025 70);
+  --amber: oklch(0.82 0.165 70);
+  --cyan: oklch(0.82 0.13 200);
+  --pink: oklch(0.76 0.18 350);
+  --glass: color-mix(in oklch, oklch(0.22 0.03 260) 55%, transparent);
+  --hairline: oklch(0.35 0.03 260 / 0.55);
+  --font: "Geist", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+  font-family: var(--font);
+  color: var(--fg);
+  background: #0e1118;
+  overflow-x: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ── Full-screen 3D background ── */
+#bg-scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+  touch-action: none;
+}
+.bg-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, transparent 30%, rgba(8, 10, 16, 0.55) 100%),
+    linear-gradient(to top, rgba(8, 10, 16, 0.72) 0%, transparent 38%),
+    linear-gradient(to bottom, rgba(8, 10, 16, 0.35) 0%, transparent 22%);
+}
+
+/* ── Foreground content (baked UI over scene) ── */
+.ui {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+.ui * { pointer-events: auto; }
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1rem clamp(1rem, 3vw, 2rem);
+  padding: 0.7rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow: 0 12px 40px -24px rgba(0,0,0,0.7);
+}
+.brand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  align-items: center;
+}
+.brand h1 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.pill {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--amber) 40%, transparent);
+  color: var(--amber);
+  background: color-mix(in oklch, var(--amber) 12%, transparent);
+}
+.meta {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--subtle);
+}
+
+.hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 clamp(1rem, 4vw, 2.5rem) clamp(1.5rem, 5vh, 3rem);
+  max-width: 720px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--subtle);
+  margin-bottom: 0.55rem;
+}
+.hero h2 {
+  margin: 0 0 0.6rem;
+  font-size: clamp(1.85rem, 4.5vw, 2.85rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  text-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+.hero h2 span { color: var(--amber); }
+.hero p {
+  margin: 0 0 1.15rem;
+  max-width: 42ch;
+  color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 1.55;
+  text-shadow: 0 4px 18px rgba(0,0,0,0.4);
+}
+.actions { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.btn:hover { transform: translateY(-1px); }
+.btn-primary {
+  background: var(--amber);
+  color: #1a1410;
+  box-shadow: 0 10px 28px -12px color-mix(in oklch, var(--amber) 55%, transparent);
+}
+.btn-ghost {
+  color: var(--fg);
+  border-color: var(--hairline);
+  background: color-mix(in oklch, oklch(0.2 0.02 260) 50%, transparent);
+  backdrop-filter: blur(8px);
+}
+.hud {
+  position: fixed;
+  right: clamp(0.75rem, 2vw, 1.25rem);
+  bottom: clamp(0.75rem, 2vw, 1.25rem);
+  z-index: 3;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--subtle);
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+.hud kbd {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  padding: 0.06rem 0.28rem;
+  border-radius: 4px;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+<!-- Full-screen Three.js background -->
+<canvas id="bg-scene" aria-hidden="true"></canvas>
+<div class="bg-vignette" aria-hidden="true"></div>
+
+<div class="ui">
+  <header class="topbar">
+    <div class="brand">
+      <h1>🐱 open-cat-grok-fish-tank-prototype</h1>
+      <span class="pill">background · three.js</span>
+    </div>
+    <div class="meta">low-poly · flatShading · parallax</div>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">CatPortfolio System Overhaul</div>
+    <h2>The cat watches the <span>tank</span>.</h2>
+    <p>
+      Full-screen stylized aquarium baked as a page background — glass tank, 23 seaweed stalks,
+      pastel fish on sine paths, paw ripples, and mouse parallax. UI floats above the WebGL layer.
+    </p>
+    <div class="actions">
+      <a class="btn btn-primary" href="open-cat-grok-1.0.html">← Grok 1.0 kit</a>
+      <a class="btn btn-ghost" href="../index.html">System hub</a>
+      <a class="btn btn-ghost" href="http://localhost:11000/CatPortfolio/" target="_blank" rel="noreferrer">Live portfolio</a>
+    </div>
+  </section>
+</div>
+
+<div class="hud">move mouse · parallax · <kbd>reduced-motion</kbd> safe</div>
+
+<script type="module">
+/**
+ * open-cat-grok-fish-tank-prototype
+ * Full-screen low-poly aquarium as page background.
+ */
+import * as THREE from "three";
+
+const canvas = document.getElementById("bg-scene");
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ── Renderer ──
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  alpha: true,
+  powerPreference: "high-performance",
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+// ── Scene + muted gradient feel via fog + clear ──
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x12151e);
+scene.fog = new THREE.FogExp2(0x12151e, 0.028);
+
+// High-angle / isometric-ish perspective
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 120);
+const camBase = new THREE.Vector3(9.2, 10.5, 9.2);
+const camTarget = new THREE.Vector3(0, 1.15, 0);
+camera.position.copy(camBase);
+camera.lookAt(camTarget);
+
+// Parallax state
+const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+window.addEventListener("pointermove", (e) => {
+  mouse.tx = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.ty = (e.clientY / window.innerHeight) * 2 - 1;
+}, { passive: true });
+
+// ── Lights (crisp facets) ──
+const hemi = new THREE.HemisphereLight(0xd8e6ff, 0x2a2430, 0.75);
+scene.add(hemi);
+
+const key = new THREE.DirectionalLight(0xfff0dd, 1.35);
+key.position.set(6, 12, 4);
+key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+key.shadow.camera.near = 2;
+key.shadow.camera.far = 40;
+key.shadow.camera.left = -10;
+key.shadow.camera.right = 10;
+key.shadow.camera.top = 10;
+key.shadow.camera.bottom = -10;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0x9ad7ff, 0.45);
+fill.position.set(-5, 4, -3);
+scene.add(fill);
+
+const rim = new THREE.PointLight(0xff9ed8, 0.55, 22);
+rim.position.set(0, 4.5, 0);
+scene.add(rim);
+
+// ── Materials (flatShading + pastel) ──
+const flat = (color, opts = {}) =>
+  new THREE.MeshStandardMaterial({
+    color,
+    flatShading: true,
+    roughness: opts.roughness ?? 0.72,
+    metalness: opts.metalness ?? 0.04,
+    transparent: opts.transparent ?? false,
+    opacity: opts.opacity ?? 1,
+    side: opts.side ?? THREE.FrontSide,
+    emissive: opts.emissive ?? 0x000000,
+    emissiveIntensity: opts.emissiveIntensity ?? 0,
+    depthWrite: opts.depthWrite ?? true,
+  });
+
+const matGlass = flat(0xb8d4e8, {
+  transparent: true,
+  opacity: 0.18,
+  roughness: 0.15,
+  metalness: 0.05,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+});
+const matWater = flat(0x6ec8e8, {
+  transparent: true,
+  opacity: 0.4,
+  roughness: 0.25,
+  metalness: 0.02,
+  depthWrite: false,
+});
+const matGravel = [
+  flat(0xc4b7a6),
+  flat(0xa89888),
+  flat(0xd2c4b0),
+  flat(0x8f8376),
+  flat(0xe0d2bc),
+];
+const matRock = [flat(0x7a7588), flat(0x5c5768), flat(0x9a94a8)];
+const matSea = [
+  flat(0x5fd4a0, { emissive: 0x1a6040, emissiveIntensity: 0.08 }),
+  flat(0x48c4b0, { emissive: 0x145050, emissiveIntensity: 0.06 }),
+  flat(0x7ae0a8, { emissive: 0x206040, emissiveIntensity: 0.05 }),
+  flat(0x3cb88c),
+];
+const matCat = flat(0xf0c48a);
+const matCatDark = flat(0x2a221c);
+const matCatPink = flat(0xff8eb8, { emissive: 0xff4d94, emissiveIntensity: 0.08 });
+const matNose = flat(0xff7aa8);
+const fishMats = [
+  flat(0xff8fab, { emissive: 0xff4d80, emissiveIntensity: 0.12 }),
+  flat(0x7ad7ff, { emissive: 0x3a9fd0, emissiveIntensity: 0.1 }),
+  flat(0xffd56a, { emissive: 0xffae19, emissiveIntensity: 0.1 }),
+  flat(0xb59cff, { emissive: 0x7a5cff, emissiveIntensity: 0.1 }),
+  flat(0x7dffb3, { emissive: 0x3dcc88, emissiveIntensity: 0.08 }),
+  flat(0xffb07a, { emissive: 0xff8040, emissiveIntensity: 0.08 }),
+];
+const matBubble = new THREE.MeshStandardMaterial({
+  color: 0xd8f4ff,
+  flatShading: true,
+  transparent: true,
+  opacity: 0.45,
+  roughness: 0.2,
+  metalness: 0.05,
+  depthWrite: false,
+});
+const matRipple = new THREE.MeshBasicMaterial({
+  color: 0xc8ecff,
+  transparent: true,
+  opacity: 0.45,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+});
+
+function boxMesh(w, h, d, mat, x = 0, y = 0, z = 0, shadow = true) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  m.castShadow = shadow;
+  m.receiveShadow = shadow;
+  return m;
+}
+
+// ── Tank dimensions ──
+const TANK_W = 5.2;
+const TANK_H = 3.4;
+const TANK_D = 3.6;
+const WALL = 0.08;
+const WATER_TOP = 0.15; // below rim
+const waterY = TANK_H * 0.5 - WATER_TOP * 0.5 - 0.05;
+const waterH = TANK_H - WATER_TOP - 0.12;
+const floorY = -TANK_H * 0.5 + 0.08;
+
+const root = new THREE.Group();
+scene.add(root);
+
+// Soft ground disc under tank
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(7.5, 48),
+  flat(0x1a1e28, { roughness: 0.95 }),
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = floorY - 0.55;
+ground.receiveShadow = true;
+root.add(ground);
+
+// ── Glass tank (open top): 4 walls + floor ──
+const tank = new THREE.Group();
+const halfW = TANK_W / 2;
+const halfD = TANK_D / 2;
+const halfH = TANK_H / 2;
+
+// Floor
+tank.add(boxMesh(TANK_W, WALL, TANK_D, matGlass, 0, -halfH, 0, false));
+// Front / back / left / right
+tank.add(boxMesh(TANK_W, TANK_H, WALL, matGlass, 0, 0, halfD, false));
+tank.add(boxMesh(TANK_W, TANK_H, WALL, matGlass, 0, 0, -halfD, false));
+tank.add(boxMesh(WALL, TANK_H, TANK_D, matGlass, -halfW, 0, 0, false));
+tank.add(boxMesh(WALL, TANK_H, TANK_D, matGlass, halfW, 0, 0, false));
+
+// Thin rim frame (opaque pastel edges)
+const matRim = flat(0xd8e6f0, { roughness: 0.4, metalness: 0.15 });
+const rimY = halfH;
+tank.add(boxMesh(TANK_W + 0.12, 0.1, 0.12, matRim, 0, rimY, halfD + 0.02));
+tank.add(boxMesh(TANK_W + 0.12, 0.1, 0.12, matRim, 0, rimY, -halfD - 0.02));
+tank.add(boxMesh(0.12, 0.1, TANK_D + 0.12, matRim, halfW + 0.02, rimY, 0));
+tank.add(boxMesh(0.12, 0.1, TANK_D + 0.12, matRim, -halfW - 0.02, rimY, 0));
+
+// Water block
+const water = new THREE.Mesh(
+  new THREE.BoxGeometry(TANK_W - WALL * 2.2, waterH, TANK_D - WALL * 2.2),
+  matWater,
+);
+water.position.y = -halfH + WALL + waterH / 2 + 0.02;
+water.renderOrder = 1;
+tank.add(water);
+
+// Surface plane (slightly brighter for paw contact)
+const waterSurfaceY = water.position.y + waterH / 2;
+const surface = new THREE.Mesh(
+  new THREE.PlaneGeometry(TANK_W - 0.35, TANK_D - 0.35),
+  flat(0xa8e4ff, { transparent: true, opacity: 0.22, roughness: 0.2, depthWrite: false }),
+);
+surface.rotation.x = -Math.PI / 2;
+surface.position.y = waterSurfaceY + 0.01;
+surface.renderOrder = 2;
+tank.add(surface);
+
+root.add(tank);
+
+// ── Gravel ──
+const gravel = new THREE.Group();
+const gravelGeo = new THREE.IcosahedronGeometry(0.08, 0);
+for (let i = 0; i < 140; i++) {
+  const s = 0.55 + Math.random() * 1.1;
+  const g = new THREE.Mesh(gravelGeo, matGravel[i % matGravel.length]);
+  g.scale.setScalar(s);
+  g.position.set(
+    (Math.random() - 0.5) * (TANK_W - 0.5),
+    floorY + 0.06 + Math.random() * 0.06,
+    (Math.random() - 0.5) * (TANK_D - 0.5),
+  );
+  g.rotation.set(Math.random() * 2, Math.random() * 2, Math.random() * 2);
+  g.castShadow = true;
+  g.receiveShadow = true;
+  gravel.add(g);
+}
+root.add(gravel);
+
+// ── Rocks ──
+const rocks = new THREE.Group();
+const rockSpecs = [
+  [0.55, 0.4, 0.45, -1.4, floorY + 0.22, 0.9],
+  [0.4, 0.55, 0.35, 1.3, floorY + 0.28, -0.7],
+  [0.7, 0.3, 0.5, 0.2, floorY + 0.18, 1.1],
+  [0.35, 0.45, 0.4, -0.9, floorY + 0.25, -1.0],
+  [0.5, 0.35, 0.55, 1.5, floorY + 0.2, 0.85],
+];
+rockSpecs.forEach((s, i) => {
+  const [w, h, d, x, y, z] = s;
+  const r = boxMesh(w, h, d, matRock[i % matRock.length], x, y, z);
+  r.rotation.y = i * 0.7;
+  rocks.add(r);
+});
+root.add(rocks);
+
+// ── Seaweed (23 stalks) — vertex-wave animation ──
+const SEAWEED_COUNT = 23;
+const seaweeds = [];
+
+function makeSeaweed(seed) {
+  const h = 0.9 + (seed % 7) * 0.12 + Math.random() * 0.35;
+  const segs = 6;
+  const geo = new THREE.CylinderGeometry(0.02, 0.07, h, 5, segs, false);
+  geo.translate(0, h / 2, 0);
+  const pos = geo.attributes.position;
+  // store base X/Z per vertex for wave
+  const base = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    base[i * 2] = pos.getX(i);
+    base[i * 2 + 1] = pos.getZ(i);
+  }
+  const mesh = new THREE.Mesh(geo, matSea[seed % matSea.length]);
+  mesh.castShadow = true;
+  mesh.userData = {
+    base,
+    amp: 0.08 + (seed % 5) * 0.015,
+    phase: seed * 0.7,
+    speed: 1.1 + (seed % 4) * 0.15,
+    h,
+  };
+  return mesh;
+}
+
+const seaweedGroup = new THREE.Group();
+for (let i = 0; i < SEAWEED_COUNT; i++) {
+  const s = makeSeaweed(i);
+  // cluster around edges + a few mid
+  const a = (i / SEAWEED_COUNT) * Math.PI * 2 + (i % 3) * 0.2;
+  const r = 0.9 + (i % 5) * 0.28 + (i % 2) * 0.15;
+  let x = Math.cos(a) * r * 1.35;
+  let z = Math.sin(a) * r * 0.95;
+  // keep inside tank
+  x = THREE.MathUtils.clamp(x, -halfW + 0.35, halfW - 0.35);
+  z = THREE.MathUtils.clamp(z, -halfD + 0.35, halfD - 0.35);
+  if (i % 6 === 0) {
+    x *= 0.35;
+    z *= 0.4;
+  }
+  s.position.set(x, floorY + 0.05, z);
+  s.rotation.y = Math.random() * Math.PI;
+  seaweedGroup.add(s);
+  seaweeds.push(s);
+}
+root.add(seaweedGroup);
+
+function animateSeaweed(t) {
+  for (const s of seaweeds) {
+    const { base, amp, phase, speed } = s.userData;
+    const pos = s.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      // x_offset = sin(time + y * 0.5) * amplitude
+      const wave = Math.sin(t * speed + phase + y * 0.5) * amp * (y / (s.userData.h || 1));
+      const waveZ = Math.cos(t * speed * 0.85 + phase + y * 0.45) * amp * 0.55 * (y / (s.userData.h || 1));
+      pos.setX(i, base[i * 2] + wave);
+      pos.setZ(i, base[i * 2 + 1] + waveZ);
+    }
+    pos.needsUpdate = true;
+    s.geometry.computeVertexNormals();
+  }
+}
+
+// ── Cat on upper rim ──
+const cat = new THREE.Group();
+const body = boxMesh(0.55, 0.38, 0.9, matCat, 0, 0.22, 0);
+const chest = boxMesh(0.48, 0.32, 0.35, matCat, 0, 0.28, 0.42);
+const head = boxMesh(0.4, 0.36, 0.38, matCat, 0, 0.55, 0.72);
+const earL = boxMesh(0.12, 0.18, 0.1, matCat, -0.13, 0.8, 0.72);
+const earR = boxMesh(0.12, 0.18, 0.1, matCat, 0.13, 0.8, 0.72);
+const earInL = boxMesh(0.06, 0.1, 0.04, matCatPink, -0.13, 0.78, 0.78, false);
+const earInR = boxMesh(0.06, 0.1, 0.04, matCatPink, 0.13, 0.78, 0.78, false);
+const eyeL = boxMesh(0.07, 0.08, 0.05, matCatDark, -0.1, 0.58, 0.9, false);
+const eyeR = boxMesh(0.07, 0.08, 0.05, matCatDark, 0.1, 0.58, 0.9, false);
+const nose = boxMesh(0.06, 0.05, 0.05, matNose, 0, 0.5, 0.92, false);
+// Back legs on rim
+const legBL = boxMesh(0.12, 0.22, 0.14, matCat, -0.16, 0.05, -0.28);
+const legBR = boxMesh(0.12, 0.22, 0.14, matCat, 0.16, 0.05, -0.28);
+// Front: one paw dangling into water
+const shoulder = boxMesh(0.14, 0.16, 0.14, matCat, -0.18, 0.18, 0.55);
+const pawArm = new THREE.Group();
+pawArm.position.set(-0.18, 0.12, 0.62);
+const upper = boxMesh(0.1, 0.28, 0.1, matCat, 0, -0.1, 0.05);
+const lower = boxMesh(0.09, 0.32, 0.09, matCat, 0, -0.38, 0.08);
+const paw = boxMesh(0.12, 0.08, 0.14, matCat, 0, -0.55, 0.1);
+pawArm.add(upper, lower, paw);
+pawArm.rotation.x = 0.55; // lean into tank
+
+// Tail (wiggles)
+const tail = new THREE.Group();
+tail.position.set(0, 0.28, -0.48);
+const t1 = boxMesh(0.1, 0.1, 0.28, matCat, 0, 0, -0.1);
+const t2 = boxMesh(0.09, 0.09, 0.26, matCatPink, 0, 0.04, -0.32);
+const t3 = boxMesh(0.07, 0.07, 0.18, matCat, 0, 0.06, -0.52);
+tail.add(t1, t2, t3);
+
+cat.add(body, chest, head, earL, earR, earInL, earInR, eyeL, eyeR, nose, legBL, legBR, shoulder, pawArm, tail);
+// Sit on front-right rim, leaning inward
+cat.position.set(1.15, halfH + 0.02, halfD - 0.05);
+cat.rotation.y = -0.55;
+cat.rotation.x = 0.12;
+root.add(cat);
+
+// World position helper for paw tip
+const pawTipLocal = new THREE.Vector3(0, -0.58, 0.12);
+const pawWorld = new THREE.Vector3();
+const _tmp = new THREE.Vector3();
+
+// ── Fish (5) — sine paths + lookAt velocity ──
+const FISH_COUNT = 5;
+const fishes = [];
+
+function makeFish(mat) {
+  const g = new THREE.Group();
+  const bodyF = boxMesh(0.22, 0.16, 0.38, mat, 0, 0, 0);
+  const headF = boxMesh(0.14, 0.12, 0.14, mat, 0, 0.01, 0.22);
+  const tailF = boxMesh(0.04, 0.18, 0.14, mat, 0, 0, -0.26);
+  const fin = boxMesh(0.02, 0.14, 0.16, mat, 0, 0.12, 0);
+  const eye = boxMesh(0.04, 0.04, 0.03, matCatDark, 0.06, 0.04, 0.26, false);
+  g.add(bodyF, headF, tailF, fin, eye);
+  return g;
+}
+
+const fishBounds = {
+  x: halfW - 0.55,
+  z: halfD - 0.55,
+  yMin: floorY + 0.55,
+  yMax: waterSurfaceY - 0.35,
+};
+
+for (let i = 0; i < FISH_COUNT; i++) {
+  const f = makeFish(fishMats[i % fishMats.length]);
+  const R = 0.7 + (i % 3) * 0.35 + Math.random() * 0.2;
+  f.userData = {
+    R,
+    omega: 0.45 + i * 0.08 + Math.random() * 0.1,
+    phase: (i / FISH_COUNT) * Math.PI * 2,
+    y0: THREE.MathUtils.lerp(fishBounds.yMin, fishBounds.yMax, (i + 0.5) / FISH_COUNT),
+    A: 0.18 + (i % 3) * 0.05,
+    prev: new THREE.Vector3(),
+    next: new THREE.Vector3(),
+  };
+  root.add(f);
+  fishes.push(f);
+}
+
+function fishPos(ud, t, out) {
+  // x = R cos(ωt), z = R sin(ωt), y = y0 + A sin(2ωt)
+  const wt = ud.omega * t + ud.phase;
+  out.set(
+    Math.cos(wt) * ud.R * (fishBounds.x / 1.6),
+    ud.y0 + ud.A * Math.sin(2 * wt),
+    Math.sin(wt) * ud.R * (fishBounds.z / 1.5),
+  );
+}
+
+// ── Bubbles ──
+const BUBBLE_N = 48;
+const bubbles = [];
+const bubbleGeo = new THREE.IcosahedronGeometry(0.05, 0);
+for (let i = 0; i < BUBBLE_N; i++) {
+  const b = new THREE.Mesh(bubbleGeo, matBubble);
+  const s = 0.4 + Math.random() * 1.2;
+  b.scale.setScalar(s);
+  b.position.set(
+    (Math.random() - 0.5) * (TANK_W - 0.8),
+    THREE.MathUtils.lerp(floorY + 0.2, waterSurfaceY - 0.1, Math.random()),
+    (Math.random() - 0.5) * (TANK_D - 0.8),
+  );
+  b.userData = {
+    speed: 0.25 + Math.random() * 0.45,
+    wobble: Math.random() * Math.PI * 2,
+    wobbleAmp: 0.05 + Math.random() * 0.08,
+  };
+  b.renderOrder = 3;
+  root.add(b);
+  bubbles.push(b);
+}
+
+// ── Ripple rings + paw bubbles ──
+const ripples = [];
+const pawBubbles = [];
+
+function spawnRipple(x, z) {
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.05, 0.08, 20), matRipple.clone());
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(x, waterSurfaceY + 0.02, z);
+  ring.userData = { age: 0, life: 1.15 };
+  ring.renderOrder = 4;
+  root.add(ring);
+  ripples.push(ring);
+}
+
+function spawnPawBubble(x, y, z) {
+  const b = new THREE.Mesh(bubbleGeo, matBubble.clone());
+  b.scale.setScalar(0.5 + Math.random() * 0.6);
+  b.position.set(x + (Math.random() - 0.5) * 0.08, y, z + (Math.random() - 0.5) * 0.08);
+  b.userData = { life: 1, vy: 0.4 + Math.random() * 0.35 };
+  b.renderOrder = 4;
+  root.add(b);
+  pawBubbles.push(b);
+}
+
+let rippleCd = 0;
+let nearFishCd = 0;
+
+// ── Resize ──
+function resize() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / Math.max(h, 1);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+resize();
+
+// ── Loop ──
+const clock = new THREE.Clock();
+let lastRippleT = 0;
+
+function tick() {
+  const t = clock.getElapsedTime();
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  // Smooth mouse parallax
+  if (!reduced) {
+    mouse.x += (mouse.tx - mouse.x) * 0.05;
+    mouse.y += (mouse.ty - mouse.y) * 0.05;
+  } else {
+    mouse.x = 0;
+    mouse.y = 0;
+  }
+
+  const panX = mouse.x * 1.15;
+  const panY = mouse.y * 0.7;
+  camera.position.set(
+    camBase.x + panX * 1.4,
+    camBase.y - panY * 0.9,
+    camBase.z - panX * 0.6,
+  );
+  camera.lookAt(
+    camTarget.x + panX * 0.25,
+    camTarget.y - panY * 0.15,
+    camTarget.z,
+  );
+
+  // Gentle scene idle
+  if (!reduced) {
+    root.rotation.y = Math.sin(t * 0.12) * 0.03;
+  }
+
+  // Seaweed vertices
+  if (!reduced) animateSeaweed(t);
+
+  // Cat idle: lean + tail wiggle + paw dip
+  cat.rotation.x = 0.12 + Math.sin(t * 1.4) * 0.02;
+  tail.rotation.y = Math.sin(t * 3.2) * 0.45;
+  tail.rotation.z = Math.cos(t * 2.6) * 0.18;
+  t2.rotation.y = Math.sin(t * 3.8 + 0.5) * 0.35;
+  t3.rotation.y = Math.sin(t * 4.2 + 1) * 0.4;
+  pawArm.rotation.x = 0.55 + Math.sin(t * 2.1) * 0.08;
+  pawArm.rotation.z = Math.sin(t * 1.7) * 0.06;
+
+  // Paw world pos for ripples
+  paw.getWorldPosition(pawWorld);
+  pawTipLocal.set(0, -0.02, 0.02);
+  paw.localToWorld(_tmp.copy(pawTipLocal));
+  // Use lower tip approx
+  const tipY = _tmp.y;
+  const tipX = _tmp.x;
+  const tipZ = _tmp.z;
+
+  // Periodic paw ripples at water contact
+  rippleCd -= dt;
+  if (tipY < waterSurfaceY + 0.12 && tipY > waterSurfaceY - 0.35) {
+    if (rippleCd <= 0 && !reduced) {
+      spawnRipple(tipX, tipZ);
+      spawnPawBubble(tipX, waterSurfaceY - 0.05, tipZ);
+      rippleCd = 0.35;
+    }
+  }
+
+  // Fish
+  nearFishCd -= dt;
+  for (const f of fishes) {
+    const ud = f.userData;
+    fishPos(ud, t, ud.prev);
+    fishPos(ud, t + 0.04, ud.next);
+    f.position.copy(ud.prev);
+    // Orient fish so +Z (head) follows velocity toward next point
+    f.lookAt(ud.next);
+    f.rotateY(Math.PI);
+
+    // Tail fin flap
+    const fin = f.children[2];
+    if (fin) fin.rotation.y = Math.sin(t * 10 + ud.phase) * 0.35;
+
+    // Near paw → extra bubbles
+    if (nearFishCd <= 0 && f.position.distanceTo(_tmp) < 0.55) {
+      spawnPawBubble(tipX, waterSurfaceY - 0.08, tipZ);
+      spawnRipple(tipX + (Math.random() - 0.5) * 0.1, tipZ + (Math.random() - 0.5) * 0.1);
+      nearFishCd = 0.5;
+    }
+  }
+
+  // Ambient bubbles rise
+  for (const b of bubbles) {
+    const u = b.userData;
+    b.position.y += u.speed * dt;
+    b.position.x += Math.sin(t * 1.5 + u.wobble) * u.wobbleAmp * dt * 2;
+    if (b.position.y > waterSurfaceY - 0.05) {
+      b.position.y = floorY + 0.15 + Math.random() * 0.2;
+      b.position.x = (Math.random() - 0.5) * (TANK_W - 0.8);
+      b.position.z = (Math.random() - 0.5) * (TANK_D - 0.8);
+    }
+  }
+
+  // Ripple expand/fade
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i];
+    r.userData.age += dt;
+    const a = r.userData.age;
+    const s = 1 + a * 2.8;
+    r.scale.set(s, s, s);
+    r.material.opacity = Math.max(0, 0.45 * (1 - a / r.userData.life));
+    if (a > r.userData.life) {
+      root.remove(r);
+      r.geometry.dispose();
+      r.material.dispose();
+      ripples.splice(i, 1);
+    }
+  }
+
+  // Paw bubbles
+  for (let i = pawBubbles.length - 1; i >= 0; i--) {
+    const b = pawBubbles[i];
+    b.userData.life -= dt * 0.7;
+    b.position.y += b.userData.vy * dt;
+    b.material.opacity = Math.max(0, b.userData.life * 0.45);
+    if (b.userData.life <= 0 || b.position.y > waterSurfaceY + 0.2) {
+      root.remove(b);
+      b.geometry.dispose();
+      if (b.material !== matBubble) b.material.dispose();
+      pawBubbles.splice(i, 1);
+    }
+  }
+
+  // Subtle water shimmer via opacity
+  matWater.opacity = 0.38 + Math.sin(t * 1.3) * 0.04;
+  rim.intensity = 0.45 + Math.sin(t * 1.1) * 0.12;
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+// Initial paw ripple
+spawnRipple(cat.position.x - 0.2, cat.position.z - 0.3);
+tick();
+</script>
+</body>
+</html>
