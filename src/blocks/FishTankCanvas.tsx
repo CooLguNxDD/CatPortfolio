@@ -328,7 +328,14 @@ export default function FishTankCanvas({
 
     // Seabed Seaweed & Branching Corals
     const weedColor = new THREE.Color(palette.weed)
-    const weeds: THREE.Group[] = []
+    // Segment refs resolved once here — getObjectByName in the frame loop
+    // re-walks every stalk subtree on each of the 20 weeds, every frame.
+    // Index-preserving (null-padded) so sway phase/amplitude per segment index
+    // stays identical to the previous per-frame lookup.
+    const weedRigs: {
+      segs: (THREE.Object3D | null)[]
+      seed: number
+    }[] = []
     for (let i = 0; i < 20; i++) {
       const stalk = buildSeaweed(5.5 + (i % 4) * 2.8, weedColor, i)
       stalk.position.set(
@@ -337,7 +344,12 @@ export default function FishTankCanvas({
         ((i % 6) - 2.5) * (TANK_HALF_D * 0.32),
       )
       tank.add(stalk)
-      weeds.push(stalk)
+      const { segs, seed } = stalk.userData as { segs: number; seed: number }
+      const segRefs: (THREE.Object3D | null)[] = []
+      for (let s = 0; s < segs; s++) {
+        segRefs.push(stalk.getObjectByName(`seg${s}`) ?? null)
+      }
+      weedRigs.push({ segs: segRefs, seed })
     }
 
     for (let i = 0; i < 6; i++) {
@@ -361,6 +373,11 @@ export default function FishTankCanvas({
     const cat = buildCatMesh(WATER_Y)
     cat.position.x = CAT_X
     scene.add(cat)
+    // Named parts resolved once — the frame loop only reads these.
+    const catPaw = cat.getObjectByName("paw") ?? null
+    const catTail = cat.getObjectByName("cat_tail") ?? null
+    const catEyeL = cat.getObjectByName("eyeL") ?? null
+    const catEyeR = cat.getObjectByName("eyeR") ?? null
 
     // Particle Systems: Rising Bubbles & Marine Snow
     const sprite = buildPointSprite(64)
@@ -737,33 +754,29 @@ export default function FishTankCanvas({
       rayMat.opacity = palette.rayStrength * (0.8 + Math.sin(t * 0.4) * 0.2)
 
       // Seaweed swaying
-      for (const weed of weeds) {
-        const { segs, seed } = weed.userData as { segs: number; seed: number }
+      for (const rig of weedRigs) {
+        const segs = rig.segs.length
         for (let s = 0; s < segs; s++) {
-          const seg = weed.getObjectByName(`seg${s}`)
+          const seg = rig.segs[s]
           if (!seg) continue
           const amp = 0.06 + (s / segs) * 0.18
-          seg.rotation.z = Math.sin(t * 0.75 + seed * 0.9 + s * 0.45) * amp
+          seg.rotation.z = Math.sin(t * 0.75 + rig.seed * 0.9 + s * 0.45) * amp
         }
       }
 
       // Cat mascot animation
       cat.position.y = CAT_Y + Math.sin(t * 0.8) * 0.28
-      const paw = cat.getObjectByName("paw")
-      if (paw) {
+      if (catPaw) {
         const dip = selected ? 0.55 : 0
-        paw.rotation.z = 0.22 + dip + Math.sin(t * 1.5) * 0.05
+        catPaw.rotation.z = 0.22 + dip + Math.sin(t * 1.5) * 0.05
       }
-      const catTail = cat.getObjectByName("cat_tail")
       if (catTail) {
         catTail.rotation.y = Math.sin(t * 1.2) * 0.35
       }
       // Blinking eye
-      const eyeL = cat.getObjectByName("eyeL")
-      const eyeR = cat.getObjectByName("eyeR")
       const blink = Math.sin(t * 0.5) > 0.98 ? 0.1 : 1
-      if (eyeL) eyeL.scale.y = blink
-      if (eyeR) eyeR.scale.y = blink
+      if (catEyeL) catEyeL.scale.y = blink
+      if (catEyeR) catEyeR.scale.y = blink
 
       // 3D Holographic Reticle Update
       if (selected) {

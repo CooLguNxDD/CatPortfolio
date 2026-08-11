@@ -519,6 +519,13 @@
   transform: translateY(-2px);
 }
 
+/* Card is role="button" + tabIndex=0 — keyboard users need a visible ring. */
+.ft-card:focus-visible {
+  outline: 2px solid var(--ft-accent);
+  outline-offset: 3px;
+  border-color: color-mix(in oklab, var(--ft-accent) 50%, transparent);
+}
+
 .ft-card h3 {
   margin: 0;
   font-size: 1.12rem;

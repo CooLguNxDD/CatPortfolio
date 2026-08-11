@@ -13,6 +13,7 @@ import { useReducedMotion } from "motion/react"
 import type { PropsOf } from "@/render/registry"
 import type { FishSpecimenInput } from "./fishTankLayout"
 import { probeWebGL2 } from "@/routes/viewMode"
+import { FishTankErrorBoundary } from "@/components/FishTankErrorBoundary"
 import { useLayoutStore, usePreferencesStore } from "@/store"
 
 const FishTankCanvas = lazy(() => import("./FishTankCanvas"))
@@ -64,6 +65,46 @@ export function FishTankView({
     return null
   }
 
+  const canvas = (
+    <Suspense
+      fallback={
+        <div
+          className={
+            immersive
+              ? "h-full w-full bg-(--bg-sunken)"
+              : "h-[320px] w-full rounded-[var(--radius)] bg-(--bg-sunken)"
+          }
+          aria-hidden="true"
+        />
+      }
+    >
+      <FishTankCanvas
+        fish={fish}
+        immersive={immersive}
+        highlightSlugs={highlightSlugs}
+        themeKey={themeKey}
+      />
+    </Suspense>
+  )
+
+  // Inline (registry) renders sit inside LayoutRenderer with no boundary of
+  // their own — a chunk-load/WebGL failure would take the page down. The
+  // immersive stage stays unwrapped so HomePage's boundary can swap the whole
+  // tank for the text layout instead of leaving an empty stage.
+  const guarded = immersive ? (
+    canvas
+  ) : (
+    <FishTankErrorBoundary
+      fallback={
+        <p className="text-xs text-(--fg-muted)">
+          Aquarium view unavailable — see the project list below.
+        </p>
+      }
+    >
+      {canvas}
+    </FishTankErrorBoundary>
+  )
+
   return (
     <section
       className={
@@ -77,25 +118,7 @@ export function FishTankView({
       {!immersive && title ? (
         <h3 className="mb-2 text-sm font-medium text-(--fg)">{title}</h3>
       ) : null}
-      <Suspense
-        fallback={
-          <div
-            className={
-              immersive
-                ? "h-full w-full bg-(--bg-sunken)"
-                : "h-[320px] w-full rounded-[var(--radius)] bg-(--bg-sunken)"
-            }
-            aria-hidden="true"
-          />
-        }
-      >
-        <FishTankCanvas
-          fish={fish}
-          immersive={immersive}
-          highlightSlugs={highlightSlugs}
-          themeKey={themeKey}
-        />
-      </Suspense>
+      {guarded}
       {!immersive && caption ? (
         <p className="mt-2 text-xs text-(--fg-muted)">{caption}</p>
       ) : null}
