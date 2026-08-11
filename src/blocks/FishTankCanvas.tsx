@@ -21,7 +21,6 @@ import { isSubmerged } from "@/fish/tankMachine"
 import { fishLitFactor, type FishFilter } from "@/fish/matchFish"
 import {
   CAT_X,
-  CAT_Y,
   clamp01,
   WATER_Y,
   FLOOR_Y,
@@ -63,7 +62,6 @@ import {
   type TankThemePalette,
 } from "./fishTankTokens"
 import {
-  buildCatMesh,
   buildCoral,
   buildCyberCrystal,
   buildFishMesh,
@@ -71,6 +69,11 @@ import {
   buildSeaweed,
   type BuiltFish,
 } from "@/fish/speciesMeshes"
+import {
+  buildGiantCatMesh,
+  createCatAnimationState,
+  stepCatAnimation,
+} from "@/fish/catMesh"
 import { createCausticMaterial } from "@/fish/shaders/causticShader"
 import { createGodRayMaterial, type GodRayMaterial } from "@/fish/shaders/godRayShader"
 import { createWaterMaterial } from "@/fish/shaders/waterShader"
@@ -85,6 +88,24 @@ import { worldYForDepth } from "@/fish/bathymetry"
 import { projectSonarBlips } from "@/fish/sonarProjection"
 import { fishAudio } from "@/fish/fishAudio"
 import { computeSteeringForce, type BoidAgent } from "@/fish/fishBoids"
+import {
+  behaviorTimeScale,
+  createFishBehavior,
+  stepFishBehavior,
+  swimTarget,
+  SENSE_DIST,
+  type FishBehaviorState,
+  type SensedFood,
+} from "@/fish/fishBehavior"
+import {
+  bodySpeed,
+  clampToBounds,
+  createSwimBody,
+  maxSpeedFor,
+  minSpeedFor,
+  stepSwimBody,
+  type SwimBody,
+} from "@/fish/fishLocomotion"
 import { WakeTrailPool } from "@/fish/wakeTrails"
 import type { DomainIdType } from "@/content/schema"
 
@@ -322,6 +343,7 @@ export default function FishTankCanvas({
     const raySpread = (TANK_HALF_W * 0.26 * 8) / Math.max(1, rayCount - 1)
     const rayMats: GodRayMaterial[] = []
     const rays = new THREE.Group()
+    rays.name = "rays"
     for (let i = 0; i < rayCount; i++) {
       const h = TANK_HEIGHT * (1.18 + (i % 3) * 0.15)
       const mat = createGodRayMaterial(
@@ -430,23 +452,24 @@ export default function FishTankCanvas({
 
     // 3D Holographic Reticle for Focused Fish
     const holoReticle = createHoloReticle()
+    holoReticle.group.name = "holo_reticle"
     tank.add(holoReticle.group)
 
     // Architecture hologram — replaces the reticle once a specimen is locked.
     // Nodes stay wordless: the dossier already carries the metrics and tags, so
     // labelling them again just stacks text over the specimen.
     const hologram = createArchHologram(palette.cyan)
+    hologram.group.name = "arch_hologram"
     tank.add(hologram.group)
 
-    // Interactive Cat Mascot on Rim
-    const cat = buildCatMesh(WATER_Y)
-    cat.position.x = CAT_X
+    // Interactive Giant Predator Cat Mascot perched on the rim
+    const { group: cat, parts: catParts } = buildGiantCatMesh(WATER_Y)
+    cat.position.set(CAT_X, WATER_Y, 0)
+    cat.rotation.y = -Math.PI / 4
     scene.add(cat)
-    // Named parts resolved once — the frame loop only reads these.
-    const catPaw = cat.getObjectByName("paw") ?? null
-    const catTail = cat.getObjectByName("cat_tail") ?? null
-    const catEyeL = cat.getObjectByName("eyeL") ?? null
-    const catEyeR = cat.getObjectByName("eyeR") ?? null
+
+    const catAnimState = createCatAnimationState()
+    let catTriggerSwat = false
 
     // Particle Systems: Rising Bubbles & Marine Snow
     const sprite = buildPointSprite(64)
@@ -701,6 +724,23 @@ export default function FishTankCanvas({
       age: number
     }
     const livePellets: LivePellet[] = []
+    /**
+     * Per-fish behaviour states (fish/fishBehavior.ts), keyed by slug. The
+     * parametric orbit is only the resting state; this map is what lets a fish
+     * leave it to chase a pellet and then settle back onto it.
+     */
+    const behaviors = new Map<string, FishBehaviorState>()
+    /**
+     * Integrated bodies (fish/fishLocomotion.ts), keyed by slug. `computeFishPose`
+     * feeds these as a *target*; what the mesh actually gets is the body that
+     * chased it, which is what keeps every transition continuous.
+     */
+    const bodies = new Map<string, SwimBody>()
+    /** Scratch target + steering bias, reused every fish, every frame. */
+    const _swimTarget: Vec3 = { x: 0, y: 0, z: 0 }
+    const _swimBias: Vec3 = { x: 0, y: 0, z: 0 }
+    const SWIM_MIN = { x: -TANK_HALF_W + 1, y: SWIM_Y_MIN, z: -TANK_HALF_D + 1 }
+    const SWIM_MAX = { x: TANK_HALF_W - 1, y: SWIM_Y_MAX, z: TANK_HALF_D - 1 }
 
     function spawnFood(pos?: { x?: number; y?: number; z?: number }) {
       if (livePellets.length > 25) {
@@ -837,6 +877,15 @@ export default function FishTankCanvas({
       } else {
         hasCursor3D = false
       }
+
+      // Check hover on giant cat
+      if (catParts && !selected && !orbit.dragging) {
+        raycaster.setFromCamera(pointer, camera)
+        const catHits = raycaster.intersectObjects([catParts.hitBox], false)
+        if (catHits.length > 0) {
+          renderer.domElement.style.cursor = "pointer"
+        }
+      }
     }
 
     function onWheel(e: WheelEvent) {
@@ -851,9 +900,34 @@ export default function FishTankCanvas({
     }
 
     function onClick() {
-      if (!isSubmerged(progRef.current)) return
       if (orbit.moved > 6) return
       raycaster.setFromCamera(pointer, camera)
+
+      // Interactive Click on Giant Cat Mascot
+      if (catParts) {
+        const catHits = raycaster.intersectObjects([catParts.hitBox], false)
+        if (catHits.length > 0) {
+          catTriggerSwat = true
+          fishBus.emit("audio:fx", { type: "chime", at: { x: CAT_X, y: WATER_Y, z: 0 } })
+          return
+        }
+      }
+
+      if (!isSubmerged(progRef.current)) {
+        const hits = raycaster.intersectObjects(
+          fishObjs.map((o) => o.mesh),
+          true,
+        )
+        if (hits.length > 0) {
+          let obj: THREE.Object3D | null = hits[0].object
+          while (obj && !obj.userData?.slug) obj = obj.parent
+          if (obj && obj.userData?.slug) catchFish(obj as THREE.Group)
+        } else {
+          catTriggerSwat = true
+        }
+        return
+      }
+
       const hits = raycaster.intersectObjects(
         fishObjs.map((o) => o.mesh),
         true,
@@ -1042,19 +1116,63 @@ export default function FishTankCanvas({
         }
       }
 
-      // Cat mascot animation
-      cat.position.y = CAT_Y + Math.sin(t * 0.8) * 0.28
-      if (catPaw) {
-        const dip = selected ? 0.55 : 0
-        catPaw.rotation.z = 0.22 + dip + Math.sin(t * 1.5) * 0.05
+      // Giant Cat Mascot Gaze-Tracking & Hunting AI Animation
+      let catTargetPos: Vec3 | null = null
+      let catIsHunting = false
+
+      if (selected) {
+        catTargetPos = {
+          x: selected.position.x,
+          y: selected.position.y,
+          z: selected.position.z,
+        }
+        catIsHunting = true
+      } else {
+        // Track closest fish or fish near surface
+        let closestDistSq = Infinity
+        let closestFishPos: Vec3 | null = null
+        const catWorldPos = { x: CAT_X, y: WATER_Y, z: 0 }
+
+        for (const f of fishObjs) {
+          const fx = f.mesh.position.x - catWorldPos.x
+          const fy = f.mesh.position.y - catWorldPos.y
+          const fz = f.mesh.position.z - catWorldPos.z
+          const dSq = fx * fx + fy * fy + fz * fz
+          if (dSq < closestDistSq) {
+            closestDistSq = dSq
+            closestFishPos = {
+              x: f.mesh.position.x,
+              y: f.mesh.position.y,
+              z: f.mesh.position.z,
+            }
+          }
+        }
+
+        if (closestFishPos && closestDistSq < 35 * 35) {
+          catTargetPos = closestFishPos
+          if (closestDistSq < 24 * 24 && closestFishPos.y > WATER_Y - 14) {
+            catIsHunting = true
+            // If swimming right under the perched cat, trigger a swat strike!
+            if (closestDistSq < 13 * 13 && closestFishPos.y > WATER_Y - 6) {
+              catTriggerSwat = true
+            }
+          }
+        }
       }
-      if (catTail) {
-        catTail.rotation.y = Math.sin(t * 1.2) * 0.35
-      }
-      // Blinking eye
-      const blink = Math.sin(t * 0.5) > 0.98 ? 0.1 : 1
-      if (catEyeL) catEyeL.scale.y = blink
-      if (catEyeR) catEyeR.scale.y = blink
+
+      stepCatAnimation(catParts, catAnimState, {
+        t,
+        dt,
+        catWorldPos: { x: CAT_X, y: WATER_Y, z: 0 },
+        targetPos: catTargetPos,
+        isHunting: catIsHunting,
+        triggerSwat: catTriggerSwat,
+        onWaterSplash: (pos) => {
+          spawnShockwave(pos.x, pos.z)
+          fishBus.emit("audio:fx", { type: "bubble", at: pos })
+        },
+      })
+      catTriggerSwat = false
 
       // Focus visuals: the reticle marks an unlocked hover state, the
       // architecture hologram takes over once a specimen is locked.
@@ -1104,7 +1222,9 @@ export default function FishTankCanvas({
         id: o.data.slug,
         school: o.data.school,
         position: { x: o.mesh.position.x, y: o.mesh.position.y, z: o.mesh.position.z },
-        velocity: {
+        // Real velocity now that bodies are integrated — alignment used to read
+        // a yaw-derived guess with a hardcoded zero Y.
+        velocity: bodies.get(o.data.slug)?.velocity ?? {
           x: Math.sin(o.mesh.rotation.y) * (o.data.speed || 0.5),
           y: 0,
           z: Math.cos(o.mesh.rotation.y) * (o.data.speed || 0.5),
@@ -1121,26 +1241,55 @@ export default function FishTankCanvas({
           timeScale: selected ? 0.15 : 1,
         })
 
-        // Check eating food pellets
+        // Sense the nearest pellet and test the mouth in the same pass — the
+        // behaviour machine needs the distance the eat check already computes.
+        let sensed: SensedFood | null = null
+        let ate = false
         if (!focused && livePellets.length > 0) {
+          let bestSq = SENSE_DIST * SENSE_DIST
+          let best: LivePellet | null = null
           for (const p of livePellets) {
             if (!p.active) continue
             const dx = o.mesh.position.x - p.x
             const dy = o.mesh.position.y - p.y
             const dz = o.mesh.position.z - p.z
             const mouthDistSq = dx * dx + dy * dy + dz * dz
-            if (mouthDistSq < 4.5 * pose.scale) {
+            if (!ate && mouthDistSq < 4.5 * pose.scale) {
               p.active = false
+              ate = true
               fishBus.emit("feed:eaten", { pelletId: p.id, slug: o.data.slug })
               fishBus.emit("audio:fx", {
                 type: "eat",
                 at: { x: p.x, y: p.y, z: p.z },
               })
               o.mesh.userData.boostGlow = 1.0
-              break
+              continue
+            }
+            if (mouthDistSq < bestSq) {
+              bestSq = mouthDistSq
+              best = p
+            }
+          }
+          if (best) {
+            sensed = {
+              id: best.id,
+              position: { x: best.x, y: best.y, z: best.z },
+              distance: Math.sqrt(bestSq),
             }
           }
         }
+
+        const behavior = stepFishBehavior(
+          behaviors.get(o.data.slug) ?? createFishBehavior(),
+          { dt, focused, food: sensed, ate },
+        )
+        behaviors.set(o.data.slug, behavior)
+        // Only chase the pellet the machine actually committed to: the nearest
+        // pellet can change mid-approach, and following it blindly would make a
+        // fish stutter between two falling crumbs.
+        const foodTarget =
+          sensed && behavior.targetId === sensed.id ? sensed.position : null
+        const target = swimTarget(behavior, pose.position, foodTarget)
 
         // Boids steering force
         const agent = boidAgents.find((a) => a.id === o.data.slug)
@@ -1162,31 +1311,73 @@ export default function FishTankCanvas({
         steerSmooth.z += (steer.z - steerSmooth.z) * 0.08
         o.mesh.userData.steer = steerSmooth
 
-        const posX = clamp(pose.position.x + steerSmooth.x * 3.5, -TANK_HALF_W + 1, TANK_HALF_W - 1)
-        const posY = clamp(pose.position.y + steerSmooth.y * 2.5, SWIM_Y_MIN, SWIM_Y_MAX)
-        const posZ = clamp(pose.position.z + steerSmooth.z * 3.0, -TANK_HALF_D + 1, TANK_HALF_D - 1)
+        _swimTarget.x = target.x
+        _swimTarget.y = target.y
+        _swimTarget.z = target.z
 
-        o.mesh.position.set(posX, posY, posZ)
-        o.mesh.rotation.y = pose.yaw
+        let body = bodies.get(o.data.slug)
+        if (!body) {
+          body = createSwimBody(pose.position, pose.yaw)
+          bodies.set(o.data.slug, body)
+        }
+        const cruise = maxSpeedFor(o.data.speed) * behaviorTimeScale(behavior.state)
+        // Shoal steering is a sideways shove on the *velocity*, not a displaced
+        // target: separation flips sign as two fish pass each other, and a
+        // flipping target swings across the fish and spins it. A committed hunt
+        // also stops listening to the shoal.
+        // 0.18 is measured, not guessed: the path and the boids are two
+        // controllers steering one fish, and above ~0.2 the shoal term wins and
+        // the fish wags around the compromise instead of following its path.
+        const steerGain = (1 - behavior.commit * 0.75) * cruise * 0.18
+        _swimBias.x = steerSmooth.x * steerGain
+        _swimBias.y = steerSmooth.y * steerGain * 0.7
+        _swimBias.z = steerSmooth.z * steerGain
+        stepSwimBody(
+          body,
+          _swimTarget,
+          dt,
+          {
+            maxSpeed: cruise,
+            accel: cruise * 3.6,
+            turnRate: 2.6,
+            arriveRadius: 2.2,
+            minSpeed: minSpeedFor(cruise),
+          },
+          _swimBias,
+        )
+        clampToBounds(body, SWIM_MIN, SWIM_MAX)
+
+        o.mesh.position.set(body.position.x, body.position.y, body.position.z)
+        o.mesh.rotation.y = body.yaw
 
         if (!focused) {
           const prev = o.mesh.userData.prevYaw as number | undefined
-          const dYaw = prev == null ? 0 : shortestAngle(pose.yaw - prev)
-          o.mesh.userData.prevYaw = pose.yaw
-          const bank = clamp(dYaw * 9, -0.5, 0.5)
+          const dYaw = prev == null ? 0 : shortestAngle(body.yaw - prev)
+          o.mesh.userData.prevYaw = body.yaw
+          // Bank out of the turn the body actually took, not out of the ideal
+          // path heading — the two now differ, and the body is what is drawn.
+          const bank = clamp((dYaw / Math.max(dt, 0.001)) * 0.16, -0.5, 0.5)
           o.mesh.rotation.z += (bank - o.mesh.rotation.z) * 0.08
           o.mesh.rotation.x = Math.sin(t * 1.4 * o.data.speed + o.data.depth * 6) * 0.06
         }
 
         // Organic S-Curve Spine & Segment Undulation
         const { spineSegments, pecL, pecR, tentacles } = o.built
-        const swimSpeed = (o.data.speed || 0.5) * 7.5
-        
+        // Beat rate tracks how fast the fish is *actually* moving, so a dash to
+        // food and a coast home are legible in the body, not only in the path.
+        const swimSpeed =
+          (o.data.speed || 0.5) * 7.5 * (0.45 + 0.55 * Math.min(1.6, bodySpeed(body) / cruise))
+        // Integrated rather than sampled from the global clock: multiplying `t`
+        // by a rate that changes with speed would jump the wave phase on every
+        // change, which reads as a twitch.
+        const tailPhase = ((o.mesh.userData.tailPhase as number | undefined) ?? 0) + dt * swimSpeed
+        o.mesh.userData.tailPhase = tailPhase
+
         if (spineSegments.length > 1) {
           spineSegments.forEach((seg, sIdx) => {
             const phaseLag = sIdx * 0.65
             const amp = 0.08 + sIdx * 0.07
-            seg.rotation.y = Math.sin(t * swimSpeed - phaseLag) * amp
+            seg.rotation.y = Math.sin(tailPhase - phaseLag) * amp
           })
         }
 
