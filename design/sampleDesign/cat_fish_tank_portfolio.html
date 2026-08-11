@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Andrew the Cat | 3D Aquascaping Portfolio</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            aquadark: '#030814',
+            aquadeep: '#081329',
+            aquafoam: '#00f3ff',
+            aquaglow: '#3b82f6',
+            catpink: '#f472b6',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Fira Code', 'monospace'],
+          },
+        },
+      },
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    body {
+      background-color: #030814;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      transition: background-color 0.4s ease, color 0.4s ease;
+    }
+
+    /* Light Mode Theme Overrides */
+    html.light body {
+      background-color: #e0f2fe;
+      color: #0f172a;
+    }
+    html.light header {
+      background-color: rgba(240, 249, 255, 0.85) !important;
+      border-color: rgba(14, 165, 233, 0.2) !important;
+    }
+    html.light header h1, 
+    html.light header button, 
+    html.light header a {
+      color: #0f172a !important;
+    }
+    html.light .glass-panel {
+      background: rgba(255, 255, 255, 0.85) !important;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(14, 165, 233, 0.25) !important;
+      box-shadow: 0 10px 30px -5px rgba(14, 165, 233, 0.15) !important;
+      color: #0f172a !important;
+    }
+    html.light .glass-panel h2, 
+    html.light .glass-panel h3, 
+    html.light .glass-panel h4 {
+      color: #0f172a !important;
+    }
+    html.light .glass-panel p {
+      color: #334155 !important;
+    }
+    html.light .waterline-divider {
+      background: linear-gradient(180deg, rgba(224, 242, 254, 0.95) 0%, rgba(186, 230, 253, 0.5) 50%, rgba(14, 165, 233, 0.2) 100%) !important;
+      border-top: 2px solid rgba(14, 165, 233, 0.5) !important;
+      border-bottom: 1px solid rgba(14, 165, 233, 0.3) !important;
+      box-shadow: 0 0 25px rgba(14, 165, 233, 0.2) !important;
+    }
+    html.light input {
+      background-color: rgba(255, 255, 255, 0.9) !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+    html.light input::placeholder {
+      color: #64748b !important;
+    }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #030814;
+    }
+    html.light ::-webkit-scrollbar-track {
+      background: #e0f2fe;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    html.light ::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00f3ff;
+    }
+
+    /* Glow utility animations */
+    .glow-cyan {
+      box-shadow: 0 0 20px rgba(0, 243, 255, 0.25);
+    }
+    .text-glow {
+      text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+    }
+    
+    /* Glassmorphism Panels */
+    .glass-panel {
+      background: rgba(8, 19, 41, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 243, 255, 0.15);
+    }
+
+    /* Floating Canvas */
+    #webgl-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: auto;
+    }
+
+    /* Tank Rim & Waterline Surface Divider Styling */
+    .waterline-divider {
+      background: linear-gradient(180deg, rgba(8, 19, 41, 0.95) 0%, rgba(3, 8, 20, 0.4) 50%, rgba(0, 243, 255, 0.15) 100%);
+      border-top: 2px solid rgba(0, 243, 255, 0.4);
+      border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+      box-shadow: 0 0 25px rgba(0, 243, 255, 0.25), inset 0 1px 15px rgba(0, 243, 255, 0.2);
+    }
+
+    .water-wave-line {
+      background: linear-gradient(90deg, transparent 0%, rgba(0,243,255,0.6) 50%, transparent 100%);
+      height: 2px;
+      animation: wavePulse 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes wavePulse {
+      0% { opacity: 0.3; transform: scaleX(0.8); }
+      100% { opacity: 1; transform: scaleX(1.1); }
+    }
+
+    /* Cat Paw Splash Animation */
+    @keyframes pawDip {
+      0% { transform: translateY(-120px) rotate(-10deg); opacity: 0; }
+      50% { transform: translateY(10px) rotate(5deg); opacity: 1; }
+      100% { transform: translateY(-120px) rotate(0deg); opacity: 0; }
+    }
+    .paw-animating {
+      animation: pawDip 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* Water Ripple Effect */
+    @keyframes waveRipple {
+      0% { transform: scale(0.3); opacity: 1; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+    .ripple {
+      position: absolute;
+      border: 2px solid rgba(0, 243, 255, 0.6);
+      border-radius: 50%;
+      animation: waveRipple 1s linear forwards;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="relative selection:bg-cyan-500 selection:text-black">
+
+  <!-- 3D Three.js Aquascape Background Canvas -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Interactive Water Ripple Container -->
+  <div id="ripple-container" class="fixed inset-0 pointer-events-none z-10 overflow-hidden"></div>
+
+  <!-- Cat Paw Overlay graphic for catch interaction -->
+  <div id="cat-paw-overlay" class="fixed top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity">
+    <div class="relative w-32 h-44 text-catpink drop-shadow-[0_10px_15px_rgba(244,114,182,0.5)]">
+      <svg viewBox="0 0 100 140" fill="currentColor">
+        <!-- Arm -->
+        <rect x="30" y="0" width="40" height="90" rx="20" />
+        <!-- Main Pad -->
+        <path d="M 30 90 C 20 90, 20 120, 50 125 C 80 120, 80 90, 70 90 Z" />
+        <!-- Toe Beans -->
+        <circle cx="22" cy="82" r="8" fill="#fda4af" />
+        <circle cx="40" cy="72" r="9" fill="#fda4af" />
+        <circle cx="60" cy="72" r="9" fill="#fda4af" />
+        <circle cx="78" cy="82" r="8" fill="#fda4af" />
+      </svg>
+    </div>
+  </div>
+
+  <!-- Persistent Minimal Header Chrome -->
+  <header class="fixed top-0 left-0 right-0 z-40 px-4 py-3 sm:px-8 border-b border-cyan-500/10 bg-aquadark/80 backdrop-blur-md flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <!-- Andrew Cat Avatar -->
+      <div id="hero-cat-avatar" class="relative group cursor-pointer">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-cyan-500 via-indigo-500 to-pink-500 p-[2px] shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
+          <div class="w-full h-full bg-slate-900 rounded-full flex items-center justify-center text-xl">
+            🐱
+          </div>
+        </div>
+        <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-slate-900 rounded-full" title="Online & Building"></span>
+      </div>
+
+      <div>
+        <h1 class="text-base sm:text-lg font-bold tracking-wide text-white flex items-center gap-2">
+          Andrew <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-mono hidden sm:inline-block">Cat Builder 🐾</span>
+        </h1>
+        <p class="text-xs text-slate-400 truncate max-w-[200px] sm:max-w-none">
+          Lead AI & DevOps Architect • Aquascaping Systems
+        </p>
+      </div>
+    </div>
+
+    <!-- Quick Action Controls & View Switcher -->
+    <div class="flex items-center gap-2 sm:gap-4">
+      <!-- Light / Dark Theme Toggle Button -->
+      <button id="theme-toggle-btn" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-amber-300 border border-slate-700 transition-colors" title="Toggle Light / Dark Mode">
+        <i id="theme-toggle-icon" class="fa-solid fa-moon text-cyan-300"></i>
+      </button>
+
+      <!-- Search Feeding Shortcut -->
+      <button id="search-trigger-btn" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-xs text-slate-300 transition-colors">
+        <i class="fa-solid fa-magnifying-glass text-cyan-400"></i>
+        <span>Feed query...</span>
+        <kbd class="px-1.5 py-0.5 text-[10px] bg-slate-900 text-slate-400 rounded border border-slate-700">⌘K</kbd>
+      </button>
+
+      <!-- View Toggle Switcher (3D vs Flat) -->
+      <div class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+        <button id="mode-3d-btn" class="px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-cyan-500 text-slate-950 shadow-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-cube"></i>
+          <span class="hidden sm:inline">3D Tank</span>
+        </button>
+        <button id="mode-flat-btn" class="px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-table-cells"></i>
+          <span class="hidden sm:inline">Flat Grid</span>
+        </button>
+      </div>
+
+      <!-- Config Inspector Button -->
+      <button id="toggle-config-drawer" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 border border-slate-700 transition-colors" title="Inspect Fish Config JSON Schema">
+        <i class="fa-solid fa-code font-mono"></i>
+      </button>
+
+      <!-- Resume / Github Links -->
+      <a href="https://github.com" target="_blank" class="hidden sm:flex items-center justify-center w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors">
+        <i class="fa-brands fa-github text-base"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- 3D VIEW UI OVERLAY CONTAINER -->
+  <div id="view-3d-container" class="relative z-10 min-h-screen pt-20 pb-36 px-4 sm:px-8 pointer-events-none flex flex-col justify-between">
+    
+    <!-- TOP SECTION: Andrew the Cat Builder Hero Header -->
+    <section id="hero-deck-section" class="max-w-4xl mt-16 mb-32 pointer-events-auto mx-auto w-full min-h-[55vh] flex flex-col justify-center">
+      <div class="glass-panel p-6 sm:p-10 rounded-3xl border-cyan-500/20 shadow-2xl relative overflow-hidden">
+        
+        <!-- Subtle Surface Water Background Glow -->
+        <div class="absolute -top-24 -right-24 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left">
+          
+          <!-- Large Cat Avatar & Interaction Hotspot -->
+          <div id="hero-cat-main-avatar" class="relative group cursor-pointer shrink-0" title="Click to tap water surface!">
+            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-cyan-400 via-indigo-500 to-pink-500 p-1 shadow-xl shadow-cyan-500/30 group-hover:scale-105 transition-transform">
+              <div class="w-full h-full bg-slate-950 rounded-full flex items-center justify-center text-5xl sm:text-6xl select-none">
+                🐱
+              </div>
+            </div>
+            <div class="absolute -bottom-2 right-1 bg-slate-900 border border-pink-500/50 text-pink-300 text-[10px] font-mono px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+              <i class="fa-solid fa-paw text-pink-400"></i> Tap Surface
+            </div>
+          </div>
+
+          <!-- Hero Narrative Intro -->
+          <div class="flex-1">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono mb-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+              Surface Deck • Andrew the Cat Builder
+            </div>
+            
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+              3D Aquascaping & AI Infrastructure
+            </h2>
+            
+            <p class="mt-2 text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+              Welcome to the surface! Below this waterline divider lies my production portfolio tank. 
+              Each swimming species is a validated DevOps or AI system. Scroll down to dive beneath the surface and interact with the fish.
+            </p>
+
+            <!-- Surface Interaction Pills -->
+            <div class="mt-4 flex flex-wrap items-center justify-center md:justify-start gap-2.5 text-xs">
+              <a href="#aquarium-waterline-divider" id="scroll-to-tank-btn" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold flex items-center gap-2 transition-all shadow-lg shadow-cyan-500/25">
+                <i class="fa-solid fa-arrow-down text-sm animate-bounce"></i> Dive Into Tank
+              </a>
+              <span class="flex items-center gap-1.5 bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800 text-slate-400">
+                <i class="fa-solid fa-cube text-cyan-400"></i> Single-Source <code class="text-cyan-300 font-mono">fish.json</code> Schema
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISUAL TANK DIVIDER BAR (Aquarium Glass Surface Line) -->
+    <div id="aquarium-waterline-divider" class="my-24 sm:my-40 w-full max-w-5xl mx-auto pointer-events-auto relative z-20">
+      <div class="waterline-divider rounded-2xl p-5 sm:p-6 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        
+        <!-- Left: Waterline Surface Indicator -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 text-lg shadow-inner">
+            <i class="fa-solid fa-water"></i>
+          </div>
+          <div>
+            <div class="text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <span>Aquarium Surface Rim</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            </div>
+            <div class="text-xs text-slate-300">
+              Depth: <span class="font-mono text-white font-semibold">0.0m (Surface Line)</span> • Submerse to explore projects
+            </div>
+          </div>
+        </div>
+
+        <!-- Wave pulse decorative bar -->
+        <div class="hidden md:block flex-1 mx-6">
+          <div class="water-wave-line rounded-full"></div>
+        </div>
+
+        <!-- Right: Submersion Hint -->
+        <div class="flex items-center gap-2 text-xs font-mono text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
+          <i class="fa-solid fa-angles-down text-cyan-400 animate-pulse"></i>
+          <span>Scroll down for Fishes</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- UNDERWATER TANK SECTION: Search, Filters & Depth Scales -->
+    <div id="underwater-tank-section" class="pt-16 sm:pt-28 pb-20 w-full max-w-5xl mx-auto pointer-events-auto relative">
+      
+      <!-- Depth Level Markers Sidebar Badge -->
+      <div class="hidden xl:flex absolute -left-28 top-12 bottom-12 flex-col justify-between py-6 text-[10px] font-mono text-slate-500 border-r border-cyan-500/20 pr-3 pointer-events-none">
+        <div class="flex items-center gap-1 text-cyan-400"><i class="fa-solid fa-caret-right"></i> Surface (0m)</div>
+        <div class="flex items-center gap-1"><i class="fa-solid fa-caret-right"></i> Mid-Depth (-10m)</div>
+        <div class="flex items-center gap-1"><i class="fa-solid fa-caret-right"></i> Deep Bed (-25m)</div>
+      </div>
+
+      <!-- Floating Search & Filter Toolbar ("Feeding" the Tank) -->
+      <div class="glass-panel p-3 sm:p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-3">
+        
+        <!-- Search Input -->
+        <div class="relative w-full sm:w-72">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+          <input 
+            type="text" 
+            id="fish-search-input" 
+            placeholder="Feed query (e.g. mcp, devops, ai)..." 
+            class="w-full bg-slate-950/70 text-slate-100 placeholder-slate-500 text-xs sm:text-sm rounded-xl pl-9 pr-8 py-2.5 border border-slate-700/60 focus:outline-none focus:border-cyan-400 transition-colors"
+          />
+          <button id="clear-search-btn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Domain Filter Chips -->
+        <div class="flex items-center gap-1.5 overflow-x-auto w-full pb-1 sm:pb-0 scrollbar-none">
+          <button data-domain="all" class="domain-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap bg-cyan-500 text-slate-950 font-bold transition-all shadow-sm">
+            All Species
+          </button>
+          <button data-domain="infra" class="domain-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition-all">
+            <i class="fa-solid fa-server mr-1 text-[10px]"></i> DevOps & Infra
+          </button>
+          <button data-domain="ai" class="domain-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-fuchsia-300 border border-slate-700 transition-all">
+            <i class="fa-solid fa-brain mr-1 text-[10px]"></i> AI & Agents
+          </button>
+          <button data-domain="web" class="domain-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition-all">
+            <i class="fa-solid fa-code mr-1 text-[10px]"></i> Fullstack
+          </button>
+        </div>
+
+        <!-- Active Fish Count Indicator -->
+        <div class="hidden lg:flex items-center gap-1.5 pl-2 text-xs text-slate-400 font-mono border-l border-slate-800 shrink-0">
+          <span id="active-fish-count" class="text-cyan-400 font-bold">6/6</span> Fish Active
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLAT GRID VIEW CONTAINER (Fallback for instant 8-second evaluation & SEO) -->
+  <main id="view-flat-container" class="hidden relative z-10 max-w-7xl mx-auto px-4 sm:px-8 pt-24 pb-20">
+    <!-- Hero Header in Flat View -->
+    <div class="mb-8 border-b border-slate-800 pb-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-cyan-400 text-xs font-mono mb-3">
+        ⚡ Recruiter Fast View • Direct Semantic Matrix
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white">Project Index</h2>
+      <p class="text-slate-400 text-sm mt-1 max-w-2xl">
+        Structured output derived directly from the single-source <code class="text-cyan-400 font-mono">fish.json</code> configuration schema.
+      </p>
+    </div>
+
+    <!-- Flat Search & Filter Controls -->
+    <div class="mb-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <input 
+        type="text" 
+        id="flat-search-input" 
+        placeholder="Filter projects by skill or title..." 
+        class="w-full sm:w-80 bg-slate-900 text-slate-200 placeholder-slate-500 text-sm rounded-xl px-4 py-2.5 border border-slate-800 focus:outline-none focus:border-cyan-400"
+      />
+      <div id="flat-domain-filters" class="flex flex-wrap gap-2">
+        <!-- Dynamic Filter Chips rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Flat Card Grid -->
+    <div id="flat-grid-wrapper" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Generated by JS -->
+    </div>
+  </main>
+
+  <!-- PROJECT DETAIL OVERLAY MODAL (Triggered on clicking a fish or card) -->
+  <div id="project-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 opacity-0 pointer-events-none transition-all duration-300 bg-slate-950/80 backdrop-blur-md">
+    <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 shadow-2xl relative translate-y-4 transition-transform duration-300 border-cyan-500/30 max-h-[90vh] overflow-y-auto">
+      
+      <!-- Close Button -->
+      <button id="close-modal-btn" class="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+
+      <!-- Modal Content Header -->
+      <div class="flex items-start gap-4 mb-6">
+        <div id="modal-species-icon" class="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-3xl shrink-0 text-cyan-400">
+          🐠
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span id="modal-domain-tag" class="px-2.5 py-0.5 rounded-md text-[11px] font-mono font-semibold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+              DevOps
+            </span>
+            <span id="modal-species-tag" class="text-xs text-slate-400 font-mono">
+              Species: Cyber-Grouper
+            </span>
+          </div>
+          <h3 id="modal-title" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            OpenCat MCP Server
+          </h3>
+          <p id="modal-blurb" class="text-sm text-cyan-200/80 mt-1 font-mono">
+            Model Context Protocol server for AI cat agent pipelines with high-speed tool dispatching.
+          </p>
+        </div>
+      </div>
+
+      <!-- Metrics Highlight Grid -->
+      <div class="mb-6">
+        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 font-mono">Key Impact Metrics</h4>
+        <div id="modal-metrics-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <!-- Metrics injected here -->
+        </div>
+      </div>
+
+      <!-- Detailed Narrative -->
+      <div class="mb-6">
+        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 font-mono">Architecture & DevOps Context</h4>
+        <p id="modal-description" class="text-sm text-slate-300 leading-relaxed bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+          Detailed technical breakdown...
+        </p>
+      </div>
+
+      <!-- Tech Stack Tags -->
+      <div class="mb-8">
+        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 font-mono">Tech Stack & Tools</h4>
+        <div id="modal-tags-wrapper" class="flex flex-wrap gap-2">
+          <!-- Tags injected here -->
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+        <div class="flex items-center gap-3">
+          <a id="modal-github-link" href="#" target="_blank" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-cyan-500/20">
+            <i class="fa-brands fa-github text-sm"></i> GitHub Repository
+          </a>
+          <button id="feed-boost-btn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-pink-300 text-xs font-semibold flex items-center gap-2 border border-slate-700 transition-all">
+            <i class="fa-solid fa-heart text-pink-400"></i> Boost Fish
+          </button>
+        </div>
+        <div class="text-xs text-slate-500 font-mono hidden sm:block">
+          Schema Ref: <span id="modal-ref-id" class="text-slate-400">oct-mcp</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- AGENT CONFIG JSON INSPECTOR DRAWER -->
+  <div id="config-drawer" class="fixed top-0 right-0 bottom-0 w-full max-w-md z-50 glass-panel border-l border-cyan-500/20 shadow-2xl transition-transform duration-300 translate-x-full flex flex-col">
+    <!-- Drawer Header -->
+    <div class="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-terminal text-cyan-400 font-mono"></i>
+        <h3 class="text-base font-bold text-white font-mono">fish.json Schema Inspector</h3>
+      </div>
+      <button id="close-config-drawer" class="text-slate-400 hover:text-white p-1">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Code Editor View -->
+    <div class="p-4 flex-1 overflow-y-auto bg-slate-950/90 font-mono text-xs">
+      <div class="mb-3 text-slate-400 text-[11px] leading-relaxed">
+        This normalized JSON schema is emitted by the agentic portfolio generator pipeline (<code class="text-cyan-300">bake_portfolio_for_job</code>). 
+      </div>
+      <pre id="json-code-display" class="text-cyan-300 overflow-x-auto p-3 bg-slate-900/80 rounded-xl border border-slate-800/80 leading-relaxed"></pre>
+    </div>
+
+    <!-- Quick Action Footer -->
+    <div class="p-4 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between">
+      <button id="copy-json-btn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 flex items-center gap-2 transition-colors">
+        <i class="fa-solid fa-copy"></i> Copy JSON
+      </button>
+      <span class="text-[11px] text-slate-500 font-mono">Validated Schema v2.1</span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Initial Fish Portfolio Dataset conforming to fish.json schema
+     */
+    const FISH_DATASET = [
+      {
+        slug: "oct-mcp",
+        title: "OpenCat MCP Server",
+        species: "grouper",
+        domain: "infra",
+        size: 0.85,
+        depth: 0.15,
+        speed: 0.7,
+        glow: 0.95,
+        color: "#00f3ff",
+        tags: ["MCP", "LangGraph", "PostgreSQL", "Docker", "DevOps"],
+        blurb: "High-performance Model Context Protocol server for automated AI agent workflows.",
+        detail_ref: "portfolio_plugin__context:oct-mcp",
+        metrics: [
+          { label: "Tools Exposed", value: "180+" },
+          { label: "Response Time", value: "<12ms" },
+          { label: "Uptime", value: "99.99%" }
+        ],
+        description: "Built a resilient MCP server infrastructure supporting high-concurrency tool execution for LLM agents. Features state persistence with PostgreSQL, automated Docker container sandboxing, and real-time streaming telemetry.",
+        github: "https://github.com"
+      },
+      {
+        slug: "cat-kube-agent",
+        title: "KubeCat Autoscaler",
+        species: "shark",
+        domain: "infra",
+        size: 0.92,
+        depth: 0.35,
+        speed: 0.8,
+        glow: 0.9,
+        color: "#38bdf8",
+        tags: ["Kubernetes", "Go", "Prometheus", "Helm", "CI/CD"],
+        blurb: "Predictive Kubernetes pod autoscaler driven by continuous traffic pattern estimation.",
+        detail_ref: "portfolio_plugin__context:cat-kube",
+        metrics: [
+          { label: "Cost Reduction", value: "34%" },
+          { label: "Cluster Scale", value: "500+ Nodes" },
+          { label: "Latency Spike", value: "0%" }
+        ],
+        description: "Engineered a custom Kubernetes operator in Go that monitors telemetry metrics via Prometheus to scale microservices pre-emptively prior to traffic spikes, drastically cutting cloud infrastructure expenditures.",
+        github: "https://github.com"
+      },
+      {
+        slug: "biomimetic-rag",
+        title: "DeepAquarium RAG Pipeline",
+        species: "jellyfish",
+        domain: "ai",
+        size: 0.78,
+        depth: 0.25,
+        speed: 0.4,
+        glow: 0.88,
+        color: "#d946ef",
+        tags: ["VectorDB", "Qdrant", "Python", "FastAPI", "Embeddings"],
+        blurb: "Semantic search vector engine with hierarchical clustering over 10M+ code snippets.",
+        detail_ref: "portfolio_plugin__context:biomimic-rag",
+        metrics: [
+          { label: "Doc Indexing", value: "10M+" },
+          { label: "Precision @ 5", value: "94.2%" },
+          { label: "Query Speed", value: "18ms" }
+        ],
+        description: "Integrated Qdrant vector database with custom chunking algorithms for codebase understanding. Designed a multi-stage re-ranking mechanism using cross-encoders to ensure context relevance for developer code queries.",
+        github: "https://github.com"
+      },
+      {
+        slug: "cat-swarm-orchestrator",
+        title: "CatSwarm Multi-Agent UI",
+        species: "manta",
+        domain: "ai",
+        size: 0.88,
+        depth: 0.50,
+        speed: 0.5,
+        glow: 0.85,
+        color: "#c084fc",
+        tags: ["React", "TypeScript", "WebSocket", "Tailwind", "Canvas"],
+        blurb: "Visual graph canvas monitoring dozens of autonomous AI agents collaborating in real-time.",
+        detail_ref: "portfolio_plugin__context:cat-swarm",
+        metrics: [
+          { label: "Simultaneous Agents", value: "64" },
+          { label: "FPS Render Rate", value: "60 FPS" },
+          { label: "Event Throughput", value: "5k/s" }
+        ],
+        description: "Created a modern WebGL and Canvas-assisted visual environment for observing autonomous multi-agent task planning. Displays live node execution graphs, token consumption stats, and agent dialogue feeds.",
+        github: "https://github.com"
+      },
+      {
+        slug: "whisker-db-driver",
+        title: "Whisker Async Postgres Driver",
+        species: "angelfish",
+        domain: "web",
+        size: 0.65,
+        depth: 0.65,
+        speed: 0.6,
+        glow: 0.70,
+        color: "#f59e0b",
+        tags: ["Rust", "PostgreSQL", "Tokio", "Async", "SQL"],
+        blurb: "Zero-allocation asynchronous database connector built in Rust for high-throughput microservices.",
+        detail_ref: "portfolio_plugin__context:whisker-db",
+        metrics: [
+          { label: "Throughput", value: "+45%" },
+          { label: "Mem Footprint", value: "<4MB" },
+          { label: "Connection Pool", value: "Auto-Lock" }
+        ],
+        description: "Developed a lightweight binary protocol parser for PostgreSQL in Rust using Tokio async runtime. Optimized memory buffers to achieve zero-copy deserialization for key JSON query payloads.",
+        github: "https://github.com"
+      },
+      {
+        slug: "purr-ci-pipeline",
+        title: "Purr Pipeline GitHub Action",
+        species: "tetra",
+        domain: "infra",
+        size: 0.55,
+        depth: 0.80,
+        speed: 0.9,
+        glow: 0.60,
+        color: "#10b981",
+        tags: ["GitHub Actions", "Docker", "Shell", "Security", "SCA"],
+        blurb: "Automated vulnerability scanner and container image shrinker for CI/CD pipelines.",
+        detail_ref: "portfolio_plugin__context:purr-ci",
+        metrics: [
+          { label: "Build Time Cut", value: "60%" },
+          { label: "CVE Scanned", value: "100%" },
+          { label: "GitHub Stars", value: "450+" }
+        ],
+        description: "Open-source GitHub Action that analyzes Docker build layers, strips unnecessary dependencies dynamically, and enforces zero-trust security checks prior to registry publishing.",
+        github: "https://github.com"
+      }
+    ];
+
+    // Application State Management
+    const state = {
+      theme: 'dark', // 'dark' or 'light'
+      viewMode: '3d', // '3d' or 'flat'
+      selectedFish: null,
+      searchQuery: '',
+      activeDomain: 'all',
+      timeScale: 1.0, // Matrix slow-motion multiplier
+      isHoveringFish: false,
+      activeFishObjects: [], // 3D Mesh references
+    };
+
+    // Three.js Scene Components
+    let scene, camera, renderer, raycaster, mouse;
+    let clock = new THREE.Clock();
+    let tankGroup, ambientLight, pointLight, topLight;
+    let bubblesParticles;
+
+    // DOM Element References
+    const canvasEl = document.getElementById('webgl-canvas');
+    const mode3dBtn = document.getElementById('mode-3d-btn');
+    const modeFlatBtn = document.getElementById('mode-flat-btn');
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const themeToggleIcon = document.getElementById('theme-toggle-icon');
+    const view3dContainer = document.getElementById('view-3d-container');
+    const viewFlatContainer = document.getElementById('view-flat-container');
+    const projectDetailModal = document.getElementById('project-detail-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const configDrawer = document.getElementById('config-drawer');
+    const toggleConfigBtn = document.getElementById('toggle-config-drawer');
+    const closeConfigBtn = document.getElementById('close-config-drawer');
+    const jsonCodeDisplay = document.getElementById('json-code-display');
+    const fishSearchInput = document.getElementById('fish-search-input');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+    const activeFishCountEl = document.getElementById('active-fish-count');
+    const flatGridWrapper = document.getElementById('flat-grid-wrapper');
+    const flatDomainFilters = document.getElementById('flat-domain-filters');
+    const flatSearchInput = document.getElementById('flat-search-input');
+    const catPawOverlay = document.getElementById('cat-paw-overlay');
+    const heroCatAvatar = document.getElementById('hero-cat-avatar');
+    const searchTriggerBtn = document.getElementById('search-trigger-btn');
+
+    function initThreeScene() {
+      // Create Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x030814);
+      scene.fog = new THREE.FogExp2(0x051329, 0.035);
+
+      // Camera Setup
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 0, 18);
+
+      // WebGL Renderer
+      renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+
+      // Raycaster & Mouse Input
+      raycaster = new THREE.Raycaster();
+      mouse = new THREE.Vector2();
+
+      // Lighting Architecture
+      ambientLight = new THREE.AmbientLight(0x0d2b45, 1.8);
+      scene.add(ambientLight);
+
+      // Top Surface Light (Sunlight/Water surface refraction)
+      topLight = new THREE.DirectionalLight(0x00f3ff, 2.0);
+      topLight.position.set(0, 15, 5);
+      scene.add(topLight);
+
+      // Bioluminescent Underwater Point Light
+      pointLight = new THREE.PointLight(0x3b82f6, 3, 30);
+      pointLight.position.set(0, 0, 0);
+      scene.add(pointLight);
+
+      // Tank Container Group
+      tankGroup = new THREE.Group();
+      scene.add(tankGroup);
+
+      // Construct Tank Environment (Corals, Sandy Floor & Caustics Effect)
+      buildTankEnvironment();
+
+      // Build Procedural Fish Meshes
+      buildFishMeshes();
+
+      // Build Ambient Bubble System
+      buildBubbleParticles();
+
+      // Event Listeners for Interaction
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('click', onCanvasClick);
+
+      // Start Rendering Loop
+      animate();
+    }
+
+    function buildTankEnvironment() {
+      // Floor Bed Mesh
+      const floorGeo = new THREE.PlaneGeometry(60, 40, 32, 32);
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x06152d,
+        roughness: 0.9,
+        metalness: 0.1,
+        flatShading: true
+      });
+      const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.position.y = -8;
+      tankGroup.add(floorMesh);
+
+      // Add Glowing Coral Crystal Rocks on the floor
+      const rockGeo = new THREE.DodecahedronGeometry(1, 1);
+      for (let i = 0; i < 15; i++) {
+        const rockMat = new THREE.MeshStandardMaterial({
+          color: i % 2 === 0 ? 0x00f3ff : 0xd946ef,
+          emissive: i % 2 === 0 ? 0x004455 : 0x440055,
+          emissiveIntensity: 0.4,
+          roughness: 0.4
+        });
+        const rock = new THREE.Mesh(rockGeo, rockMat);
+        rock.position.set(
+          (Math.random() - 0.5) * 30,
+          -7.5 + Math.random() * 0.5,
+          (Math.random() - 0.5) * 15 - 2
+        );
+        const scale = 0.5 + Math.random() * 1.2;
+        rock.scale.set(scale, scale * (1 + Math.random()), scale);
+        rock.rotation.set(Math.random(), Math.random(), Math.random());
+        tankGroup.add(rock);
+      }
+    }
+
+    function buildFishMeshes() {
+      // Clear existing
+      state.activeFishObjects.forEach(f => tankGroup.remove(f.mesh));
+      state.activeFishObjects = [];
+
+      FISH_DATASET.forEach((data) => {
+        const fishGroup = new THREE.Group();
+
+        // Color & Material Settings
+        const primaryColor = new THREE.Color(data.color);
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: primaryColor,
+          emissive: primaryColor,
+          emissiveIntensity: data.glow * 0.6,
+          roughness: 0.3,
+          metalness: 0.2
+        });
+
+        // Tail/Fin Material (Translucent glowing)
+        const finMat = new THREE.MeshStandardMaterial({
+          color: primaryColor,
+          emissive: primaryColor,
+          emissiveIntensity: data.glow * 0.8,
+          transparent: true,
+          opacity: 0.85,
+          roughness: 0.2
+        });
+
+        let mainBodyMesh;
+
+        // Species-specific procedural mesh assembly
+        if (data.species === 'grouper' || data.species === 'shark') {
+          // Tapered streamlined fish body
+          const bodyGeo = new THREE.ConeGeometry(0.8, 2.5, 8);
+          bodyGeo.rotateX(Math.PI / 2);
+          mainBodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+          fishGroup.add(mainBodyMesh);
+
+          // Caudal Tail Fin
+          const tailGeo = new THREE.BufferGeometry();
+          const vertices = new Float32Array([
+            0, 0, -1.2,
+            0, 0.8, -2.2,
+            0, -0.8, -2.2
+          ]);
+          tailGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+          tailGeo.computeVertexNormals();
+          const tailMesh = new THREE.Mesh(tailGeo, finMat);
+          tailMesh.name = "tail";
+          fishGroup.add(tailMesh);
+
+        } else if (data.species === 'jellyfish') {
+          // Semi-spherical jellyfish dome
+          const domeGeo = new THREE.SphereGeometry(1.0, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.6);
+          mainBodyMesh = new THREE.Mesh(domeGeo, finMat);
+          fishGroup.add(mainBodyMesh);
+
+          // Tentacles
+          for (let t = 0; t < 6; t++) {
+            const tenGeo = new THREE.CylinderGeometry(0.04, 0.01, 1.8, 6);
+            const tentacle = new THREE.Mesh(tenGeo, finMat);
+            const angle = (t / 6) * Math.PI * 2;
+            tentacle.position.set(Math.cos(angle) * 0.5, -0.8, Math.sin(angle) * 0.5);
+            tentacle.name = "tentacle_" + t;
+            fishGroup.add(tentacle);
+          }
+
+        } else if (data.species === 'manta') {
+          // Broad triangular Manta Ray wings
+          const wingShape = new THREE.Shape();
+          wingShape.moveTo(0, 1.2);
+          wingShape.lineTo(2.2, -0.5);
+          wingShape.lineTo(0, -1.2);
+          wingShape.lineTo(-2.2, -0.5);
+          wingShape.closePath();
+
+          const extrudeSettings = { depth: 0.2, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.1, bevelThickness: 0.1 };
+          const wingGeo = new THREE.ExtrudeGeometry(wingShape, extrudeSettings);
+          wingGeo.rotateX(Math.PI / 2);
+          mainBodyMesh = new THREE.Mesh(wingGeo, bodyMat);
+          fishGroup.add(mainBodyMesh);
+
+        } else {
+          // Classic Angelfish / Guppy
+          const bodyGeo = new THREE.SphereGeometry(0.9, 12, 12);
+          bodyGeo.scale(0.3, 1.0, 1.2);
+          mainBodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+          fishGroup.add(mainBodyMesh);
+
+          // Dorsal & Tail fins
+          const finGeo = new THREE.ConeGeometry(0.5, 1.5, 4);
+          const topFin = new THREE.Mesh(finGeo, finMat);
+          topFin.position.set(0, 0.9, -0.2);
+          topFin.rotation.x = -Math.PI / 4;
+          fishGroup.add(topFin);
+        }
+
+        // Bioluminescent glowing core light attached to fish
+        const glowPointLight = new THREE.PointLight(primaryColor, data.glow * 1.5, 4);
+        fishGroup.add(glowPointLight);
+
+        // Scale based on project size
+        const baseScale = 0.7 + (data.size * 0.7);
+        fishGroup.scale.set(baseScale, baseScale, baseScale);
+
+        // Position mapping based on normalized depth
+        const posX = (Math.random() - 0.5) * 16;
+        const posY = 5 - (data.depth * 10);
+        const posZ = (Math.random() - 0.5) * 8;
+
+        fishGroup.position.set(posX, posY, posZ);
+
+        // Store reference data inside object
+        fishGroup.userData = {
+          data: data,
+          basePosY: posY,
+          baseScale: baseScale,
+          speed: data.speed,
+          swimPhase: Math.random() * Math.PI * 2,
+          swimRadiusX: 3 + Math.random() * 4,
+          swimRadiusZ: 2 + Math.random() * 3,
+          centerPos: new THREE.Vector3(posX, posY, posZ),
+          isTargeted: false
+        };
+
+        tankGroup.add(fishGroup);
+
+        state.activeFishObjects.push({
+          mesh: fishGroup,
+          data: data,
+          glowLight: glowPointLight,
+          bodyMat: bodyMat
+        });
+      });
+    }
+
+    function buildBubbleParticles() {
+      const bubbleCount = 120;
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(bubbleCount * 3);
+
+      for (let i = 0; i < bubbleCount; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 30;
+        positions[i * 3 + 1] = -10 + Math.random() * 20;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      const bubbleMat = new THREE.PointsMaterial({
+        color: 0x00f3ff,
+        size: 0.25,
+        transparent: true,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending
+      });
+
+      bubblesParticles = new THREE.Points(geometry, bubbleMat);
+      tankGroup.add(bubblesParticles);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime() * state.timeScale;
+
+      // Sync 3D Camera Position with Page Scroll down into the water
+      const scrollY = window.scrollY;
+      const targetCamY = Math.max(-10, 5 - (scrollY * 0.008));
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, 0.05);
+
+      // Animate Bubbles
+      if (bubblesParticles) {
+        const positions = bubblesParticles.geometry.attributes.position.array;
+        for (let i = 0; i < positions.length / 3; i++) {
+          positions[i * 3 + 1] += delta * 1.5;
+          if (positions[i * 3 + 1] > 8) {
+            positions[i * 3 + 1] = -9;
+          }
+        }
+        bubblesParticles.geometry.attributes.position.needsUpdate = true;
+      }
+
+      // Animate Fish Swimming Dynamics
+      state.activeFishObjects.forEach((item) => {
+        const fish = item.mesh;
+        const uData = fish.userData;
+
+        // Skip movement if focused/modal open
+        if (state.selectedFish === uData.data) {
+          fish.rotation.y += delta * 0.5;
+          return;
+        }
+
+        const currentPhase = time * uData.speed * 0.8 + uData.swimPhase;
+        const nextX = uData.centerPos.x + Math.sin(currentPhase) * uData.swimRadiusX;
+        const nextZ = uData.centerPos.z + Math.cos(currentPhase * 0.7) * uData.swimRadiusZ;
+        const nextY = uData.basePosY + Math.sin(currentPhase * 1.5) * 0.6;
+
+        const dirX = nextX - fish.position.x;
+        const dirZ = nextZ - fish.position.z;
+        const targetAngle = Math.atan2(dirX, dirZ);
+
+        fish.position.x = nextX;
+        fish.position.z = nextZ;
+        fish.position.y = nextY;
+
+        fish.rotation.y = THREE.MathUtils.lerp(fish.rotation.y, targetAngle, 0.08);
+
+        const tail = fish.getObjectByName('tail');
+        if (tail) {
+          tail.rotation.y = Math.sin(time * 12 * uData.speed) * 0.35;
+        }
+
+        if (uData.data.species === 'jellyfish') {
+          const pulse = 1 + Math.sin(time * 4) * 0.15;
+          fish.scale.set(uData.baseScale * pulse, uData.baseScale * (2 - pulse), uData.baseScale * pulse);
+        }
+      });
+
+      camera.position.x += (mouse.x * 2 - camera.position.x) * 0.02;
+      camera.position.y += (-mouse.y * 2 - camera.position.y) * 0.02;
+      camera.lookAt(0, 0, 0);
+
+      renderer.render(scene, camera);
+    }
+
+    function onMouseMove(event) {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      if (state.viewMode === '3d') {
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(tankGroup.children, true);
+
+        if (intersects.length > 0) {
+          let rootFishGroup = intersects[0].object;
+          while (rootFishGroup.parent && rootFishGroup.parent !== tankGroup) {
+            rootFishGroup = rootFishGroup.parent;
+          }
+
+          if (rootFishGroup.userData && rootFishGroup.userData.data) {
+            document.body.style.cursor = 'pointer';
+            state.isHoveringFish = true;
+            return;
+          }
+        }
+
+        document.body.style.cursor = 'default';
+        state.isHoveringFish = false;
+      }
+    }
+
+    function onCanvasClick(event) {
+      if (state.viewMode !== '3d') return;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(tankGroup.children, true);
+
+      if (intersects.length > 0) {
+        let rootFishGroup = intersects[0].object;
+        while (rootFishGroup.parent && rootFishGroup.parent !== tankGroup) {
+          rootFishGroup = rootFishGroup.parent;
+        }
+
+        if (rootFishGroup.userData && rootFishGroup.userData.data) {
+          const fishData = rootFishGroup.userData.data;
+          triggerCatPawCatch(event.clientX, fishData);
+        }
+      }
+    }
+
+    function triggerCatPawCatch(clickX, fishData) {
+      catPawOverlay.style.left = `${clickX}px`;
+      catPawOverlay.classList.remove('opacity-0', 'paw-animating');
+      void catPawOverlay.offsetWidth;
+      catPawOverlay.classList.add('paw-animating');
+
+      createWaterRipple(clickX, 100);
+
+      state.timeScale = 0.15;
+
+      setTimeout(() => {
+        openProjectModal(fishData);
+        state.timeScale = 1.0;
+      }, 400);
+    }
+
+    function createWaterRipple(x, y) {
+      const container = document.getElementById('ripple-container');
+      const ripple = document.createElement('div');
+      ripple.className = 'ripple';
+      ripple.style.left = `${x - 40}px`;
+      ripple.style.top = `${y - 40}px`;
+      ripple.style.width = '80px';
+      ripple.style.height = '80px';
+      container.appendChild(ripple);
+
+      setTimeout(() => ripple.remove(), 1000);
+    }
+
+    function filterFishDataset() {
+      const query = state.searchQuery.toLowerCase().trim();
+      const domain = state.activeDomain;
+
+      let matchCount = 0;
+
+      FISH_DATASET.forEach((fish) => {
+        const matchesDomain = (domain === 'all' || fish.domain === domain);
+        const matchesQuery = query === '' || 
+          fish.title.toLowerCase().includes(query) ||
+          fish.tags.some(t => t.toLowerCase().includes(query)) ||
+          fish.blurb.toLowerCase().includes(query) ||
+          fish.description.toLowerCase().includes(query);
+
+        const isMatch = matchesDomain && matchesQuery;
+        if (isMatch) matchCount++;
+
+        const fishObj = state.activeFishObjects.find(f => f.data.slug === fish.slug);
+        if (fishObj) {
+          const mesh = fishObj.mesh;
+          if (isMatch) {
+            mesh.scale.setScalar(mesh.userData.baseScale * 1.2);
+            fishObj.glowLight.intensity = fish.glow * 2.5;
+            fishObj.bodyMat.opacity = 1.0;
+            fishObj.bodyMat.transparent = false;
+          } else {
+            mesh.scale.setScalar(mesh.userData.baseScale * 0.6);
+            fishObj.glowLight.intensity = 0.1;
+            fishObj.bodyMat.opacity = 0.25;
+            fishObj.bodyMat.transparent = true;
+          }
+        }
+      });
+
+      activeFishCountEl.innerText = `${matchCount}/${FISH_DATASET.length}`;
+      renderFlatGrid();
+    }
+
+    function renderFlatGrid() {
+      flatGridWrapper.innerHTML = '';
+
+      const query = state.searchQuery.toLowerCase().trim();
+      const domain = state.activeDomain;
+
+      const filtered = FISH_DATASET.filter((fish) => {
+        const matchesDomain = (domain === 'all' || fish.domain === domain);
+        const matchesQuery = query === '' || 
+          fish.title.toLowerCase().includes(query) ||
+          fish.tags.some(t => t.toLowerCase().includes(query)) ||
+          fish.blurb.toLowerCase().includes(query);
+        return matchesDomain && matchesQuery;
+      });
+
+      if (filtered.length === 0) {
+        flatGridWrapper.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-500 font-mono">
+            <i class="fa-solid fa-fish-fins text-3xl mb-3 block text-slate-600"></i>
+            No fish found matching query "${query}". Try feeding another tag!
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach((fish) => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel p-6 rounded-2xl hover:border-cyan-500/50 transition-all cursor-pointer group flex flex-col justify-between';
+        
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase bg-slate-800 text-cyan-300 border border-slate-700">
+                ${fish.domain.toUpperCase()}
+              </span>
+              <span class="text-xs text-slate-400 font-mono">
+                Impact: ${Math.round(fish.glow * 100)}%
+              </span>
+            </div>
+
+            <h3 class="text-xl font-bold text-white group-hover:text-cyan-400 transition-colors flex items-center justify-between">
+              ${fish.title}
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-cyan-400"></i>
+            </h3>
+
+            <p class="text-xs text-slate-300 mt-2 line-clamp-2 leading-relaxed">
+              ${fish.blurb}
+            </p>
+
+            <div class="mt-4 grid grid-cols-3 gap-2 py-2 px-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+              ${fish.metrics.map(m => `
+                <div>
+                  <div class="text-[10px] text-slate-500 font-mono">${m.label}</div>
+                  <div class="text-xs font-bold text-cyan-300 font-mono">${m.value}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap gap-1.5">
+            ${fish.tags.map(t => `
+              <span class="px-2 py-0.5 rounded text-[10px] bg-slate-900 text-slate-400 font-mono">#${t}</span>
+            `).join('')}
+          </div>
+        `;
+
+        card.addEventListener('click', () => openProjectModal(fish));
+        flatGridWrapper.appendChild(card);
+      });
+    }
+
+    function renderFlatDomainFilters() {
+      const domains = [
+        { id: 'all', label: 'All Projects' },
+        { id: 'infra', label: 'DevOps & Infra' },
+        { id: 'ai', label: 'AI & Agents' },
+        { id: 'web', label: 'Fullstack' }
+      ];
+
+      flatDomainFilters.innerHTML = domains.map(d => `
+        <button 
+          data-domain="${d.id}"
+          class="flat-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${state.activeDomain === d.id ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'}"
+        >
+          ${d.label}
+        </button>
+      `).join('');
+
+      document.querySelectorAll('.flat-filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          state.activeDomain = e.currentTarget.getAttribute('data-domain');
+          updateFilterButtonStates();
+          filterFishDataset();
+        });
+      });
+    }
+
+    function updateFilterButtonStates() {
+      document.querySelectorAll('.domain-filter-btn, .flat-filter-btn').forEach(btn => {
+        const domain = btn.getAttribute('data-domain');
+        if (domain === state.activeDomain) {
+          btn.className = btn.className.replace(/bg-slate-\d+/, 'bg-cyan-500').replace(/text-slate-\d+/, 'text-slate-950 font-bold');
+        } else {
+          btn.classList.remove('bg-cyan-500', 'text-slate-950', 'font-bold');
+          if (!btn.classList.contains('bg-slate-800') && !btn.classList.contains('bg-slate-900')) {
+            btn.classList.add('bg-slate-800', 'text-slate-300');
+          }
+        }
+      });
+    }
+
+    function openProjectModal(fish) {
+      state.selectedFish = fish;
+
+      document.getElementById('modal-title').innerText = fish.title;
+      document.getElementById('modal-blurb').innerText = fish.blurb;
+      document.getElementById('modal-description').innerText = fish.description;
+      document.getElementById('modal-domain-tag').innerText = fish.domain.toUpperCase();
+      document.getElementById('modal-species-tag').innerText = `Species: ${fish.species.toUpperCase()}`;
+      document.getElementById('modal-ref-id').innerText = fish.detail_ref;
+      document.getElementById('modal-github-link').href = fish.github;
+
+      const iconMap = { infra: '🐬', ai: '🪼', web: '🐠' };
+      document.getElementById('modal-species-icon').innerText = iconMap[fish.domain] || '🐟';
+
+      const metricsGrid = document.getElementById('modal-metrics-grid');
+      metricsGrid.innerHTML = fish.metrics.map(m => `
+        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center">
+          <div class="text-[10px] text-slate-400 font-mono">${m.label}</div>
+          <div class="text-base sm:text-lg font-bold text-cyan-400 font-mono mt-0.5">${m.value}</div>
+        </div>
+      `).join('');
+
+      const tagsWrapper = document.getElementById('modal-tags-wrapper');
+      tagsWrapper.innerHTML = fish.tags.map(t => `
+        <span class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 text-cyan-300 font-mono border border-slate-700">
+          ${t}
+        </span>
+      `).join('');
+
+      projectDetailModal.classList.remove('opacity-0', 'pointer-events-none');
+      projectDetailModal.querySelector('.glass-panel').classList.remove('translate-y-4');
+    }
+
+    function closeModal() {
+      projectDetailModal.classList.add('opacity-0', 'pointer-events-none');
+      projectDetailModal.querySelector('.glass-panel').classList.add('translate-y-4');
+      state.selectedFish = null;
+    }
+
+    function switchViewMode(mode) {
+      state.viewMode = mode;
+      if (mode === '3d') {
+        mode3dBtn.className = 'px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-cyan-500 text-slate-950 shadow-sm flex items-center gap-1.5';
+        modeFlatBtn.className = 'px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-1.5';
+        view3dContainer.classList.remove('hidden');
+        viewFlatContainer.classList.add('hidden');
+        canvasEl.style.pointerEvents = 'auto';
+      } else {
+        modeFlatBtn.className = 'px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-cyan-500 text-slate-950 shadow-sm flex items-center gap-1.5';
+        mode3dBtn.className = 'px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-1.5';
+        view3dContainer.classList.add('hidden');
+        viewFlatContainer.classList.remove('hidden');
+        canvasEl.style.pointerEvents = 'none';
+        renderFlatGrid();
+      }
+    }
+
+    function applyTheme(theme) {
+      state.theme = theme;
+      const htmlEl = document.documentElement;
+
+      if (theme === 'light') {
+        htmlEl.classList.remove('dark');
+        htmlEl.classList.add('light');
+        if (themeToggleIcon) {
+          themeToggleIcon.className = 'fa-solid fa-sun text-amber-400';
+        }
+      } else {
+        htmlEl.classList.remove('light');
+        htmlEl.classList.add('dark');
+        if (themeToggleIcon) {
+          themeToggleIcon.className = 'fa-solid fa-moon text-cyan-300';
+        }
+      }
+
+      updateSceneLightingForTheme(theme);
+    }
+
+    function updateSceneLightingForTheme(theme) {
+      if (!scene) return;
+
+      if (theme === 'light') {
+        scene.background = new THREE.Color(0xdbeafe);
+        scene.fog.color = new THREE.Color(0xc8f2ff);
+        scene.fog.density = 0.02;
+
+        ambientLight.color = new THREE.Color(0xf0f9ff);
+        ambientLight.intensity = 3.5;
+
+        if (topLight) {
+          topLight.color = new THREE.Color(0xfffbeb);
+          topLight.intensity = 4.5;
+          topLight.position.set(20, 25, 15);
+        }
+
+        if (pointLight) {
+          pointLight.color = new THREE.Color(0x0284c7);
+          pointLight.intensity = 2.0;
+        }
+
+        state.activeFishObjects.forEach(f => {
+          f.bodyMat.emissiveIntensity = f.data.glow * 0.9;
+          if (f.glowLight) f.glowLight.intensity = f.data.glow * 2.2;
+        });
+
+      } else {
+        scene.background = new THREE.Color(0x030814);
+        scene.fog.color = new THREE.Color(0x051329);
+        scene.fog.density = 0.035;
+
+        ambientLight.color = new THREE.Color(0x0d2b45);
+        ambientLight.intensity = 1.8;
+
+        if (topLight) {
+          topLight.color = new THREE.Color(0x00f3ff);
+          topLight.intensity = 2.0;
+          topLight.position.set(0, 15, 5);
+        }
+
+        if (pointLight) {
+          pointLight.color = new THREE.Color(0x3b82f6);
+          pointLight.intensity = 3.0;
+        }
+
+        state.activeFishObjects.forEach(f => {
+          f.bodyMat.emissiveIntensity = f.data.glow * 0.6;
+          if (f.glowLight) f.glowLight.intensity = f.data.glow * 1.5;
+        });
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function setupEventListeners() {
+      // Theme Toggle Handler
+      if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+          const newTheme = state.theme === 'dark' ? 'light' : 'dark';
+          applyTheme(newTheme);
+        });
+      }
+
+      // Hero Cat Avatar click triggers paw & splash
+      const catAvatar = document.getElementById('hero-cat-main-avatar');
+      if (catAvatar) {
+        catAvatar.addEventListener('click', (e) => {
+          const rect = catAvatar.getBoundingClientRect();
+          triggerCatPawCatch(rect.left + rect.width / 2, FISH_DATASET[0]);
+        });
+      }
+
+      // View switcher
+      if (mode3dBtn) mode3dBtn.addEventListener('click', () => switchViewMode('3d'));
+      if (modeFlatBtn) modeFlatBtn.addEventListener('click', () => switchViewMode('flat'));
+
+      // Modal close handlers
+      if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+      if (projectDetailModal) {
+        projectDetailModal.addEventListener('click', (e) => {
+          if (e.target === projectDetailModal) closeModal();
+        });
+      }
+
+      // Config Drawer Toggle
+      if (toggleConfigBtn) {
+        toggleConfigBtn.addEventListener('click', () => {
+          jsonCodeDisplay.textContent = JSON.stringify(FISH_DATASET, null, 2);
+          configDrawer.classList.remove('translate-x-full');
+        });
+      }
+
+      if (closeConfigBtn) {
+        closeConfigBtn.addEventListener('click', () => {
+          configDrawer.classList.add('translate-x-full');
+        });
+      }
+
+      // Copy JSON button
+      const copyJsonBtn = document.getElementById('copy-json-btn');
+      if (copyJsonBtn) {
+        copyJsonBtn.addEventListener('click', () => {
+          const text = JSON.stringify(FISH_DATASET, null, 2);
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          copyJsonBtn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Copied!';
+          setTimeout(() => {
+            copyJsonBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy JSON';
+          }, 2000);
+        });
+      }
+
+      // 3D Search Input
+      if (fishSearchInput) {
+        fishSearchInput.addEventListener('input', (e) => {
+          state.searchQuery = e.target.value;
+          if (clearSearchBtn) {
+            if (e.target.value.length > 0) {
+              clearSearchBtn.classList.remove('hidden');
+            } else {
+              clearSearchBtn.classList.add('hidden');
+            }
+          }
+          filterFishDataset();
+        });
+      }
+
+      // Flat Search Input
+      if (flatSearchInput) {
+        flatSearchInput.addEventListener('input', (e) => {
+          state.searchQuery = e.target.value;
+          filterFishDataset();
+        });
+      }
+
+      // Clear search button
+      if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', () => {
+          state.searchQuery = '';
+          if (fishSearchInput) fishSearchInput.value = '';
+          if (flatSearchInput) flatSearchInput.value = '';
+          clearSearchBtn.classList.add('hidden');
+          filterFishDataset();
+        });
+      }
+
+      // Domain Filter Buttons in 3D bar
+      document.querySelectorAll('.domain-filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          state.activeDomain = e.currentTarget.getAttribute('data-domain');
+          updateFilterButtonStates();
+          filterFishDataset();
+        });
+      });
+
+      // Quick Search shortcut trigger
+      if (searchTriggerBtn) {
+        searchTriggerBtn.addEventListener('click', () => {
+          if (state.viewMode === '3d' && fishSearchInput) {
+            fishSearchInput.focus();
+          } else if (flatSearchInput) {
+            flatSearchInput.focus();
+          }
+        });
+      }
+
+      // Cmd+K / Ctrl+K keyboard shortcut
+      window.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+          e.preventDefault();
+          if (state.viewMode === '3d' && fishSearchInput) {
+            fishSearchInput.focus();
+          } else if (flatSearchInput) {
+            flatSearchInput.focus();
+          }
+        }
+      });
+    }
+
+    window.onload = function () {
+      initThreeScene();
+      setupEventListeners();
+      renderFlatDomainFilters();
+      renderFlatGrid();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('flat') === '1') {
+        switchViewMode('flat');
+      }
+    };
+  </script>
+</body>
+</html>

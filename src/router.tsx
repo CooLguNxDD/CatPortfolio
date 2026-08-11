@@ -14,9 +14,14 @@ const rootRoute = createRootRoute({
   component: App,
 })
 
-/** Shared search: job-layout / demo short id (bake & send + showcase demos). */
+/**
+ * Shared search: job-layout short id, view mode (tank default), focused fish.
+ * Absent `v` resolves to tank when capable (see resolveViewMode).
+ */
 export const demoSearchSchema = z.object({
   j: z.string().optional(),
+  v: z.enum(["text", "tank"]).optional(),
+  f: z.string().optional(),
 })
 
 export type DemoSearch = z.infer<typeof demoSearchSchema>

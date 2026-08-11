@@ -9,6 +9,28 @@ Drafts and visual prototypes live here. Production source of truth remains
   (WelTel job tracks + OpenCat Tunnel OSS + CatPortfolio SPA, three-stream labels).
 - Preview in Open Design: project id `cat-portfolio-default-matrix`.
 
+## open-cat-grok-fish-tank-prototype (Open Design · 2026-08)
+
+- **OD project:** `CatPortfolio System Overhaul` (`cat-portfolio-system`)
+- **Entry:** `prototypes/open-cat-grok-fish-tank-prototype.html` (hub default)
+- **Repo mirror:** `open-cat-grok-fish-tank-prototype.html`
+- **Role:** full-screen Three.js **page background** (fixed canvas + glass UI overlay)
+- **Scene:** open-top low-poly glass tank · gravel/rocks · **23** seaweed stalks (vertex wave) ·
+  cat on rim (dangling paw, wiggling tail) · **5** pastel fish (sine paths + `lookAt`) ·
+  water opacity 0.4 · rising bubbles · paw ripple rings · mouse parallax · resize
+- **Preview:** OD raw `…/prototypes/open-cat-grok-fish-tank-prototype.html`
+
+## open cat grok prototype 1.0 (Open Design · 2026-08)
+
+- **OD project:** `CatPortfolio System Overhaul` (`cat-portfolio-system`)
+- **Entry:** `prototypes/open-cat-grok-1.0.html`
+- **Repo mirror:** `open-cat-grok-1.0.html`
+- **Audience:** programmers (dense skim, mono instrumentation, job/OSS stream chips)
+- **Reusable kit:** glass chrome, surface cards, KPI tiles, scroll-reveal, stream chips
+- **Bonus:** three.js low-poly game-dev sandbox (orbit, WASD cat agent, collectible orbs, portal)
+- **Live port notes:** `src/styles/matrix.css` glass sticky chrome + `.mx-chip*`; `Hero.tsx` motion + chips
+- Research refs: bento/glass portfolios, Framer motion patterns, Bruno Simon–style three.js heroes (kept small)
+
 ## Agentic Matrix v2 (Open Design · 2026-08)
 
 - **OD project:** `cat-portfolio-agentic-matrix-v2` (`index.html`)

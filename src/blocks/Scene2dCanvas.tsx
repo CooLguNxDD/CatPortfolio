@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   computeScene2dLayout,
   pulseRadius,
@@ -8,6 +8,7 @@ import {
   type Scene2dNode,
   type Scene2dPreset,
 } from "./scene2dLayout";
+import { useThemeTokens } from "@/hooks/useThemeTokens";
 
 interface Scene2dEdge {
   from: string;
@@ -42,6 +43,11 @@ export default function Scene2dCanvas({
   reduced,
 }: Scene2dCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const tokenNames = useMemo(
+    () => [palette ?? "amber", "fg-muted", "hairline"] as const,
+    [palette],
+  );
+  const tokens = useThemeTokens(tokenNames);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -54,15 +60,10 @@ export default function Scene2dCanvas({
       ctx.scale(dpr, dpr);
     }
 
-    const styles =
-      typeof getComputedStyle === "function"
-        ? getComputedStyle(document.documentElement)
-        : null;
-    const accentVar = palette ? `--${palette}` : "--amber";
-    const accent = styles?.getPropertyValue(accentVar).trim() || "#e8a33d";
-    const muted = styles?.getPropertyValue("--fg-muted").trim() || "#8a8072";
-    const lineColor =
-      styles?.getPropertyValue("--hairline").trim() || "rgba(255,255,255,0.15)";
+    const accentKey = palette ?? "amber";
+    const accent = tokens[accentKey] || "#e8a33d";
+    const muted = tokens["fg-muted"] || "#8a8072";
+    const lineColor = tokens["hairline"] || "rgba(255,255,255,0.15)";
 
     function draw(t: number) {
       if (!ctx) return;
@@ -115,7 +116,7 @@ export default function Scene2dCanvas({
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [preset, nodes, edges, palette, motion, reduced]);
+  }, [preset, nodes, edges, palette, motion, reduced, tokens]);
 
   return (
     <canvas
