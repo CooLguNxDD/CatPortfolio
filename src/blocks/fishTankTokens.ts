@@ -172,6 +172,38 @@ export interface TankThemePalette {
   causticStrength: number
   /** God-ray opacity through the surface (0..1). */
   rayStrength: number
+  /**
+   * Beer-Lambert extinction per world unit, [r, g, b]. Red dies first, blue
+   * reaches the bed — see fish/shaders/absorption.ts.
+   */
+  sigma: [number, number, number]
+  /** Which half of the circadian cycle this palette was resolved for. */
+  phase: CircadianPhase
+  /** Global swim/beat multiplier — night fauna drift instead of darting. */
+  faunaTimeScale: number
+}
+
+/** Daylight lagoon vs midnight abyss. */
+export type CircadianPhase = "day" | "night"
+
+/** User-selectable circadian mode; `auto` follows the local clock. */
+export type CircadianMode = "auto" | CircadianPhase
+
+/** Local hours counted as daylight (inclusive start, exclusive end). */
+const DAY_START_HOUR = 7
+const DAY_END_HOUR = 19
+
+/**
+ * Resolve the circadian phase. An explicit mode always wins; `auto` (or an
+ * unset mode) reads the local clock so an evening visitor lands in the abyss.
+ */
+export function resolveCircadianPhase(
+  date: Date = new Date(),
+  mode: CircadianMode = "auto",
+): CircadianPhase {
+  if (mode === "day" || mode === "night") return mode
+  const hour = date.getHours()
+  return hour >= DAY_START_HOUR && hour < DAY_END_HOUR ? "day" : "night"
 }
 
 /**
@@ -246,6 +278,51 @@ export function resolveTankThemePalette(): TankThemePalette {
     causticStrength: light ? 0.55 : 0.38,
     // Per-surface opacity, and they overlap — keep it barely there.
     rayStrength: light ? 0.035 : 0.05,
+    // Shallow lagoon water is clearer than the open column, so daylight loses
+    // red more slowly than a night dive does.
+    sigma: light ? [0.28, 0.06, 0.015] : [0.35, 0.08, 0.02],
+    phase: "day",
+    faunaTimeScale: 1,
+  }
+}
+
+/**
+ * Apply the circadian cycle on top of a theme palette.
+ *
+ * Day is a sunlit lagoon: golden shafts, a directional key, fast surface
+ * schooling. Night is a bioluminescent abyss: the key light all but goes out,
+ * the medium darkens toward indigo, and the fauna slow to a drift — the glow
+ * has to come from the meshes themselves.
+ */
+export function applyCircadian(
+  palette: TankThemePalette,
+  phase: CircadianPhase,
+): TankThemePalette {
+  if (phase === "day") {
+    return { ...palette, phase: "day", faunaTimeScale: 1 }
+  }
+  const abyss = mixHex(palette.deep, 0x040a1a, 0.55)
+  return {
+    ...palette,
+    phase: "night",
+    faunaTimeScale: 0.55,
+    bg: mixHex(palette.bg, abyss, 0.7),
+    deep: abyss,
+    water: mixHex(palette.water, abyss, 0.5),
+    fogColor: abyss,
+    fogDensity: palette.fogDensity * 1.15,
+    // Moonlight only — the scene is carried by emissive meshes and crystals.
+    ambientColor: mixHex(palette.ambientColor, abyss, 0.55),
+    ambientIntensity: palette.ambientIntensity * 0.45,
+    keyIntensity: palette.keyIntensity * 0.22,
+    hemiIntensity: palette.hemiIntensity * 0.4,
+    fillIntensity: palette.fillIntensity * 0.7,
+    causticStrength: palette.causticStrength * 0.45,
+    rayStrength: palette.rayStrength * 0.5,
+    // Denser water at night sells the "no sunlight gets here" read.
+    sigma: [palette.sigma[0] * 1.25, palette.sigma[1] * 1.2, palette.sigma[2] * 1.1],
+    motes: mixHex(palette.motes, palette.cyan, 0.4),
+    bubble: mixHex(palette.bubble, palette.cyan, 0.35),
   }
 }
 

@@ -47,6 +47,7 @@ export function FishTankView({
   const webgl2 = useMemo(() => probeWebGL2(), [])
   const prefTheme = usePreferencesStore((s) => s.theme)
   const accent = usePreferencesStore((s) => s.accent)
+  const circadian = usePreferencesStore((s) => s.circadian)
   const themeOverride = useLayoutStore((s) => s.themeOverride)
   const bakeTheme = useLayoutStore((s) => s.bakeTheme)
   const isDemoSession = useLayoutStore((s) => s.isDemoSession)
@@ -58,8 +59,8 @@ export function FishTankView({
         : isDemoSession && bakeTheme
           ? bakeTheme
           : prefTheme
-    return `${t}:${accent}`
-  }, [prefTheme, accent, themeOverride, bakeTheme, isDemoSession])
+    return `${t}:${accent}:${circadian}`
+  }, [prefTheme, accent, circadian, themeOverride, bakeTheme, isDemoSession])
 
   if (!fish.length || reduced || !webgl2) {
     return null
@@ -83,6 +84,7 @@ export function FishTankView({
         immersive={immersive}
         highlightSlugs={highlightSlugs}
         themeKey={themeKey}
+        circadian={circadian}
       />
     </Suspense>
   )

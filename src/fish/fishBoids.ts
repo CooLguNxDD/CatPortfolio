@@ -3,6 +3,7 @@
  * DOM-free and Three-free for full unit testability.
  */
 
+import type { CursorIntent } from "./cursorIntent"
 import type { Vec3 } from "@/blocks/fishTankLayout"
 import {
   SWIM_Y_MAX,
@@ -41,6 +42,19 @@ export interface SteeringParams {
   foodSenseDist?: number
   foodWeight?: number
   maxForce?: number
+  /**
+   * How the shoal reads the cursor (see fish/cursorIntent.ts).
+   *   "idle"    — legacy behaviour: gentle avoidance
+   *   "curious" — approach a cursor that has been still
+   *   "flee"    — hard scatter from a fast cursor
+   */
+  cursorMode?: CursorIntent
+  /** Attraction weight in the curious state. */
+  cursorCuriousWeight?: number
+  /** Multiplier applied to the avoid weight in the flee state. */
+  cursorFleeMultiplier?: number
+  /** Sense radius in the curious state — wider than the avoid radius. */
+  cursorCuriousDist?: number
 }
 
 const DEFAULTS: Required<SteeringParams> = {
@@ -55,6 +69,10 @@ const DEFAULTS: Required<SteeringParams> = {
   foodSenseDist: 28.0,
   foodWeight: 2.8,
   maxForce: 0.65,
+  cursorMode: "idle",
+  cursorCuriousWeight: 1.1,
+  cursorFleeMultiplier: 2.4,
+  cursorCuriousDist: 22.0,
 }
 
 function distSq(a: Vec3, b: Vec3): number {
@@ -171,16 +189,33 @@ export function computeSteeringForce(
     fz += (avgVz / vLen) * cfg.alignmentWeight
   }
 
-  // Cursor avoidance (scatter from mouse)
+  // Cursor response — avoid, scatter, or investigate depending on intent.
   if (cursor3D) {
     const curDistSq = distSq(agent.position, cursor3D)
-    const curAvoidSq = cfg.cursorAvoidDist * cfg.cursorAvoidDist
-    if (curDistSq < curAvoidSq && curDistSq > 0.001) {
-      const d = Math.sqrt(curDistSq)
-      const push = (1 - d / cfg.cursorAvoidDist) * cfg.cursorAvoidWeight
-      fx += ((agent.position.x - cursor3D.x) / d) * push
-      fy += ((agent.position.y - cursor3D.y) / d) * push
-      fz += ((agent.position.z - cursor3D.z) / d) * push
+    if (cfg.cursorMode === "curious") {
+      // Investigate: swim toward a cursor that has been still, easing off as
+      // the fish arrives so it hovers rather than colliding with the pointer.
+      const senseSq = cfg.cursorCuriousDist * cfg.cursorCuriousDist
+      if (curDistSq < senseSq && curDistSq > cfg.separationDist * cfg.separationDist) {
+        const d = Math.sqrt(curDistSq)
+        const pull = (1 - d / cfg.cursorCuriousDist) * cfg.cursorCuriousWeight
+        fx += ((cursor3D.x - agent.position.x) / d) * pull
+        fy += ((cursor3D.y - agent.position.y) / d) * pull
+        fz += ((cursor3D.z - agent.position.z) / d) * pull
+      }
+    } else {
+      const fleeing = cfg.cursorMode === "flee"
+      const avoidDist = fleeing ? cfg.cursorAvoidDist * 1.6 : cfg.cursorAvoidDist
+      const weight = fleeing
+        ? cfg.cursorAvoidWeight * cfg.cursorFleeMultiplier
+        : cfg.cursorAvoidWeight
+      if (curDistSq < avoidDist * avoidDist && curDistSq > 0.001) {
+        const d = Math.sqrt(curDistSq)
+        const push = (1 - d / avoidDist) * weight
+        fx += ((agent.position.x - cursor3D.x) / d) * push
+        fy += ((agent.position.y - cursor3D.y) / d) * push
+        fz += ((agent.position.z - cursor3D.z) / d) * push
+      }
     }
   }
 
@@ -231,5 +266,8 @@ export function computeSteeringForce(
     fz -= Math.abs(agent.position.z - (TANK_HALF_D - padZ)) * 1.5
   }
 
-  return clampLength({ x: fx, y: fy, z: fz }, cfg.maxForce)
+  // A scatter is allowed to exceed the cruise force budget — that burst is the
+  // whole point of the startle response.
+  const forceCap = cfg.cursorMode === "flee" ? cfg.maxForce * 1.8 : cfg.maxForce
+  return clampLength({ x: fx, y: fy, z: fz }, forceCap)
 }

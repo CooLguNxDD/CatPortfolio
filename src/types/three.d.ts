@@ -23,6 +23,8 @@ declare module "three" {
     clone(): Vector3
     project(camera: Camera): this
     lerp(v: Vector3, alpha: number): this
+    sub(v: Vector3): this
+    add(v: Vector3): this
     distanceTo(v: Vector3): number
     setScalar(s: number): this
     multiplyScalar(s: number): this
@@ -54,6 +56,9 @@ declare module "three" {
   }
   export class Camera extends Object3D {
     aspect: number
+    near: number
+    far: number
+    fov: number
     updateProjectionMatrix(): void
     setViewOffset(
       fullWidth: number,
@@ -81,6 +86,9 @@ declare module "three" {
   }
   export class WebGLRenderer {
     domElement: HTMLCanvasElement
+    outputColorSpace: string
+    toneMapping: number
+    toneMappingExposure: number
     constructor(params?: Record<string, unknown>)
     setPixelRatio(n: number): void
     getPixelRatio(): number
@@ -92,6 +100,9 @@ declare module "three" {
   }
   export class WebGLRenderTarget {
     texture: Texture
+    depthTexture: DepthTexture | null
+    width: number
+    height: number
     constructor(width: number, height: number, options?: Record<string, unknown>)
     setSize(width: number, height: number): void
     dispose(): void
@@ -120,19 +131,41 @@ declare module "three" {
     count: number
     needsUpdate?: boolean
     setY(index: number, y: number): void
+    getX(index: number): number
+    getY(index: number): number
+    getZ(index: number): number
   }
   export class BufferGeometry {
     attributes: Record<string, BufferAttributeLike>
+    index: BufferAttributeLike | null
+    boundingSphere: Sphere | null
     setAttribute(name: string, attr: BufferAttribute): void
+    getAttribute(name: string): BufferAttributeLike
     computeVertexNormals(): void
     setFromPoints(points: Vector3[]): this
+    toNonIndexed(): BufferGeometry
+    scale(x: number, y: number, z: number): this
+    translate(x: number, y: number, z: number): this
+    rotateX(angle: number): this
+    rotateY(angle: number): this
+    rotateZ(angle: number): this
     dispose(): void
   }
   export class BufferAttribute {
     array: Float32Array | ArrayLike<number>
     constructor(array: ArrayLike<number>, itemSize: number)
   }
+  export interface WebGLShaderPatch {
+    uniforms: Record<string, { value: unknown }>
+    vertexShader: string
+    fragmentShader: string
+    defines?: Record<string, unknown>
+  }
   export class Material {
+    needsUpdate: boolean
+    transparent: boolean
+    onBeforeCompile?: (shader: WebGLShaderPatch, renderer: WebGLRenderer) => void
+    customProgramCacheKey?: () => string
     dispose(): void
   }
   export class ShaderMaterial extends Material {
@@ -210,6 +243,8 @@ declare module "three" {
     constructor(radius?: number, detail?: number)
   }
   export class LineSegments extends Object3D {
+    geometry: BufferGeometry
+    material: Material
     constructor(geometry?: BufferGeometry, material?: Material)
   }
   export class Points extends Object3D {
@@ -297,6 +332,39 @@ declare module "three" {
   export class EdgesGeometry extends BufferGeometry {
     constructor(geometry?: BufferGeometry)
   }
+  export class Matrix4 {
+    constructor()
+    identity(): this
+    makeScale(x: number, y: number, z: number): this
+  }
+  export class Sphere {
+    constructor(center?: Vector3, radius?: number)
+  }
+  export class Float32BufferAttribute extends BufferAttribute {
+    constructor(array: ArrayLike<number>, itemSize: number)
+  }
+  export class InstancedBufferAttribute extends BufferAttribute {
+    constructor(array: ArrayLike<number>, itemSize: number, normalized?: boolean)
+  }
+  export class InstancedMesh extends Mesh {
+    count: number
+    frustumCulled: boolean
+    instanceMatrix: { needsUpdate: boolean }
+    instanceColor: { needsUpdate: boolean } | null
+    constructor(geometry: BufferGeometry, material: Material, count: number)
+    setMatrixAt(index: number, matrix: Matrix4): void
+    setColorAt(index: number, color: Color): void
+    dispose(): void
+  }
+  export class DepthTexture extends Texture {
+    constructor(width: number, height: number, type?: number)
+  }
+  export const UnsignedShortType: number
+  export const UnsignedIntType: number
+  export const FloatType: number
+  export const DepthFormat: number
+  export const DepthStencilFormat: number
+  export const ShaderChunk: Record<string, string>
   export const LinearFilter: number
   export const NearestFilter: number
   export const DoubleSide: number
@@ -311,11 +379,38 @@ declare module "three" {
 declare module "three/addons/postprocessing/EffectComposer.js" {
   import { WebGLRenderer, WebGLRenderTarget } from "three"
   export class EffectComposer {
+    renderTarget1: WebGLRenderTarget
+    renderTarget2: WebGLRenderTarget
     constructor(renderer: WebGLRenderer, renderTarget?: WebGLRenderTarget)
     setPixelRatio(pixelRatio: number): void
     setSize(width: number, height: number): void
     addPass(pass: unknown): void
-    render(): void
+    render(deltaTime?: number): void
+    dispose(): void
+  }
+}
+
+declare module "three/addons/postprocessing/ShaderPass.js" {
+  export class ShaderPass {
+    enabled: boolean
+    uniforms: Record<string, { value: unknown }>
+    needsSwap: boolean
+    constructor(shader: unknown, textureID?: string)
+    dispose(): void
+  }
+}
+
+declare module "three/addons/postprocessing/BokehPass.js" {
+  import { Scene, Camera } from "three"
+  export class BokehPass {
+    enabled: boolean
+    uniforms: Record<string, { value: unknown }>
+    constructor(
+      scene: Scene,
+      camera: Camera,
+      params?: { focus?: number; aperture?: number; maxblur?: number },
+    )
+    setSize(width: number, height: number): void
     dispose(): void
   }
 }
@@ -323,6 +418,7 @@ declare module "three/addons/postprocessing/EffectComposer.js" {
 declare module "three/addons/postprocessing/RenderPass.js" {
   import { Scene, Camera } from "three"
   export class RenderPass {
+    enabled: boolean
     constructor(scene: Scene, camera: Camera)
   }
 }
@@ -330,6 +426,7 @@ declare module "three/addons/postprocessing/RenderPass.js" {
 declare module "three/addons/postprocessing/UnrealBloomPass.js" {
   import { Vector2 } from "three"
   export class UnrealBloomPass {
+    enabled: boolean
     resolution: Vector2
     strength: number
     radius: number
@@ -340,6 +437,7 @@ declare module "three/addons/postprocessing/UnrealBloomPass.js" {
 
 declare module "three/addons/postprocessing/OutputPass.js" {
   export class OutputPass {
+    enabled: boolean
     constructor()
   }
 }
