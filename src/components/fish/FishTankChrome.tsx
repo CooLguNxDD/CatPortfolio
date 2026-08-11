@@ -36,6 +36,9 @@ export function FishTankChrome({
 }: FishTankChromeProps) {
   const query = useFishTankStore((s) => s.query)
   const domain = useFishTankStore((s) => s.domain)
+  const soundEnabled = useFishTankStore((s) => s.soundEnabled)
+  const toggleSound = useFishTankStore((s) => s.toggleSound)
+  const dropFood = useFishTankStore((s) => s.dropFood)
   const tankScene = useFishTankStore((s) => deriveScene(s.state))
 
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -106,7 +109,7 @@ export function FishTankChrome({
               className="ft-sub"
               style={{ fontFamily: "var(--ft-mono)", fontSize: 10 }}
             >
-              drag orbit · wheel zoom · click a fish · esc to surface
+              drag orbit · wheel zoom · click fish · dbl-click feed · esc surface
             </div>
           </div>
         </div>
@@ -139,6 +142,22 @@ export function FishTankChrome({
               </b>{" "}
               lit
             </div>
+            <button
+              type="button"
+              className="ft-chip"
+              onClick={() => dropFood()}
+              title="Drop food pellets into the tank (or double-click canvas)"
+            >
+              🍲 Feed
+            </button>
+            <button
+              type="button"
+              className={cn("ft-chip", soundEnabled && "on")}
+              onClick={() => toggleSound()}
+              title="Toggle hydro-acoustic sound synthesizer"
+            >
+              {soundEnabled ? "🔊 Audio" : "🔇 Muted"}
+            </button>
             {showBake ? (
               <button
                 type="button"

@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   liftHex,
   mixHex,
   isLightSurface,
   oklchLightness,
+  resolveTankQuality,
 } from "../fishTankTokens"
 
 describe("fishTankTokens colour helpers", () => {
@@ -22,5 +23,42 @@ describe("fishTankTokens colour helpers", () => {
   it("mixes hex colours", () => {
     expect(mixHex(0x000000, 0xffffff, 0.5)).toBe(0x808080)
     expect(mixHex(0xff0000, 0x0000ff, 0)).toBe(0xff0000)
+  })
+})
+
+/** Stub matchMedia so a query in `matching` reports true. */
+function stubMatchMedia(matching: string[]) {
+  vi.stubGlobal(
+    "matchMedia",
+    (q: string) => ({ matches: matching.includes(q) }) as MediaQueryList,
+  )
+}
+
+describe("resolveTankQuality", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("falls back to full quality when matchMedia is unavailable", () => {
+    // jsdom has no matchMedia by default — must not throw.
+    const q = resolveTankQuality()
+    expect(q.tier).toBe("high")
+    expect(q.octaves).toBe(4)
+    expect(q.timeScale).toBe(1)
+  })
+
+  it("drops to the low tier on coarse pointers", () => {
+    stubMatchMedia(["(pointer: coarse)"])
+    const q = resolveTankQuality()
+    expect(q.tier).toBe("low")
+    expect(q.rayCount).toBeLessThan(9)
+    expect(q.wobble).toBe(false)
+  })
+
+  it("freezes shader time and the wobble for reduced motion", () => {
+    stubMatchMedia(["(prefers-reduced-motion: reduce)"])
+    const q = resolveTankQuality()
+    expect(q.timeScale).toBe(0)
+    expect(q.wobble).toBe(false)
   })
 })

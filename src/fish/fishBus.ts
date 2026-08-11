@@ -34,6 +34,10 @@ export type FishEvents = {
   "filter:domain": string
   "bake:apply": void
   "bake:dismiss": void
+  "feed:drop": { x?: number; y?: number; z?: number }
+  "feed:eaten": { pelletId: string; slug: string }
+  "audio:toggle": { enabled: boolean }
+  "audio:fx": { type: "dive" | "surface" | "eat" | "chime" | "bubble" }
   // observations — 60fps, bus-only, never touch React state
   "tank:progress": number
   "fish:anchor": FishAnchor | null

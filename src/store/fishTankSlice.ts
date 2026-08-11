@@ -42,6 +42,8 @@ export interface FishTankSlice {
   bakeActive: boolean
   /** Cleared curation hides the bake label without touching layout. */
   curationDismissed: boolean
+  /** Sound synthesizer active state (default false for accessibility). */
+  soundEnabled: boolean
 
   dive: () => void
   surface: () => void
@@ -54,6 +56,8 @@ export interface FishTankSlice {
   applyBake: (active?: boolean) => void
   clearBake: () => void
   dismissCuration: () => void
+  toggleSound: (enabled?: boolean) => void
+  dropFood: (pos?: { x?: number; y?: number; z?: number }) => void
   /** Full reset when leaving tank mode / unmounting stage. */
   resetFishTankUi: () => void
 }
@@ -67,6 +71,7 @@ const DEFAULTS: Pick<
   | "focus"
   | "bakeActive"
   | "curationDismissed"
+  | "soundEnabled"
 > = {
   state: "surface",
   chrome: "3d",
@@ -75,6 +80,7 @@ const DEFAULTS: Pick<
   focus: null,
   bakeActive: false,
   curationDismissed: false,
+  soundEnabled: false,
 }
 
 /** Creates the fish-tank transient UI slice. */
@@ -96,6 +102,7 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
       const target = next(get().state, "dive")
       if (!target) return
       set({ state: target })
+      fishBus.emit("audio:fx", { type: "dive" })
       runTransition(1, DIVE_DURATION_MS)
     },
 
@@ -103,6 +110,7 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
       const target = next(get().state, "surface")
       if (!target) return
       set({ state: target, focus: null })
+      fishBus.emit("audio:fx", { type: "surface" })
       runTransition(0, SURFACE_DURATION_MS)
     },
 
@@ -122,6 +130,9 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
       const cur = get().state
       const target = slug ? next(cur, "focus") : next(cur, "release")
       if (target) set({ state: target })
+      if (slug) {
+        fishBus.emit("audio:fx", { type: "chime" })
+      }
     },
 
     applyBake: (active = true) =>
@@ -141,6 +152,17 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
         curationDismissed: true,
         bakeActive: false,
       }),
+
+    toggleSound: (enabled) => {
+      const nextVal = enabled !== undefined ? enabled : !get().soundEnabled
+      set({ soundEnabled: nextVal })
+      fishBus.emit("audio:toggle", { enabled: nextVal })
+    },
+
+    dropFood: (pos) => {
+      fishBus.emit("feed:drop", pos ?? {})
+      fishBus.emit("audio:fx", { type: "bubble" })
+    },
 
     resetFishTankUi: () => {
       animator.cancel()
