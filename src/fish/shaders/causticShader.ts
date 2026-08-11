@@ -7,7 +7,8 @@
 
 import * as THREE from "three"
 
-import { FBM_GLSL, HASH_GLSL, VALUE_NOISE_GLSL, clampOctaves, withDefines } from "./noiseCommon"
+import { clampOctaves, withDefines } from "./noiseCommon"
+import { CAUSTIC_GLSL } from "./causticProjection"
 
 const VERTEX = /* glsl */ `
   varying vec2 vUv;
@@ -32,41 +33,7 @@ const FRAGMENT = /* glsl */ `
   varying vec2 vUv;
   varying vec3 vWorldPosition;
 
-  ${HASH_GLSL}
-  ${VALUE_NOISE_GLSL}
-  ${FBM_GLSL}
-
-  // 2D Voronoi / Cellular noise
-  float voronoi(vec2 x, float t) {
-    vec2 n = floor(x);
-    vec2 f = fract(x);
-    float m = 8.0;
-    for(int j = -1; j <= 1; j++) {
-      for(int i = -1; i <= 1; i++) {
-        vec2 g = vec2(float(i), float(j));
-        vec2 o = hash2(n + g);
-        // Animate cell points with sinusoidal orbit
-        vec2 r = g + 0.5 + 0.45 * sin(t + 6.2831 * o) - f;
-        float d = dot(r, r);
-        m = min(m, d);
-      }
-    }
-    return sqrt(m);
-  }
-
-  // Layered caustic pattern; the warp breaks the visible cell lattice.
-  float causticOctaves(vec2 uv, float t) {
-    vec2 q = uv + 0.35 * (vec2(
-      fbm(uv * 1.5 + vec2(0.0, t * 0.2)),
-      fbm(uv * 1.5 + vec2(5.2, 1.3 - t * 0.2))
-    ) * 2.0 - 1.0);
-    float c1 = voronoi(q * 3.5, t * 1.2);
-    float c2 = voronoi((q + vec2(0.3, 0.7)) * 5.0, t * 1.8);
-    // Sharp caustic crest lines
-    float f1 = pow(1.0 - c1, 3.5);
-    float f2 = pow(1.0 - c2, 3.0);
-    return (f1 * 0.65 + f2 * 0.35);
-  }
+  ${CAUSTIC_GLSL}
 
   void main() {
     vec2 uv = vWorldPosition.xz * uScale * 0.1;

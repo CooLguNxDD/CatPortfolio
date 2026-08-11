@@ -47,10 +47,16 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Filter / lit / dim math (pure) | `fish/matchFish.ts` |
 | Domain → mesh form | `fish/formFromDomain.ts`, `fish/speciesMeshes.ts` |
 | Swim + camera math (pure, testable) | `blocks/fishTankLayout.ts` |
-| Theme tokens (species → `--accent-*`, oklch → RGB for three) | `blocks/fishTankTokens.ts` |
-| Transient UI: scene, chrome, query, domain, bake dim | `store/fishTankSlice.ts` (non-persisted; rAF smoothstep dive/surface) |
+| Boids steering + cursor intent (pure) | `fish/fishBoids.ts`, `fish/cursorIntent.ts` |
+| Theme tokens, quality tiers, circadian cycle | `blocks/fishTankTokens.ts` (`resolveCircadianPhase` / `applyCircadian`) |
+| GPU shoal — InstancedMesh, vertex-shader path + spine | `fish/minnowField.ts`, `fish/shaders/spineDeform.ts` |
+| Post chain (bokeh → bloom → wobble → output) | `fish/postprocessing/tankComposer.ts` |
+| Optics: Beer-Lambert fog chunk, world-space caustics | `fish/shaders/absorption.ts`, `fish/shaders/causticProjection.ts` |
+| Spatial audio (HRTF panner, waterline filter) + its math | `fish/fishAudio.ts`, `fish/audioMath.ts` |
+| Sonar / bathymetry projection (pure) | `fish/sonarProjection.ts`, `fish/bathymetry.ts` |
+| Transient UI: scene, chrome, query, domain, bake dim, depth lock, sonar | `store/fishTankSlice.ts` (non-persisted; rAF smoothstep dive/surface) |
 | Controller composing all of the above | `hooks/useFishTank.ts` |
-| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid}.tsx` |
+| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber}.tsx` |
 | WebGL only — sole importer of `three` | `blocks/FishTankCanvas.tsx` (lazy chunk; `manualChunks` splits `three` out of index) |
 | Registry block | `blocks/FishTank.tsx` → registry `fishTank` |
 
@@ -58,6 +64,12 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 - Scene states: `surface` (cat on the rim) ↔ `tank` (submerged), lerped by `stageProgress`. Chrome toggles `3d` ↔ `flat` DOM index.
 - `highlightSlugs` / `curationLabel` drive bake dimming — non-highlighted fish fade when a job bake is active.
 - Failures isolate via `components/FishTankErrorBoundary.tsx`; per-block throws via `render/BlockErrorBoundary.tsx`.
+- **Optics.** `installBeerLambertFog()` (called once from the canvas) overrides three's `fog_fragment` chunk with per-wavelength extinction — red dies ~17x faster than blue, and `scene.fog.density` stays the strength knob. It is a chunk override, **not** a post pass: a depth-sampling pass reads the same target the composer writes, which WebGL rejects as a framebuffer feedback loop. Caustics are injected world-space into standard materials via `patchMaterialCaustics` so they ride rocks/coral/fish, not just the seabed plane.
+- **Quality tiers gate the post chain.** `tier: "high"` → bokeh + bloom + wobble; `tier: "low"` (coarse pointer / dense small screens) → `RenderPass → OutputPass` only, so mobile keeps the old single-render cost. `timeScale: 0` (reduced motion) freezes every shader clock; the shell also drops the tank entirely for reduced-motion users.
+- **Ambient shoal.** 240 (high) / 80 (low) commit-minnows in one `InstancedMesh`; orbit path *and* spine wave run in the vertex shader, so the frame loop writes one uniform regardless of population. Hero specimens keep their CPU spine rig — their materials, glow lights and raycast targets hang off those nodes.
+- **HUD observations.** Sonar contacts ride the bus at ~10Hz (`tank:sonar`), the dossier anchor and dive progress at 60fps; all three are written to DOM refs, never React state. `tank:depth` (bathymetry) and `view:sonar` are commands, handled in `useFishTank`.
+- **Depth is the timeline.** `fish/bathymetry.ts` maps the existing `depth` ∈ [0,1] to year bands — no per-fish year field, so the layout schema and its Python mirror are untouched.
+- **Audio.** Positional cues pass `at` on `audio:fx` and route through an HRTF `PannerNode`; the listener tracks the camera at ~15Hz and `setImmersion` sweeps a lowpass 20kHz → 450Hz across the waterline. Still gated behind the user's sound toggle (autoplay policy).
 
 ## Layout Contract
 
@@ -117,10 +129,14 @@ CatPortfolio/
 │   │   ├── FishTank + FishTankCanvas + fishTankLayout.ts fishTankTokens.ts fishFromLayout.ts
 │   │   └── primitives/         # Metric Quote Sparkline MarkdownText Divider Progress IconTile BadgeCloud
 │   ├── fish/                   # Pure models: sceneFromLayout matchFish formFromDomain speciesMeshes
+│   │                           # fishBoids cursorIntent audioMath sonarProjection bathymetry minnowField
+│   │                           # shaders/ (noiseCommon water caustic godRay spineDeform absorption
+│   │                           #   causticProjection underwaterPass) · postprocessing/tankComposer
+│   │                           # components/ (HoloReticle ArchHologram)
 │   ├── routes/                 # HomePage AskPage viewMode.ts
 │   ├── components/
 │   │   ├── FishTankStage.tsx FishTankErrorBoundary.tsx
-│   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid
+│   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber
 │   │   ├── chat/               # ChatPanel ChatMessage
 │   │   ├── ThemeProvider.tsx AgenticHeader.tsx SourceCitations.tsx AgentStatusPill.tsx
 │   │   └── ui/                 # shadcn: button card

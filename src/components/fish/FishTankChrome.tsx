@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useRef } from "react"
-import { useFishTankStore } from "@/store"
+import { usePreferencesStore, useFishTankStore } from "@/store"
 import { fishBus } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
 import { deriveScene } from "@/fish/tankMachine"
@@ -40,6 +40,8 @@ export function FishTankChrome({
   const toggleSound = useFishTankStore((s) => s.toggleSound)
   const dropFood = useFishTankStore((s) => s.dropFood)
   const tankScene = useFishTankStore((s) => deriveScene(s.state))
+  const circadian = usePreferencesStore((s) => s.circadian)
+  const cycleCircadian = usePreferencesStore((s) => s.cycleCircadian)
 
   const rootRef = useRef<HTMLDivElement | null>(null)
   const surfaceSectionRef = useRef<HTMLElement | null>(null)
@@ -157,6 +159,14 @@ export function FishTankChrome({
               title="Toggle hydro-acoustic sound synthesizer"
             >
               {soundEnabled ? "🔊 Audio" : "🔇 Muted"}
+            </button>
+            <button
+              type="button"
+              className={cn("ft-chip", circadian !== "auto" && "on")}
+              onClick={() => cycleCircadian()}
+              title="Day / night cycle (auto follows your local clock)"
+            >
+              {circadian === "night" ? "🌙 Abyss" : circadian === "day" ? "☀️ Lagoon" : "🕓 Auto"}
             </button>
             {showBake ? (
               <button

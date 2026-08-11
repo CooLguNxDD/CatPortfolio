@@ -73,6 +73,12 @@ export function useFishTank(layout: Layout | null | undefined): FishTankControll
     function onBakeDismiss() {
       store().dismissCuration()
     }
+    function onDepth(payload: { depth01: number } | null) {
+      store().setDepthFocus(payload ? payload.depth01 : null)
+    }
+    function onSonar({ open }: { open: boolean }) {
+      store().toggleSonar(open)
+    }
     fishBus.on("tank:dive", onDive)
     fishBus.on("tank:surface", onSurface)
     fishBus.on("view:chrome", onChrome)
@@ -80,6 +86,8 @@ export function useFishTank(layout: Layout | null | undefined): FishTankControll
     fishBus.on("filter:domain", onDomain)
     fishBus.on("bake:apply", onBakeApply)
     fishBus.on("bake:dismiss", onBakeDismiss)
+    fishBus.on("tank:depth", onDepth)
+    fishBus.on("view:sonar", onSonar)
     return () => {
       fishBus.off("tank:dive", onDive)
       fishBus.off("tank:surface", onSurface)
@@ -88,6 +96,8 @@ export function useFishTank(layout: Layout | null | undefined): FishTankControll
       fishBus.off("filter:domain", onDomain)
       fishBus.off("bake:apply", onBakeApply)
       fishBus.off("bake:dismiss", onBakeDismiss)
+      fishBus.off("tank:depth", onDepth)
+      fishBus.off("view:sonar", onSonar)
     }
   }, [])
 

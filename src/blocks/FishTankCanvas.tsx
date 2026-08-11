@@ -51,12 +51,15 @@ import {
   type Vec3,
 } from "./fishTankLayout"
 import {
+  applyCircadian,
   mixHex,
+  resolveCircadianPhase,
   resolveTankThemePalette,
   tokenToHex,
   SPECIES_FALLBACK_HEX,
   SPECIES_TOKEN,
   resolveTankQuality,
+  type CircadianMode,
   type TankThemePalette,
 } from "./fishTankTokens"
 import {
@@ -71,8 +74,15 @@ import {
 import { createCausticMaterial } from "@/fish/shaders/causticShader"
 import { createGodRayMaterial, type GodRayMaterial } from "@/fish/shaders/godRayShader"
 import { createWaterMaterial } from "@/fish/shaders/waterShader"
-import { createUnderwaterPass } from "@/fish/shaders/underwaterPass"
+import { patchMaterialCaustics } from "@/fish/shaders/causticProjection"
+import { installBeerLambertFog } from "@/fish/shaders/absorption"
+import { createTankComposer } from "@/fish/postprocessing/tankComposer"
 import { createHoloReticle } from "@/fish/components/HoloReticle"
+import { createArchHologram } from "@/fish/components/ArchHologram"
+import { createMinnowField } from "@/fish/minnowField"
+import { createCursorTracker, isFleeOnset, type CursorIntent } from "@/fish/cursorIntent"
+import { worldYForDepth } from "@/fish/bathymetry"
+import { projectSonarBlips } from "@/fish/sonarProjection"
 import { fishAudio } from "@/fish/fishAudio"
 import { computeSteeringForce, type BoidAgent } from "@/fish/fishBoids"
 import { WakeTrailPool } from "@/fish/wakeTrails"
@@ -85,6 +95,8 @@ export interface FishTankCanvasProps {
   highlightSlugs?: string[]
   /** Theme id / accent stamp — remounts lights when the shell theme changes. */
   themeKey?: string
+  /** Day/night cycle mode; `auto` follows the visitor's local clock. */
+  circadian?: CircadianMode
 }
 
 /** Domain accent → three.js Color (oklch tokens resolved via browser). */
@@ -110,6 +122,7 @@ export default function FishTankCanvas({
   immersive = false,
   highlightSlugs = [],
   themeKey = "default",
+  circadian = "auto",
 }: FishTankCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
 
@@ -120,6 +133,7 @@ export default function FishTankCanvas({
 
     // Discrete interaction state, read imperatively
     const focusedRef = { current: useFishTankStore.getState().focus }
+    const depthFocusRef = { current: useFishTankStore.getState().depthFocus }
     const filterRef = { current: filterFromStore() }
     function filterFromStore(): FishFilter {
       const s = useFishTankStore.getState()
@@ -127,6 +141,7 @@ export default function FishTankCanvas({
     }
     const unsubStore = useFishTankStore.subscribe((s) => {
       focusedRef.current = s.focus
+      depthFocusRef.current = s.depthFocus
       filterRef.current = {
         query: s.query,
         domain: s.domain,
@@ -140,9 +155,34 @@ export default function FishTankCanvas({
       progRef.current = v
     })
 
-    let palette: TankThemePalette = resolveTankThemePalette()
+    const phase = resolveCircadianPhase(new Date(), circadian)
+    let palette: TankThemePalette = applyCircadian(resolveTankThemePalette(), phase)
     const light = palette.light
     const quality = resolveTankQuality()
+    // Night fauna drift instead of darting (Pillar 5) — folded into the same
+    // multiplier the reduced-motion tier already uses to freeze the tank.
+    const faunaScale = palette.faunaTimeScale
+
+    // Shared clock + strength for the world-space caustic injection. Every lit
+    // surface samples the same field, so ripples stay continuous across the
+    // seabed, the rocks and the fish (Pillar 1.2).
+    const causticClock = { value: 0 }
+    const causticSurfaceStrength = { value: palette.causticStrength * 0.55 }
+    const causticSurfaceColor = new THREE.Color(palette.sun)
+    /** Patch one standard material with world-space caustics. */
+    function withCaustics<T extends THREE.Material>(material: T): T {
+      patchMaterialCaustics(material, {
+        time: causticClock,
+        color: causticSurfaceColor,
+        strength: causticSurfaceStrength,
+        octaves: quality.octaves,
+      })
+      return material
+    }
+
+    // Wavelength-aware water: replaces three's grey exponential fog with
+    // Beer-Lambert extinction for every fogged material in the tank.
+    installBeerLambertFog()
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(palette.bg)
@@ -248,12 +288,14 @@ export default function FishTankCanvas({
     }
     floorGeo.computeVertexNormals()
 
-    const floorMat = new THREE.MeshStandardMaterial({
-      color: palette.floor,
-      roughness: 0.88,
-      metalness: 0.05,
-      flatShading: true,
-    })
+    const floorMat = withCaustics(
+      new THREE.MeshStandardMaterial({
+        color: palette.floor,
+        roughness: 0.88,
+        metalness: 0.05,
+        flatShading: true,
+      }),
+    )
     const floor = new THREE.Mesh(floorGeo, floorMat)
     floor.position.y = FLOOR_Y
     tank.add(floor)
@@ -302,11 +344,13 @@ export default function FishTankCanvas({
 
     // Seabed Rocks & Glowing Cyber-Crystals
     const rockGeo = new THREE.DodecahedronGeometry(1, 0)
-    const rockMat = new THREE.MeshStandardMaterial({
-      color: palette.rock,
-      roughness: 0.9,
-      flatShading: true,
-    })
+    const rockMat = withCaustics(
+      new THREE.MeshStandardMaterial({
+        color: palette.rock,
+        roughness: 0.9,
+        flatShading: true,
+      }),
+    )
     for (let i = 0; i < 14; i++) {
       const rock = new THREE.Mesh(rockGeo, rockMat)
       rock.position.set(
@@ -372,9 +416,27 @@ export default function FishTankCanvas({
       tank.add(coral)
     }
 
+    // Ambient commit-minnows — one InstancedMesh, placed and deformed entirely
+    // in the vertex shader (fish/minnowField.ts), so population is free on CPU.
+    const minnows = createMinnowField({
+      count: quality.tier === "high" ? 240 : 80,
+      colors: [palette.accent, palette.cyan, palette.neon].map((c) => new THREE.Color(c)),
+      octaves: quality.octaves,
+      emissiveIntensity: light ? 0.2 : 0.45,
+      emissiveTint: palette.deep,
+    })
+    withCaustics(minnows.mesh.material as THREE.MeshStandardMaterial)
+    tank.add(minnows.mesh)
+
     // 3D Holographic Reticle for Focused Fish
     const holoReticle = createHoloReticle()
     tank.add(holoReticle.group)
+
+    // Architecture hologram — replaces the reticle once a specimen is locked.
+    // Nodes stay wordless: the dossier already carries the metrics and tags, so
+    // labelling them again just stacks text over the specimen.
+    const hologram = createArchHologram(palette.cyan)
+    tank.add(hologram.group)
 
     // Interactive Cat Mascot on Rim
     const cat = buildCatMesh(WATER_Y)
@@ -514,6 +576,8 @@ export default function FishTankCanvas({
     for (const specimen of fish) {
       const col = domainColor(specimen.species)
       const built = buildFishMesh(specimen, col)
+      withCaustics(built.body)
+      withCaustics(built.fin)
       tank.add(built.group)
 
       const label = document.createElement("div")
@@ -555,7 +619,7 @@ export default function FishTankCanvas({
 
     // Deferred palette resample
     let paletteFrame = requestAnimationFrame(() => {
-      palette = resolveTankThemePalette()
+      palette = applyCircadian(resolveTankThemePalette(), phase)
       scene.background?.set(palette.bg)
       if (scene.fog instanceof THREE.FogExp2) {
         scene.fog.color.set(palette.fogColor)
@@ -585,10 +649,16 @@ export default function FishTankCanvas({
       moteMat.color.set(palette.motes)
     })
 
-    // Underwater wobble post-pass (skipped entirely when the tier disables it)
-    const underwater = quality.wobble
-      ? createUnderwaterPass(host.clientWidth || 640, host.clientHeight || 320, quality.octaves)
-      : null
+    // Post chain: absorption → bokeh → bloom → wobble → output. The low tier
+    // collapses it to scene + output, which is what mobile used to get from the
+    // old direct render (see fish/postprocessing/tankComposer.ts).
+    const composer = createTankComposer(renderer, scene, camera, {
+      width: host.clientWidth || 640,
+      height: host.clientHeight || 320,
+      octaves: quality.octaves,
+      effects: quality.tier === "high",
+      wobble: quality.wobble,
+    })
 
     // Resize observer
     const ro =
@@ -600,8 +670,7 @@ export default function FishTankCanvas({
               camera.aspect = w / h
               camera.updateProjectionMatrix()
               renderer.setSize(w, h)
-              const dpr = renderer.getPixelRatio()
-              underwater?.setSize(w * dpr, h * dpr)
+              composer.setSize(w, h)
             }
           })
         : null
@@ -666,6 +735,9 @@ export default function FishTankCanvas({
     fishBus.on("feed:drop", onDropFood)
 
     // Interaction handlers
+    // Pointer intent drives the curious/flee boids term (fish/cursorIntent.ts).
+    const cursorTracker = createCursorTracker(performance.now())
+    let cursorIntent: CursorIntent = "idle"
     const pointer = new THREE.Vector2(-9999, -9999)
     const raycaster = new THREE.Raycaster()
     const cursor3D = new THREE.Vector3()
@@ -674,8 +746,12 @@ export default function FishTankCanvas({
     let raf = 0
     let disposed = false
     let selected: THREE.Group | null = null
+    let hologramSlug: string | null = null
     const lastAnchor = { x: -9999, y: -9999, r: -9999 }
     let lastProg = -1
+    let lastAudioAt = -1
+    let lastImmersion = -1
+    let lastSonarAt = -1
 
     const orbit = {
       yaw: 0,
@@ -724,6 +800,12 @@ export default function FishTankCanvas({
 
     function onPointerMove(e: PointerEvent) {
       const rect = renderer.domElement.getBoundingClientRect()
+      const nextIntent = cursorTracker.sample(e.clientX, e.clientY, performance.now())
+      if (isFleeOnset(cursorIntent, nextIntent)) {
+        // One startle cue per scatter, not one per frame of fast movement.
+        fishBus.emit("audio:fx", { type: "bubble" })
+      }
+      cursorIntent = nextIntent
       pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
       if (orbit.dragging && !selected) {
@@ -810,6 +892,8 @@ export default function FishTankCanvas({
 
     const _v = new THREE.Vector3()
     const _v2 = new THREE.Vector3()
+    /** Listener up-vector — the camera never rolls, so this is constant. */
+    const WORLD_UP = new THREE.Vector3(0, 1, 0)
 
     function animate() {
       if (disposed) return
@@ -853,7 +937,14 @@ export default function FishTankCanvas({
         )
       } else {
         const st = stageOrbitTarget(prog)
-        orbit.targetT.set(st.x, st.y, st.z)
+        const lockedDepth = depthFocusRef.current
+        // A bathymetry lock overrides the dive target height only — yaw, radius
+        // and X framing stay wherever the visitor left them.
+        orbit.targetT.set(
+          st.x,
+          lockedDepth == null ? st.y : worldYForDepth(lockedDepth),
+          st.z,
+        )
         const stageRadius = SUBMERGED_RADIUS + (1 - prog) * (SURFACE_RADIUS - SUBMERGED_RADIUS)
         if (prog < 0.95) {
           orbit.radiusT = stageRadius
@@ -886,6 +977,19 @@ export default function FishTankCanvas({
       )
       camera.lookAt(orbit.target)
 
+      // Bind the Web Audio listener to the camera (~15Hz is plenty for HRTF)
+      // and sweep the waterline filter with how deep the camera actually is.
+      if (t - lastAudioAt > 0.066) {
+        lastAudioAt = t
+        _v.copy(orbit.target).sub(camera.position).normalize()
+        fishAudio.setListenerPose(camera.position, _v, WORLD_UP)
+        const immersion = clamp((WATER_Y - camera.position.y) / 6, 0, 1)
+        if (Math.abs(immersion - lastImmersion) > 0.02) {
+          lastImmersion = immersion
+          fishAudio.setImmersion(immersion)
+        }
+      }
+
       if (scene.fog instanceof THREE.FogExp2) {
         const base = palette.fogDensity * (0.18 + 0.82 * prog)
         const targetDensity = selected ? base * 1.35 : base
@@ -899,6 +1003,10 @@ export default function FishTankCanvas({
 
       // Water surface waves are displaced in the vertex shader — just advance its clock.
       waterMat.uniforms.uTime.value = st
+      causticClock.value = st
+      minnows.update(st * faunaScale)
+      // Pointer speed decays between move events so one flick does not pin flee.
+      cursorIntent = cursorTracker.tick(performance.now())
 
       // Bubbles & Marine snow animation
       const bp = bubbles.geometry.attributes.position.array as Float32Array
@@ -948,12 +1056,23 @@ export default function FishTankCanvas({
       if (catEyeL) catEyeL.scale.y = blink
       if (catEyeR) catEyeR.scale.y = blink
 
-      // 3D Holographic Reticle Update
+      // Focus visuals: the reticle marks an unlocked hover state, the
+      // architecture hologram takes over once a specimen is locked.
       if (selected) {
         const selData = selected.userData.data as FishSpecimenInput | undefined
+        if (hologramSlug !== selData?.slug) {
+          hologramSlug = selData?.slug ?? null
+          hologram.setSpecimen(selData ?? null)
+        }
         holoReticle.update(t, selected.position, selData?.size ?? 0.5, true)
+        hologram.update(t, selected.position, selData?.size ?? 0.5, true)
       } else {
+        if (hologramSlug !== null) {
+          hologramSlug = null
+          hologram.setSpecimen(null)
+        }
         holoReticle.update(t, _v, 1, false)
+        hologram.update(t, _v, 1, false)
       }
 
       const focus = focusedRef.current
@@ -1013,7 +1132,10 @@ export default function FishTankCanvas({
             if (mouthDistSq < 4.5 * pose.scale) {
               p.active = false
               fishBus.emit("feed:eaten", { pelletId: p.id, slug: o.data.slug })
-              fishBus.emit("audio:fx", { type: "eat" })
+              fishBus.emit("audio:fx", {
+                type: "eat",
+                at: { x: p.x, y: p.y, z: p.z },
+              })
               o.mesh.userData.boostGlow = 1.0
               break
             }
@@ -1029,6 +1151,7 @@ export default function FishTankCanvas({
                 boidAgents,
                 hasCursor3D ? cursor3D : null,
                 livePellets,
+                { cursorMode: cursorIntent },
               )
             : { x: 0, y: 0, z: 0 }
 
@@ -1116,7 +1239,9 @@ export default function FishTankCanvas({
         _v.project(camera)
         const behind = _v.z > 1
         const inTank = prog > 0.55
-        const hiddenByLock = selected && selected !== o.mesh
+        // Any lock hides every name pill, the focused fish included: the
+        // dossier names it, so a pill on top is just text over the specimen.
+        const hiddenByLock = selected != null
         const vis =
           inTank &&
           !hiddenByLock &&
@@ -1192,6 +1317,28 @@ export default function FishTankCanvas({
       wakeGeo.attributes.position.needsUpdate = true
       wakeGeo.attributes.color.needsUpdate = true
 
+      // Publish sonar contacts. 40 specimens at 60fps would be pure waste —
+      // the radar only needs to feel live, so it runs at ~10Hz.
+      if (prog > 0.4 && t - lastSonarAt > 0.1) {
+        lastSonarAt = t
+        fishBus.emit(
+          "tank:sonar",
+          projectSonarBlips(
+            fishObjs.map((o) => ({
+              slug: o.data.slug,
+              species: o.data.species,
+              school: o.data.school,
+              x: o.mesh.position.x,
+              y: o.mesh.position.y,
+              z: o.mesh.position.z,
+              lit: Math.min(1, fishLitFactor(o.data, filter, focus)),
+            })),
+            orbit.yaw,
+            { x: orbit.target.x, z: orbit.target.z },
+          ),
+        )
+      }
+
       // Publish dossier anchor
       if (selected) {
         _v.copy(selected.position)
@@ -1220,13 +1367,14 @@ export default function FishTankCanvas({
         fishBus.emit("fish:anchor", null)
       }
 
-      if (underwater) {
-        // Wobble ramps in as the camera sinks below the waterline, and with dive depth.
-        const submerged = clamp((WATER_Y - camera.position.y) / 6, 0, 1)
-        underwater.render(renderer, scene, camera, st, submerged * (0.35 + 0.65 * prog))
-      } else {
-        renderer.render(scene, camera)
-      }
+      // Wobble ramps in as the camera sinks below the waterline and deepens
+      // with dive progress. Absorption rides scene.fog.density instead.
+      const submerged = clamp((WATER_Y - camera.position.y) / 6, 0, 1)
+      composer.render({
+        time: st,
+        wobble: submerged * (0.35 + 0.65 * prog),
+        focusDistance: selected ? camera.position.distanceTo(selected.position) : 0,
+      })
     }
     animate()
 
@@ -1247,7 +1395,9 @@ export default function FishTankCanvas({
       renderer.domElement.removeEventListener("dblclick", onDblClick)
       fishBus.off("feed:drop", onDropFood)
       holoReticle.dispose()
-      underwater?.dispose()
+      hologram.dispose()
+      minnows.dispose()
+      composer.dispose()
       renderer.dispose()
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement)
       if (labelLayer.parentNode === host) host.removeChild(labelLayer)
@@ -1260,7 +1410,7 @@ export default function FishTankCanvas({
         }
       })
     }
-  }, [fish, immersive, themeKey, highlightSlugs])
+  }, [fish, immersive, themeKey, circadian, highlightSlugs])
 
   return (
     <div

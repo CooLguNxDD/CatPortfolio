@@ -90,3 +90,31 @@ describe("fishBoids steering engine", () => {
     expect(force.x).toBeLessThan(0)
   })
 })
+
+describe("cursor intent modes", () => {
+  const agent: BoidAgent = {
+    id: "a",
+    school: 1,
+    position: { x: 0, y: 0, z: 0 },
+    velocity: { x: 0, y: 0, z: 0 },
+    size: 0.5,
+    speed: 0.5,
+  }
+  const cursor = { x: 8, y: 0, z: 0 }
+
+  it("pushes away from the cursor by default", () => {
+    const f = computeSteeringForce(agent, [agent], cursor, [])
+    expect(f.x).toBeLessThan(0)
+  })
+
+  it("pulls toward a still cursor when curious", () => {
+    const f = computeSteeringForce(agent, [agent], cursor, [], { cursorMode: "curious" })
+    expect(f.x).toBeGreaterThan(0)
+  })
+
+  it("scatters harder when fleeing than when idle", () => {
+    const idle = computeSteeringForce(agent, [agent], cursor, [], { cursorMode: "idle" })
+    const flee = computeSteeringForce(agent, [agent], cursor, [], { cursorMode: "flee" })
+    expect(Math.abs(flee.x)).toBeGreaterThan(Math.abs(idle.x))
+  })
+})

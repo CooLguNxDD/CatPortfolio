@@ -397,12 +397,13 @@
   z-index: 12;
 }
 
-.ft-depthmarks {
+/* --- Bathymetry scrubber: the depth axis read as a timeline --- */
+.ft-bathymetry {
   position: absolute;
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 15;
+  z-index: 25;
   font-family: var(--ft-mono);
   font-size: 10px;
   color: var(--fg-subtle, var(--ft-dim));
@@ -411,14 +412,129 @@
   text-align: right;
   display: flex;
   flex-direction: column;
-  gap: 22vh;
+  gap: 14vh;
+  /* The rail itself must not eat orbit drags — only its buttons do. */
   pointer-events: none;
-  opacity: var(--t, 0);
   transition: opacity 0.4s;
 }
 
-.ft-stage[data-view="flat"] .ft-depthmarks {
+.ft-bathy-stop,
+.ft-bathy-clear {
+  pointer-events: auto;
+  background: none;
+  border: 0;
+  border-right: 2px solid transparent;
+  margin-right: -12px;
+  padding: 2px 10px 2px 0;
+  color: inherit;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.ft-bathy-stop:hover,
+.ft-bathy-clear:hover {
+  color: var(--ft-fg, var(--fg));
+}
+
+.ft-bathy-stop.is-on {
+  color: var(--cyan, var(--ft-accent));
+  border-right-color: currentColor;
+}
+
+.ft-bathy-year {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.ft-bathy-label {
+  opacity: 0.7;
+}
+
+/* Both HUD widgets belong to the submerged scene only. */
+.ft-stage[data-fishtank-stage="surface"] .ft-bathymetry,
+.ft-stage[data-fishtank-stage="surface"] .ft-sonar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ft-stage[data-view="flat"] .ft-bathymetry,
+.ft-stage[data-view="flat"] .ft-sonar {
   display: none;
+}
+
+/* --- Cyber sonar mini-map --- */
+.ft-sonar {
+  position: absolute;
+  left: 16px;
+  bottom: 96px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+
+.ft-sonar-toggle {
+  pointer-events: auto;
+  font-family: var(--ft-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ft-dim);
+  background: color-mix(in oklab, var(--bg, #08131c) 72%, transparent);
+  border: 1px solid var(--ft-line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.ft-sonar-toggle:hover {
+  color: var(--cyan, var(--ft-accent));
+}
+
+.ft-sonar-disc {
+  pointer-events: auto;
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in oklab, var(--cyan, #22d3ee) 12%, transparent),
+    color-mix(in oklab, var(--bg, #08131c) 82%, transparent)
+  );
+  border-radius: 50%;
+  border: 1px solid var(--ft-line);
+}
+
+.ft-sonar-ring {
+  fill: none;
+  stroke: color-mix(in oklab, var(--cyan, #22d3ee) 45%, transparent);
+  stroke-width: 1;
+}
+
+.ft-sonar-sweep {
+  stroke: color-mix(in oklab, var(--cyan, #22d3ee) 70%, transparent);
+  stroke-width: 1.5;
+}
+
+.ft-sonar-blip {
+  cursor: pointer;
+  transition: r 0.2s;
+}
+
+.ft-sonar-blip:hover {
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ft-sonar-sweep {
+    display: none;
+  }
 }
 
 .ft-curation {

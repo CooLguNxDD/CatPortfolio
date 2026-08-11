@@ -1,24 +1,30 @@
 /**
- * Fullscreen underwater wobble pass.
- * Renders the tank to an offscreen target, then blits it through a scrolling-noise
- * UV offset so everything below the waterline shimmers. Cheaper than true
- * refraction — one extra fullscreen quad, never a second scene render.
+ * Underwater wobble — a scrolling-noise UV displacement with a chromatic split,
+ * so everything below the waterline shimmers. Cheaper than true refraction: one
+ * fullscreen quad, never a second scene render.
+ *
+ * This used to own a render target and drive its own blit. It is now a
+ * `ShaderPass` definition inside the tank composer chain
+ * (fish/postprocessing/tankComposer.ts), which owns the targets for every pass.
  */
 
 import * as THREE from "three"
 
 import { FBM_GLSL, HASH_GLSL, VALUE_NOISE_GLSL, clampOctaves, withDefines } from "./noiseCommon"
 
+/** Maximum UV displacement at amount = 1; small enough that labels stay legible. */
+export const MAX_WOBBLE_OFFSET = 0.012
+
 const VERTEX = /* glsl */ `
   varying vec2 vUv;
   void main() {
     vUv = uv;
-    gl_Position = vec4(position.xy, 0.0, 1.0);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `
 
 const FRAGMENT = /* glsl */ `
-  uniform sampler2D uScene;
+  uniform sampler2D tDiffuse;
   uniform float uTime;
   uniform float uAmount;
   uniform vec2 uAspect;
@@ -43,88 +49,35 @@ const FRAGMENT = /* glsl */ `
     vec2 uvB = clamp(vUv + offset * (1.0 - split), 0.0, 1.0);
 
     gl_FragColor = vec4(
-      texture2D(uScene, uvR).r,
-      texture2D(uScene, uvG).g,
-      texture2D(uScene, uvB).b,
+      texture2D(tDiffuse, uvR).r,
+      texture2D(tDiffuse, uvG).g,
+      texture2D(tDiffuse, uvB).b,
       1.0
     );
   }
 `
 
-export interface UnderwaterPass {
-  /** Resize the offscreen target to match the canvas. */
-  setSize(width: number, height: number): void
-  /** Render `scene` through the wobble. `amount` 0 renders straight to screen. */
-  render(
-    renderer: THREE.WebGLRenderer,
-    scene: THREE.Scene,
-    camera: THREE.Camera,
-    time: number,
-    amount: number,
-  ): void
-  dispose(): void
+export interface UnderwaterShaderDef {
+  name: string
+  uniforms: Record<string, { value: unknown }>
+  vertexShader: string
+  fragmentShader: string
 }
 
-/** Maximum UV displacement at amount = 1; kept small so text/labels stay legible. */
-const MAX_OFFSET = 0.012
-
-/** Build the underwater wobble pass (own render target, ortho camera, fullscreen quad). */
-export function createUnderwaterPass(width: number, height: number, octaves = 4): UnderwaterPass {
-  const target = new THREE.WebGLRenderTarget(Math.max(1, width), Math.max(1, height), {
-    minFilter: THREE.LinearFilter,
-    magFilter: THREE.LinearFilter,
-    depthBuffer: true,
-    stencilBuffer: false,
-  })
-
-  const aspect = new THREE.Vector2(1, 1)
-  const material = new THREE.ShaderMaterial({
+/**
+ * Build the wobble shader definition for a `ShaderPass`.
+ * `octaves` comes from the quality tier and is compiled in, not branched.
+ */
+export function createUnderwaterShader(octaves = 4): UnderwaterShaderDef {
+  return {
+    name: "UnderwaterWobbleShader",
     uniforms: {
-      uScene: { value: target.texture },
+      tDiffuse: { value: null },
       uTime: { value: 0 },
       uAmount: { value: 0 },
-      uAspect: { value: aspect },
+      uAspect: { value: new THREE.Vector2(1, 1) },
     },
     vertexShader: VERTEX,
     fragmentShader: withDefines(FRAGMENT, { NOISE_OCTAVES: clampOctaves(octaves) }),
-    depthTest: false,
-    depthWrite: false,
-  })
-
-  const quadScene = new THREE.Scene()
-  const quadCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
-  const quadGeo = new THREE.PlaneGeometry(2, 2)
-  quadScene.add(new THREE.Mesh(quadGeo, material))
-
-  function setSize(w: number, h: number) {
-    const cw = Math.max(1, Math.floor(w))
-    const ch = Math.max(1, Math.floor(h))
-    target.setSize(cw, ch)
-    aspect.set(1, ch / cw)
-  }
-  setSize(width, height)
-
-  return {
-    setSize,
-    render(renderer, scene, camera, time, amount) {
-      // No wobble → skip the target entirely; identical to a plain direct render.
-      if (amount <= 0.0005) {
-        renderer.setRenderTarget(null)
-        renderer.render(scene, camera)
-        return
-      }
-      material.uniforms.uTime.value = time
-      material.uniforms.uAmount.value = amount * MAX_OFFSET
-      renderer.setRenderTarget(target)
-      renderer.clear()
-      renderer.render(scene, camera)
-      renderer.setRenderTarget(null)
-      renderer.render(quadScene, quadCamera)
-    },
-    dispose() {
-      target.dispose()
-      quadGeo.dispose()
-      material.dispose()
-    },
   }
 }
