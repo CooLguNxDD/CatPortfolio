@@ -75,6 +75,84 @@ describe("Content layer tests", () => {
     expect(() => LayoutSchema.parse(invalidLayout)).toThrow();
   });
 
+  it("accepts fishTank with bounded specimen numerics", () => {
+    const layout = LayoutSchema.parse({
+      version: 1,
+      meta: { audience: "default", generatedAt: "2026-08-10T00:00:00Z" },
+      blocks: [
+        {
+          type: "fishTank",
+          id: "tank-1",
+          props: {
+            renderer: "webgl",
+            fish: [
+              {
+                slug: "oct-mcp",
+                title: "OpenCat",
+                species: "ai",
+                size: 0.9,
+                depth: 0.1,
+                speed: 0.5,
+                glow: 0.8,
+                school: 0,
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(layout.blocks[0].type).toBe("fishTank");
+  });
+
+  it("rejects fish size out of range", () => {
+    expect(() =>
+      LayoutSchema.parse({
+        version: 1,
+        meta: { audience: "default", generatedAt: "t" },
+        blocks: [
+          {
+            type: "fishTank",
+            id: "tank-1",
+            props: {
+              fish: [
+                {
+                  slug: "x",
+                  title: "X",
+                  species: "ai",
+                  size: 1.5,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it("rejects unknown fish species", () => {
+    expect(() =>
+      LayoutSchema.parse({
+        version: 1,
+        meta: { audience: "default", generatedAt: "t" },
+        blocks: [
+          {
+            type: "fishTank",
+            id: "tank-1",
+            props: {
+              fish: [
+                {
+                  slug: "x",
+                  title: "X",
+                  species: "web",
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
   it("relative href is rejected", () => {
     const invalidHeroLayout = {
       version: 1,

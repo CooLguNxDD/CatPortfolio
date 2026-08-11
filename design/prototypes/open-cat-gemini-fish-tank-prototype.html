@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Cat Gemini Fish Tank Prototype · 3D Immersive Background</title>
+<meta name="description" content="Low-poly 3D fish tank background with perched cat, swimming fish, waving seaweed, and ripple physics under an agentic programmer portfolio." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   Design Tokens & Glassmorphism Layer
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg: oklch(0.16 0.02 240);
+  --bg-sunken: oklch(0.12 0.015 240);
+  --glass-card: rgba(22, 26, 34, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-blur: blur(16px);
+  --fg: oklch(0.96 0.02 80);
+  --fg-muted: oklch(0.76 0.025 70);
+  --fg-subtle: oklch(0.56 0.022 60);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.14);
+  --amber: oklch(0.82 0.165 70);
+  --neon: oklch(0.86 0.2 145);
+  --pink: oklch(0.76 0.18 350);
+  --cyan: oklch(0.82 0.14 200);
+  --violet: oklch(0.74 0.16 300);
+  --ai: var(--amber);
+  --devops: var(--neon);
+  --mobile: var(--pink);
+  --platform: var(--cyan);
+  --radius: 14px;
+  --radius-lg: 22px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --shadow: 0 16px 40px -18px rgba(0,0,0,.75);
+  --shadow-lift: 0 20px 48px -12px rgba(0,0,0,.85), 0 0 28px -6px color-mix(in oklch, var(--amber) 30%, transparent);
+  --font: "Geist", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --max: min(1140px, 92vw);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   3D Canvas Fullscreen Background
+   ═══════════════════════════════════════════════════════════ */
+#webgl-bg-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#threeCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Top Navigation & Chrome
+   ═══════════════════════════════════════════════════════════ */
+.shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(16, 20, 28, 0.82);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 0.65rem 1.25rem;
+}
+
+.shell-row {
+  max-width: var(--max);
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.brand-badge {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--amber);
+  border-radius: 9999px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+  color: var(--fg-muted);
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  text-decoration: none;
+  font-family: var(--mono);
+  transition: all 0.2s var(--ease);
+}
+.nav-btn:hover, .nav-btn.active {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--amber);
+  border-color: var(--amber);
+}
+
+/* 3D Scene Mode Switcher HUD */
+.scene-hud {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 20, 28, 0.88);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border);
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  box-shadow: var(--shadow);
+}
+
+.hud-btn {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--fg-muted);
+  padding: 2px 9px;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  transition: all 0.2s;
+}
+.hud-btn:hover, .hud-btn.active {
+  background: var(--amber);
+  color: #12100e;
+  font-weight: 700;
+  border-color: var(--amber);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Page Container & Bento Grid
+   ═══════════════════════════════════════════════════════════ */
+.page {
+  position: relative;
+  z-index: 10;
+  max-width: var(--max);
+  margin: 1.5rem auto 4rem;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.bento-card {
+  background: var(--glass-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), border-color 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.bento-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+  border-color: color-mix(in oklch, var(--card-accent, var(--amber)) 60%, transparent);
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 1.25rem;
+}
+@media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+  margin-bottom: 0.4rem;
+}
+
+.hero-title {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 0.6rem;
+}
+
+.hero-tagline {
+  font-size: 1.05rem;
+  color: var(--fg-muted);
+  margin-bottom: 1rem;
+}
+
+.hero-pitch {
+  font-size: 0.95rem;
+  color: var(--fg-muted);
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.pill {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hairline);
+  color: var(--fg-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pill.accent { border-color: var(--amber); color: var(--amber); background: rgba(245,158,11,0.12); }
+.pill.neon { border-color: var(--neon); color: var(--neon); background: rgba(16,185,129,0.12); }
+.pill.pink { border-color: var(--pink); color: var(--pink); background: rgba(244,63,94,0.12); }
+
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  font-family: var(--font);
+}
+.btn-primary {
+  background: var(--amber);
+  color: #12100e;
+  border: 1px solid var(--amber);
+}
+.btn-primary:hover {
+  background: oklch(0.88 0.18 70);
+  transform: translateY(-1px);
+}
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* KPI Bento Row */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 860px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi-cell {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.kpi-cell .val {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-family: var(--mono);
+  color: var(--fg);
+  margin: 0.2rem 0;
+}
+.kpi-cell .lbl { font-size: 0.76rem; color: var(--fg-subtle); text-transform: uppercase; font-family: var(--mono); }
+.kpi-cell .sub { font-size: 0.78rem; color: var(--neon); }
+
+/* Project Cards 4-Col */
+.proj-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 1000px) { .proj-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .proj-grid { grid-template-columns: 1fr; } }
+
+.proj-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+.proj-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.2rem; }
+.proj-desc { font-size: 0.85rem; color: var(--fg-muted); flex: 1; }
+.tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.tag { font-family: var(--mono); font-size: 0.7rem; padding: 2px 7px; background: rgba(255,255,255,0.06); border-radius: 4px; color: var(--fg-subtle); }
+
+/* Interactive Fish Tank HUD Status Indicator */
+.tank-status-pill {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  background: rgba(16, 20, 28, 0.88);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 16px;
+  box-shadow: var(--shadow-lift);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.pulse-circle {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--neon);
+  box-shadow: 0 0 10px var(--neon);
+  animation: pulseAnim 2s infinite;
+}
+@keyframes pulseAnim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.85); }
+}
+
+.scroll-bar {
+  position: fixed;
+  top: 0; left: 0; height: 3px;
+  background: linear-gradient(90deg, var(--amber), var(--neon), var(--pink));
+  width: 0%; z-index: 9999;
+}
+</style>
+</head>
+<body>
+
+<div class="scroll-bar" id="progressBar"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Fullscreen Three.js Low-Poly Fish Tank Canvas
+     ═══════════════════════════════════════════════════════════ -->
+<div id="webgl-bg-container">
+  <canvas id="threeCanvas"></canvas>
+</div>
+
+<!-- 3D Scene Controls HUD -->
+<div class="scene-hud">
+  <span style="color:var(--amber);font-weight:700">🐱 3D Fish Tank:</span>
+  <button type="button" class="hud-btn active" id="btnFeedFish">Feed Fish 🐟</button>
+  <button type="button" class="hud-btn" id="btnPawSplash">Paw Splash 💦</button>
+  <button type="button" class="hud-btn" id="btnToggleSeaweed">Seaweed Wave</button>
+</div>
+
+<!-- Navigation Header -->
+<header class="shell-header">
+  <div class="shell-row">
+    <a class="brand" href="../index.html">
+      🐱 Cat Portfolio <span class="brand-badge">open-cat-gemini-fish-tank-prototype</span>
+    </a>
+    <nav class="nav-links">
+      <a class="nav-btn active" href="#">Fish Tank 3D</a>
+      <a class="nav-btn" href="./open-cat-gemini-proto.html">Gemini 1.0 (Mesh)</a>
+      <a class="nav-btn" href="./agentic-ask-split.html">Ask AI Split</a>
+      <a class="nav-btn" href="http://localhost:11000/CatPortfolio/" target="_blank">React Local (11000) ↗</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Overlaid Glassmorphic Content Page -->
+<main class="page">
+
+  <!-- Hero Section -->
+  <section class="hero-grid">
+    <div class="bento-card" style="--card-accent:var(--amber)">
+      <div class="eyebrow">Interactive Low-Poly 3D Background · Systems &amp; AI</div>
+      <h1 class="hero-title">Andrew Liang <span style="opacity:0.7">(the cat)</span></h1>
+      <p class="hero-tagline">AI Systems Architect · Cloud Infra &amp; DevOps · Mobile &amp; 3D Graphics</p>
+      <p class="hero-pitch">
+        Specializing in high-throughput Model Context Protocol (MCP) gateways, cloud infrastructure modernization, and game-dev 3D graphics. Reduced AWS costs from <strong style="color:var(--neon)">$4k → $2.8k/mo (−30%)</strong>, built a 42-tool clinical MCP gateway, and delivered WelTel Mobile (<strong style="color:var(--pink)">531+ commits</strong>).
+      </p>
+      <div class="pill-row">
+        <span class="pill accent">✓ Perched Cat &amp; Dangling Paw</span>
+        <span class="pill neon">✓ 5 Low-Poly Swimming Fish</span>
+        <span class="pill pink">✓ Procedural Wave Seaweed</span>
+        <span class="pill">✓ Realtime Water Ripples</span>
+      </div>
+      <div class="actions-row">
+        <a class="btn btn-primary" href="./agentic-ask-split.html">Open Split Ask Engine →</a>
+        <a class="btn btn-ghost" href="https://github.com/CooLguNxDD" target="_blank">GitHub Profile ↗</a>
+        <a class="btn btn-ghost" href="http://localhost:11000/CatPortfolio/" target="_blank">View Live React Port 11000 ↗</a>
+      </div>
+    </div>
+
+    <!-- Live Scene Inspector Bento Card -->
+    <div class="bento-card" style="--card-accent:var(--neon)">
+      <div class="eyebrow">3D Simulation Diagnostics</div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.4rem;">
+        <div class="pill neon" style="justify-content:space-between">
+          <span>Fish In Tank</span><strong id="fishCountVal">5 Active</strong>
+        </div>
+        <div class="pill accent" style="justify-content:space-between">
+          <span>Paw State</span><strong id="pawStateVal">Dangling · Ripling</strong>
+        </div>
+        <div class="pill" style="justify-content:space-between">
+          <span>Water Transparency</span><strong>40% Opacity Mesh</strong>
+        </div>
+        <div class="pill pink" style="justify-content:space-between">
+          <span>Camera Parallax</span><strong>Smooth Mouse Follow</strong>
+        </div>
+      </div>
+      <p style="margin-top:0.85rem;font-size:0.78rem;color:var(--fg-subtle);font-family:var(--mono)">
+        Tip: Move your mouse or scroll through the page to see the 3D tank rotate and camera parallax react in real time.
+      </p>
+    </div>
+  </section>
+
+  <!-- KPI Impact Strip -->
+  <section class="kpi-grid">
+    <div class="bento-card kpi-cell" style="--card-accent:var(--neon)">
+      <span class="lbl">WelTel AWS Bill</span>
+      <div class="val">$4k → $2.8k</div>
+      <span class="sub">−30% monthly savings</span>
+    </div>
+    <div class="bento-card kpi-cell" style="--card-accent:var(--amber)">
+      <span class="lbl">Clinical MCP Gateway</span>
+      <div class="val">42 Tools</div>
+      <span class="sub" style="color:var(--amber)">pgvector cosine router</span>
+    </div>
+    <div class="bento-card kpi-cell" style="--card-accent:var(--neon)">
+      <span class="lbl">DevOps Commits</span>
+      <div class="val">570+</div>
+      <span class="sub">EKS &amp; Terraform track</span>
+    </div>
+    <div class="bento-card kpi-cell" style="--card-accent:var(--pink)">
+      <span class="lbl">Mobile Track</span>
+      <div class="val">531+</div>
+      <span class="sub" style="color:var(--pink)">39+ Jira tickets shipped</span>
+    </div>
+  </section>
+
+  <!-- 4-Domain Project Bento Grid -->
+  <section class="proj-grid">
+    <article class="bento-card proj-card" style="--card-accent:var(--amber)">
+      <div>
+        <div class="eyebrow">AI &amp; Distributed Systems</div>
+        <h3 class="proj-title">OpenCat Tunnel &amp; MCP</h3>
+        <p class="proj-desc">~395 commits · 42 live clinical tools · multi-provider streaming Command Center with vector dispatching.</p>
+      </div>
+      <div class="tags">
+        <span class="tag">MCP</span><span class="tag">pgvector</span><span class="tag">LangGraph</span><span class="tag">FastAPI</span>
+      </div>
+    </article>
+
+    <article class="bento-card proj-card" style="--card-accent:var(--neon)">
+      <div>
+        <div class="eyebrow">DevOps &amp; Infrastructure</div>
+        <h3 class="proj-title">EKS, Terraform &amp; FinOps</h3>
+        <p class="proj-desc">Self-hosted ephemeral GitHub runners · multi-AZ VPC · cut AWS monthly burn by $1,200/mo.</p>
+      </div>
+      <div class="tags">
+        <span class="tag">AWS</span><span class="tag">Terraform</span><span class="tag">EKS</span><span class="tag">Docker</span>
+      </div>
+    </article>
+
+    <article class="bento-card proj-card" style="--card-accent:var(--pink)">
+      <div>
+        <div class="eyebrow">Mobile Development</div>
+        <h3 class="proj-title">WelTel React Native</h3>
+        <p class="proj-desc">Amplify GraphQL realtime clinical chat built from zero · offline sync · 531+ commits.</p>
+      </div>
+      <div class="tags">
+        <span class="tag">React Native</span><span class="tag">GraphQL</span><span class="tag">Amplify</span><span class="tag">iOS/Android</span>
+      </div>
+    </article>
+
+    <article class="bento-card proj-card" style="--card-accent:var(--cyan)">
+      <div>
+        <div class="eyebrow">Graphics &amp; Platform</div>
+        <h3 class="proj-title">Three.js Fish Tank Scene</h3>
+        <p class="proj-desc">Low-poly stylized tank with perched cat, procedural fish swimming, waving seaweed, and water particle ripples.</p>
+      </div>
+      <div class="tags">
+        <span class="tag">Three.js</span><span class="tag">WebGL</span><span class="tag">Shaders</span><span class="tag">Low-Poly</span>
+      </div>
+    </article>
+  </section>
+
+</main>
+
+<!-- Floating Realtime HUD -->
+<div class="tank-status-pill">
+  <div class="pulse-circle"></div>
+  <div>
+    <span style="font-weight:700">Three.js Fish Tank Background:</span> <span style="color:var(--neon)">60 FPS Active</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Three.js Low-Poly Stylized Fish Tank Engine Script
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+(function initFishTankScene() {
+  const container = document.getElementById('webgl-bg-container');
+  const canvas = document.getElementById('threeCanvas');
+  if (!container || !canvas || typeof THREE === 'undefined') return;
+
+  // Scene & Fog (Muted elegant dark background)
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x12161f, 0.032);
+
+  // Isometric / High-angle Perspective Camera
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 3.8, 9.2);
+
+  // WebGL Renderer with High Quality Flat Shading
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  // Lighting System (Crisp directional for faceted low-poly pop)
+  const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.65);
+  scene.add(ambientLight);
+
+  const mainSun = new THREE.DirectionalLight(0xffedd5, 1.4);
+  mainSun.position.set(5, 10, 6);
+  mainSun.castShadow = true;
+  mainSun.shadow.mapSize.width = 1024;
+  mainSun.shadow.mapSize.height = 1024;
+  scene.add(mainSun);
+
+  // Vibrant Pastel Underwater Point Lights
+  const lightWaterCyan = new THREE.PointLight(0x38bdf8, 2.0, 10);
+  lightWaterCyan.position.set(0, 0.5, 0);
+  scene.add(lightWaterCyan);
+
+  const lightAmberGlow = new THREE.PointLight(0xfbbf24, 1.8, 8);
+  lightAmberGlow.position.set(2.2, 2.5, 1.5);
+  scene.add(lightAmberGlow);
+
+  // Central Tank World Group
+  const tankWorld = new THREE.Group();
+  scene.add(tankWorld);
+  tankWorld.position.set(2.0, -0.4, 0); // Positioned nicely under the right / background
+
+  // ═══════════════════════════════════════════════════════════
+  // 1. Stylized Low-Poly Glass Fish Tank
+  // ═══════════════════════════════════════════════════════════
+  const tankWidth = 4.2, tankHeight = 3.0, tankDepth = 2.6;
+  const glassThickness = 0.08;
+
+  // Glass Material (Reflective, semi-transparent)
+  const matGlass = new THREE.MeshPhongMaterial({
+    color: 0x93c5fd,
+    transparent: true,
+    opacity: 0.28,
+    shininess: 90,
+    flatShading: true,
+    side: THREE.DoubleSide
+  });
+
+  // Base Rim & Bottom Stand
+  const matRim = new THREE.MeshStandardMaterial({
+    color: 0x334155,
+    roughness: 0.3,
+    metalness: 0.8,
+    flatShading: true
+  });
+
+  // Bottom Stand
+  const geomStand = new THREE.BoxGeometry(tankWidth + 0.3, 0.2, tankDepth + 0.3);
+  const meshStand = new THREE.Mesh(geomStand, matRim);
+  meshStand.position.y = -tankHeight / 2 - 0.1;
+  tankWorld.add(meshStand);
+
+  // Top Rim
+  const geomTopRim = new THREE.BoxGeometry(tankWidth + 0.15, 0.12, tankDepth + 0.15);
+  const meshTopRim = new THREE.Mesh(geomTopRim, matRim);
+  meshTopRim.position.y = tankHeight / 2 + 0.06;
+  tankWorld.add(meshTopRim);
+
+  // Glass Box (5 walls, open top)
+  const geomGlassWalls = new THREE.BoxGeometry(tankWidth, tankHeight, tankDepth);
+  const meshGlass = new THREE.Mesh(geomGlassWalls, matGlass);
+  tankWorld.add(meshGlass);
+
+  // ═══════════════════════════════════════════════════════════
+  // 2. Semi-Transparent Water Block & Surface
+  // ═══════════════════════════════════════════════════════════
+  const waterHeight = tankHeight * 0.82;
+  const geomWater = new THREE.BoxGeometry(tankWidth - glassThickness * 2, waterHeight, tankDepth - glassThickness * 2);
+  const matWater = new THREE.MeshPhongMaterial({
+    color: 0x0284c7,
+    transparent: true,
+    opacity: 0.42,
+    shininess: 100,
+    flatShading: true
+  });
+  const meshWater = new THREE.Mesh(geomWater, matWater);
+  meshWater.position.y = -tankHeight / 2 + waterHeight / 2;
+  tankWorld.add(meshWater);
+
+  const waterLevelY = meshWater.position.y + waterHeight / 2; // Water surface coordinate
+
+  // ═══════════════════════════════════════════════════════════
+  // 3. Gravel Bed & Low-Poly Rocks
+  // ═══════════════════════════════════════════════════════════
+  const geomGravel = new THREE.BoxGeometry(tankWidth - 0.1, 0.25, tankDepth - 0.1);
+  const matGravel = new THREE.MeshStandardMaterial({
+    color: 0xe2e8f0,
+    roughness: 0.9,
+    flatShading: true
+  });
+  const meshGravel = new THREE.Mesh(geomGravel, matGravel);
+  meshGravel.position.y = -tankHeight / 2 + 0.12;
+  tankWorld.add(meshGravel);
+
+  // Colorful Low-Poly Rocks
+  const rockColors = [0xf472b6, 0x38bdf8, 0xfbbf24, 0xa78bfa];
+  for (let i = 0; i < 14; i++) {
+    const rockGeom = new THREE.DodecahedronGeometry(0.12 + Math.random() * 0.14, 0);
+    const rockMat = new THREE.MeshStandardMaterial({
+      color: rockColors[i % rockColors.length],
+      flatShading: true,
+      roughness: 0.6
+    });
+    const rock = new THREE.Mesh(rockGeom, rockMat);
+    rock.position.set(
+      (Math.random() - 0.5) * (tankWidth - 0.8),
+      -tankHeight / 2 + 0.25 + Math.random() * 0.08,
+      (Math.random() - 0.5) * (tankDepth - 0.8)
+    );
+    rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+    tankWorld.add(rock);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 4. Waving Seaweed Stalks (Procedural Vertex Wave)
+  // ═══════════════════════════════════════════════════════════
+  const seaweedStalks = [];
+  const seaweedMat = new THREE.MeshStandardMaterial({
+    color: 0x10b981,
+    flatShading: true,
+    side: THREE.DoubleSide
+  });
+
+  function createSeaweedStalk(posX, posZ, height) {
+    const segments = 8;
+    const geom = new THREE.PlaneGeometry(0.22, height, 2, segments);
+    geom.translate(0, height / 2, 0); // Origin at root
+    const mesh = new THREE.Mesh(geom, seaweedMat);
+    mesh.position.set(posX, -tankHeight / 2 + 0.2, posZ);
+    mesh.rotation.y = Math.random() * Math.PI;
+    tankWorld.add(mesh);
+
+    // Save initial vertex positions for wave equation
+    const posAttr = geom.attributes.position;
+    const origPositions = posAttr.array.slice();
+    seaweedStalks.push({ mesh, geom, origPositions, height, speed: 1.8 + Math.random() });
+  }
+
+  createSeaweedStalk(-1.3, -0.4, 1.8);
+  createSeaweedStalk(-0.8, 0.4, 2.2);
+  createSeaweedStalk(1.2, -0.3, 1.9);
+
+  // ═══════════════════════════════════════════════════════════
+  // 5. The Low-Poly Cat Perched on Rim
+  // ═══════════════════════════════════════════════════════════
+  const catGroup = new THREE.Group();
+  tankWorld.add(catGroup);
+
+  // Perched on right front corner rim
+  catGroup.position.set(tankWidth / 2 - 0.6, tankHeight / 2 + 0.1, tankDepth / 2 - 0.2);
+  catGroup.rotation.y = -Math.PI / 4;
+
+  const matCatBody = new THREE.MeshStandardMaterial({
+    color: 0xf59e0b, // Amber coat
+    flatShading: true,
+    roughness: 0.4
+  });
+  const matCatWhite = new THREE.MeshStandardMaterial({
+    color: 0xffedd5,
+    flatShading: true,
+    roughness: 0.5
+  });
+  const matCatPink = new THREE.MeshStandardMaterial({
+    color: 0xf43f5e,
+    flatShading: true
+  });
+
+  // Cat Torso (Leaning slightly forward over rim)
+  const geomBody = new THREE.ConeGeometry(0.55, 1.1, 6);
+  geomBody.rotateX(Math.PI / 3.8);
+  const meshBody = new THREE.Mesh(geomBody, matCatBody);
+  meshBody.position.set(0, 0.45, 0.2);
+  catGroup.add(meshBody);
+
+  // Cat Head
+  const geomHead = new THREE.DodecahedronGeometry(0.38, 0);
+  const meshHead = new THREE.Mesh(geomHead, matCatBody);
+  meshHead.position.set(0, 0.95, 0.55);
+  catGroup.add(meshHead);
+
+  // Cat Snout
+  const geomSnout = new THREE.BoxGeometry(0.18, 0.14, 0.18);
+  const meshSnout = new THREE.Mesh(geomSnout, matCatWhite);
+  meshSnout.position.set(0, 0.88, 0.86);
+  catGroup.add(meshSnout);
+
+  // Cat Nose
+  const geomNose = new THREE.ConeGeometry(0.04, 0.05, 3);
+  geomNose.rotateX(-Math.PI / 2);
+  const meshNose = new THREE.Mesh(geomNose, matCatPink);
+  meshNose.position.set(0, 0.92, 0.96);
+  catGroup.add(meshNose);
+
+  // Cat Ears
+  const geomEar = new THREE.ConeGeometry(0.14, 0.28, 4);
+  const meshEarL = new THREE.Mesh(geomEar, matCatBody);
+  meshEarL.position.set(-0.24, 1.25, 0.5);
+  meshEarL.rotation.z = 0.25;
+  catGroup.add(meshEarL);
+
+  const meshEarR = new THREE.Mesh(geomEar, matCatBody);
+  meshEarR.position.set(0.24, 1.25, 0.5);
+  meshEarR.rotation.z = -0.25;
+  catGroup.add(meshEarR);
+
+  // Perched Front Paws
+  // Left Paw (Resting firmly on rim)
+  const geomPawL = new THREE.BoxGeometry(0.16, 0.35, 0.16);
+  const meshPawL = new THREE.Mesh(geomPawL, matCatWhite);
+  meshPawL.position.set(-0.28, 0.1, 0.6);
+  catGroup.add(meshPawL);
+
+  // Right Paw (Dangling down into water surface)
+  const geomPawDangle = new THREE.CylinderGeometry(0.08, 0.09, 0.7, 5);
+  const meshPawDangle = new THREE.Mesh(geomPawDangle, matCatWhite);
+  meshPawDangle.position.set(0.28, -0.15, 0.65);
+  meshPawDangle.rotation.x = 0.15;
+  catGroup.add(meshPawDangle);
+
+  // Paw tip touching water
+  const geomPawTip = new THREE.SphereGeometry(0.1, 4, 4);
+  const meshPawTip = new THREE.Mesh(geomPawTip, matCatWhite);
+  meshPawTip.position.set(0.28, -0.48, 0.72);
+  catGroup.add(meshPawTip);
+
+  // Cat Tail (Articulated Wiggling Tail)
+  const tailGroup = new THREE.Group();
+  tailGroup.position.set(0, 0.2, -0.25);
+  catGroup.add(tailGroup);
+
+  const geomTail = new THREE.CylinderGeometry(0.06, 0.08, 0.8, 5);
+  geomTail.translate(0, 0.4, 0);
+  const meshTail = new THREE.Mesh(geomTail, matCatBody);
+  meshTail.rotation.x = -Math.PI / 3;
+  tailGroup.add(meshTail);
+
+  // ═══════════════════════════════════════════════════════════
+  // 6. Colorful Low-Poly Swimming Fish (Procedural Math)
+  // ═══════════════════════════════════════════════════════════
+  const fishList = [];
+  const fishPalettes = [
+    { body: 0xf43f5e, fin: 0xfda4af }, // Coral Pink
+    { body: 0x38bdf8, fin: 0xbae6fd }, // Sky Blue
+    { body: 0xf59e0b, fin: 0xfef08a }, // Amber Gold
+    { body: 0xa855f7, fin: 0xe9d5ff }, // Neon Violet
+    { body: 0x10b981, fin: 0xa7f3d0 }, // Emerald Green
+  ];
+
+  function createLowPolyFish(index) {
+    const fishGroup = new THREE.Group();
+    const colors = fishPalettes[index % fishPalettes.length];
+
+    const matFishBody = new THREE.MeshStandardMaterial({
+      color: colors.body,
+      flatShading: true,
+      roughness: 0.3
+    });
+    const matFishFin = new THREE.MeshStandardMaterial({
+      color: colors.fin,
+      flatShading: true,
+      roughness: 0.4,
+      transparent: true,
+      opacity: 0.85
+    });
+
+    // Fish Body (Faceted Cone/Diamond)
+    const geomFishBody = new THREE.ConeGeometry(0.14, 0.55, 5);
+    geomFishBody.rotateZ(-Math.PI / 2);
+    const meshBody = new THREE.Mesh(geomFishBody, matFishBody);
+    fishGroup.add(meshBody);
+
+    // Tail Fin
+    const geomTailFin = new THREE.BufferGeometry();
+    const vertices = new Float32Array([
+      -0.25, 0, 0,
+      -0.48, 0.18, 0,
+      -0.48, -0.18, 0
+    ]);
+    geomTailFin.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geomTailFin.computeVertexNormals();
+    const meshTailFin = new THREE.Mesh(geomTailFin, matFishFin);
+    fishGroup.add(meshTailFin);
+
+    // Dorsal Fin
+    const geomDorsal = new THREE.BufferGeometry();
+    const dorsalVerts = new Float32Array([
+      0.05, 0.12, 0,
+      -0.12, 0.24, 0,
+      -0.15, 0.1, 0
+    ]);
+    geomDorsal.setAttribute('position', new THREE.BufferAttribute(dorsalVerts, 3));
+    geomDorsal.computeVertexNormals();
+    const meshDorsal = new THREE.Mesh(geomDorsal, matFishFin);
+    fishGroup.add(meshDorsal);
+
+    tankWorld.add(fishGroup);
+
+    // Parametric trajectory variables:
+    // x(t) = R * cos(omega * t + phase)
+    // z(t) = R * sin(omega * t + phase) * aspect
+    // y(t) = y0 + A * sin(2 * omega * t + phase)
+    return {
+      group: fishGroup,
+      R: 0.9 + Math.random() * 0.75,
+      aspectZ: 0.65 + Math.random() * 0.3,
+      omega: 0.8 + Math.random() * 0.5,
+      phase: (index / 5) * Math.PI * 2,
+      y0: -tankHeight / 2 + 0.6 + (index / 5) * (waterHeight - 1.0),
+      A: 0.18 + Math.random() * 0.12,
+      tailMesh: meshTailFin
+    };
+  }
+
+  for (let i = 0; i < 5; i++) {
+    fishList.push(createLowPolyFish(i));
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 7. Water Particles & Rising Bubbles Emitter
+  // ═══════════════════════════════════════════════════════════
+  const bubbleCount = 45;
+  const bubbleGeom = new THREE.DodecahedronGeometry(0.04, 0);
+  const bubbleMat = new THREE.MeshPhongMaterial({
+    color: 0xbae6fd,
+    transparent: true,
+    opacity: 0.65,
+    shininess: 100,
+    flatShading: true
+  });
+
+  const bubbles = [];
+  for (let i = 0; i < bubbleCount; i++) {
+    const bubble = new THREE.Mesh(bubbleGeom, bubbleMat);
+    bubble.position.set(
+      (Math.random() - 0.5) * (tankWidth - 0.6),
+      -tankHeight / 2 + Math.random() * waterHeight,
+      (Math.random() - 0.5) * (tankDepth - 0.6)
+    );
+    bubble.scale.setScalar(0.5 + Math.random() * 0.8);
+    tankWorld.add(bubble);
+    bubbles.push({
+      mesh: bubble,
+      speedY: 0.008 + Math.random() * 0.012,
+      wobbleSpeed: 2 + Math.random() * 3,
+      seed: Math.random() * 10
+    });
+  }
+
+  // Expanding Water Ripples from Dangling Paw
+  const ripples = [];
+  const rippleMat = new THREE.MeshBasicMaterial({
+    color: 0x7dd3fc,
+    transparent: true,
+    opacity: 0.6,
+    side: THREE.DoubleSide
+  });
+
+  for (let i = 0; i < 3; i++) {
+    const ripGeom = new THREE.RingGeometry(0.06, 0.09, 12);
+    ripGeom.rotateX(-Math.PI / 2);
+    const ripMesh = new THREE.Mesh(ripGeom, rippleMat.clone());
+    ripMesh.position.set(
+      catGroup.position.x + 0.28,
+      waterLevelY + 0.01,
+      catGroup.position.z + 0.72
+    );
+    tankWorld.add(ripMesh);
+    ripples.push({ mesh: ripMesh, scale: 0.1 + i * 0.4, maxScale: 1.6, speed: 0.012 });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 8. Interactivity, Parallax & UI Buttons
+  // ═══════════════════════════════════════════════════════════
+  let mouseX = 0, mouseY = 0;
+  let targetCamX = 0, targetCamY = 3.8;
+  let scrollPercent = 0;
+  let isSeaweedActive = true;
+
+  window.addEventListener('mousemove', (e) => {
+    mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+    mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+  });
+
+  window.addEventListener('scroll', () => {
+    const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    scrollPercent = winScroll / height;
+    const bar = document.getElementById('progressBar');
+    if (bar) bar.style.width = (scrollPercent * 100) + '%';
+  });
+
+  // HUD Actions
+  document.getElementById('btnFeedFish')?.addEventListener('click', () => {
+    // Spawn burst of floating food pellets
+    for (let i = 0; i < 8; i++) {
+      const foodGeom = new THREE.DodecahedronGeometry(0.05, 0);
+      const foodMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, flatShading: true });
+      const food = new THREE.Mesh(foodGeom, foodMat);
+      food.position.set((Math.random() - 0.5) * 2, waterLevelY + 0.4, (Math.random() - 0.5) * 1.5);
+      tankWorld.add(food);
+      setTimeout(() => tankWorld.remove(food), 3500);
+    }
+  });
+
+  document.getElementById('btnPawSplash')?.addEventListener('click', () => {
+    // Animate paw dip
+    meshPawDangle.position.y = -0.3;
+    setTimeout(() => { meshPawDangle.position.y = -0.15; }, 400);
+    // Expand ripples
+    ripples.forEach(r => { r.scale = 0.1; r.mesh.material.opacity = 0.9; });
+  });
+
+  document.getElementById('btnToggleSeaweed')?.addEventListener('click', (e) => {
+    isSeaweedActive = !isSeaweedActive;
+    e.target.classList.toggle('active', isSeaweedActive);
+  });
+
+  // Resize Handler
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // 9. Main Animation Render Loop
+  // ═══════════════════════════════════════════════════════════
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const elapsedTime = clock.getElapsedTime();
+
+    // Smooth Mouse Camera Parallax + Scroll Tracking
+    targetCamX += (mouseX * 0.9 - targetCamX) * 0.05;
+    targetCamY += (3.8 - mouseY * 0.6 - targetCamY) * 0.05;
+
+    camera.position.x = targetCamX;
+    camera.position.y = targetCamY - scrollPercent * 2.5;
+    camera.position.z = 9.2 - scrollPercent * 1.5;
+    camera.lookAt(tankWorld.position.x * 0.6, -scrollPercent * 1.8, 0);
+
+    // Subtle gentle tank idle rocking
+    tankWorld.rotation.y = Math.sin(elapsedTime * 0.4) * 0.04;
+
+    // Cat Tail Gentle Idle Wiggle
+    tailGroup.rotation.z = Math.sin(elapsedTime * 3.2) * 0.35;
+    tailGroup.rotation.y = Math.cos(elapsedTime * 2.5) * 0.2;
+
+    // Cat Head slight inquisitive tilt
+    meshHead.rotation.z = Math.sin(elapsedTime * 1.2) * 0.08;
+    meshHead.rotation.x = Math.cos(elapsedTime * 0.9) * 0.05;
+
+    // Waving Seaweed Math Equation: x_offset = sin(time + y * 0.5) * amp
+    if (isSeaweedActive) {
+      seaweedStalks.forEach(stalk => {
+        const posAttr = stalk.geom.attributes.position;
+        const orig = stalk.origPositions;
+        for (let i = 0; i < posAttr.count; i++) {
+          const y = orig[i * 3 + 1];
+          const amp = (y / stalk.height) * 0.22;
+          posAttr.array[i * 3] = orig[i * 3] + Math.sin(elapsedTime * stalk.speed + y * 1.6) * amp;
+        }
+        posAttr.needsUpdate = true;
+      });
+    }
+
+    // Fish Swimming Parametric Math & Orientation
+    fishList.forEach((fish, idx) => {
+      const t = elapsedTime * fish.omega + fish.phase;
+      const nextT = t + 0.06;
+
+      // Current position
+      const x = fish.R * Math.cos(t);
+      const z = fish.R * Math.sin(t) * fish.aspectZ;
+      const y = fish.y0 + fish.A * Math.sin(2 * t);
+
+      // Next position for lookAt velocity vector
+      const nextX = fish.R * Math.cos(nextT);
+      const nextZ = fish.R * Math.sin(nextT) * fish.aspectZ;
+      const nextY = fish.y0 + fish.A * Math.sin(2 * nextT);
+
+      fish.group.position.set(x, y, z);
+      fish.group.lookAt(nextX, nextY, nextZ);
+
+      // Tail flutter
+      fish.tailMesh.rotation.y = Math.sin(elapsedTime * 14 + idx) * 0.38;
+    });
+
+    // Rising Bubbles Animation
+    bubbles.forEach(b => {
+      b.mesh.position.y += b.speedY;
+      b.mesh.position.x += Math.sin(elapsedTime * b.wobbleSpeed + b.seed) * 0.003;
+      if (b.mesh.position.y > waterLevelY) {
+        b.mesh.position.y = -tankHeight / 2 + 0.25;
+        b.mesh.position.x = (Math.random() - 0.5) * (tankWidth - 0.6);
+      }
+    });
+
+    // Expanding Ripples from Dangling Paw
+    ripples.forEach(r => {
+      r.scale += r.speed;
+      r.mesh.scale.set(r.scale, r.scale, r.scale);
+      r.mesh.material.opacity = Math.max(0, 0.7 * (1 - r.scale / r.maxScale));
+      if (r.scale >= r.maxScale) {
+        r.scale = 0.1;
+      }
+    });
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+})();
+</script>
+</body>
+</html>

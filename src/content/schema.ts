@@ -324,6 +324,45 @@ const Scene2d = z.object({
   }),
 });
 
+/**
+ * WebGL aquarium scene — one flat list of fish specimens (bounded 0..1
+ * numerics). Species reuses DomainId for accent tokens; no raw colours.
+ * Append-only once emitted into a persisted bake.
+ */
+const FishSpecimen = z.object({
+  slug: z.string(),
+  title: z.string(),
+  species: DomainId,
+  size: z.number().min(0).max(1).default(0.5),
+  depth: z.number().min(0).max(1).default(0.5),
+  speed: z.number().min(0).max(1).default(0.5),
+  glow: z.number().min(0).max(1).default(0.3),
+  school: z.number().int().min(0).max(15).default(0),
+  tags: z.array(z.string()).default([]),
+  blurb: z.string().optional(),
+  description: z.string().optional(),
+  detailRef: z.string().optional(),
+  link: Link.optional(),
+  metrics: z.array(Stat).default([]),
+});
+
+const FishTank = z.object({
+  type: z.literal("fishTank"),
+  id: z.string(),
+  layout: BlockLayout,
+  props: z.object({
+    renderer: z.literal("webgl").default("webgl"),
+    title: z.string().optional(),
+    fish: z.array(FishSpecimen).max(40).default([]),
+    tankTheme: z.string().optional(),
+    cameraFocus: z.string().optional(),
+    highlightSlugs: z.array(z.string()).default([]),
+    curationLabel: z.string().optional(),
+    palette: AccentId.optional(),
+    caption: z.string().optional(),
+  }),
+});
+
 /** Composite DSL — recursive containers + typed leaves (depth ≤ 3, ≤ 40 nodes). */
 const CompositeLayoutSpec = z.object({
   kind: z.enum(["grid", "stack", "split", "cards"]),
@@ -594,6 +633,7 @@ export const LayoutSchema = z.object({
       CostSim,
       Composite,
       Scene2d,
+      FishTank,
     ]),
   ),
 });

@@ -19,6 +19,7 @@ import {
   CostSim,
   Composite,
   Scene2d,
+  FishTank,
 } from "@/blocks";
 
 export type Block = Layout["blocks"][number];
@@ -45,4 +46,5 @@ export const REGISTRY = {
   costSim: CostSim,
   composite: Composite,
   scene2d: Scene2d,
+  fishTank: FishTank,
 } satisfies { [K in BlockType]: ComponentType<PropsOf<K>> };

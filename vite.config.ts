@@ -18,5 +18,15 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Keep three out of the main index chunk (~600KB+).
+        manualChunks(id: string) {
+          if (id.includes("node_modules/three")) return "three"
+        },
+      },
+    },
+  },
 })
 
