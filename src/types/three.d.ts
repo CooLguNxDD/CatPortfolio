@@ -5,6 +5,7 @@ declare module "three" {
     getHex(): number
     getHexString(): string
     set(color: string | number | Color): this
+    clone(): Color
   }
   export class Vector2 {
     x: number
@@ -25,6 +26,7 @@ declare module "three" {
     distanceTo(v: Vector3): number
     setScalar(s: number): this
     multiplyScalar(s: number): this
+    normalize(): this
   }
   export class Euler {
     x: number
@@ -67,18 +69,40 @@ declare module "three" {
   export class PerspectiveCamera extends Camera {
     constructor(fov?: number, aspect?: number, near?: number, far?: number)
   }
+  export class OrthographicCamera extends Camera {
+    constructor(
+      left?: number,
+      right?: number,
+      top?: number,
+      bottom?: number,
+      near?: number,
+      far?: number,
+    )
+  }
   export class WebGLRenderer {
     domElement: HTMLCanvasElement
     constructor(params?: Record<string, unknown>)
     setPixelRatio(n: number): void
+    getPixelRatio(): number
     setSize(w: number, h: number, updateStyle?: boolean): void
     render(scene: Scene, camera: Camera): void
+    setRenderTarget(target: WebGLRenderTarget | null): void
+    clear(color?: boolean, depth?: boolean, stencil?: boolean): void
     dispose(): void
   }
   export class WebGLRenderTarget {
+    texture: Texture
     constructor(width: number, height: number, options?: Record<string, unknown>)
     setSize(width: number, height: number): void
     dispose(): void
+  }
+  export interface IUniform<T = unknown> {
+    value: T
+  }
+  export const UniformsLib: Record<string, Record<string, IUniform>>
+  export const UniformsUtils: {
+    merge(uniforms: Record<string, IUniform>[]): Record<string, IUniform>
+    clone(uniforms: Record<string, IUniform>): Record<string, IUniform>
   }
   export const HalfFloatType: number
   export const RGBAFormat: number
@@ -273,6 +297,8 @@ declare module "three" {
   export class EdgesGeometry extends BufferGeometry {
     constructor(geometry?: BufferGeometry)
   }
+  export const LinearFilter: number
+  export const NearestFilter: number
   export const DoubleSide: number
   export const FrontSide: number
   export const BackSide: number

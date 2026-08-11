@@ -249,6 +249,68 @@ export function resolveTankThemePalette(): TankThemePalette {
   }
 }
 
+/** Render budget for the tank's procedural shaders. */
+export interface TankQuality {
+  tier: "low" | "high"
+  /** fbm octave count compiled into every tank shader. */
+  octaves: number
+  /** God-ray cone count. */
+  rayCount: number
+  /** Water plane segment counts [width, depth]. */
+  waterSegments: [number, number]
+  /** Fullscreen underwater wobble pass enabled. */
+  wobble: boolean
+  /** Multiplier on shader time — 0 freezes animation for reduce-motion users. */
+  timeScale: number
+}
+
+const HIGH_QUALITY: TankQuality = {
+  tier: "high",
+  octaves: 4,
+  rayCount: 9,
+  waterSegments: [64, 48],
+  wobble: true,
+  timeScale: 1,
+}
+
+const LOW_QUALITY: TankQuality = {
+  tier: "low",
+  octaves: 3,
+  rayCount: 5,
+  waterSegments: [32, 24],
+  wobble: false,
+  timeScale: 1,
+}
+
+/** Safe media-query probe — SSR and bare-node tests have no matchMedia. */
+function prefers(query: string): boolean {
+  const mm = (globalThis as { matchMedia?: (q: string) => MediaQueryList }).matchMedia
+  if (typeof mm !== "function") return false
+  try {
+    return mm.call(globalThis, query).matches
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Resolve the shader budget from the device and the user's motion preference.
+ * SSR / tests fall back to the full-quality defaults without throwing.
+ */
+export function resolveTankQuality(): TankQuality {
+  const win = (globalThis as { devicePixelRatio?: number; innerWidth?: number })
+
+  const coarse = prefers("(pointer: coarse)")
+  const dense = (win.devicePixelRatio || 1) > 2 && (win.innerWidth || 1280) < 900
+  const base = coarse || dense ? { ...LOW_QUALITY } : { ...HIGH_QUALITY }
+
+  if (prefers("(prefers-reduced-motion: reduce)")) {
+    base.timeScale = 0
+    base.wobble = false
+  }
+  return base
+}
+
 /** Linear mix of two 0xRRGGBB colours (t = weight of b). */
 export function mixHex(a: number, b: number, t: number): number {
   const u = Math.max(0, Math.min(1, t))
