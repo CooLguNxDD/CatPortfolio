@@ -56,7 +56,119 @@ export interface TankComposerBundle {
 }
 
 /** Bokeh strength when a specimen is locked; 0 outside focus mode. */
-const FOCUS_MAX_BLUR = 0.012
+const FOCUS_MAX_BLUR = 0.016
+
+/**
+ * Background-Only Depth-of-Field Shader:
+ * Keeps the focused specimen 100% crisp within a generous focal deadband (±4.0 units),
+ * and smoothly applies creamy bokeh blur ONLY to the background behind the subject.
+ */
+const BACKGROUND_BOKEH_FRAGMENT = /* glsl */ `
+  #include <common>
+  #include <packing>
+
+  varying vec2 vUv;
+  uniform sampler2D tColor;
+  uniform sampler2D tDepth;
+
+  uniform float maxblur;
+  uniform float aperture;
+  uniform float nearClip;
+  uniform float farClip;
+  uniform float focus;
+  uniform float aspect;
+
+  float getDepth( const in vec2 screenPosition ) {
+    #if DEPTH_PACKING == 1
+    return unpackRGBAToDepth( texture2D( tDepth, screenPosition ) );
+    #else
+    return texture2D( tDepth, screenPosition ).x;
+    #endif
+  }
+
+  float getViewZ( const in float depth ) {
+    #if PERSPECTIVE_CAMERA == 1
+    return perspectiveDepthToViewZ( depth, nearClip, farClip );
+    #else
+    return orthographicDepthToViewZ( depth, nearClip, farClip );
+    #endif
+  }
+
+  void main() {
+    vec4 centerCol = texture2D( tColor, vUv );
+    if ( focus <= 0.0 || maxblur <= 0.0 ) {
+      gl_FragColor = centerCol;
+      return;
+    }
+
+    vec2 aspectcorrect = vec2( 1.0, aspect );
+    float viewZ = getViewZ( getDepth( vUv ) );
+    float dist = -viewZ; // positive distance from camera
+    float diff = dist - focus;
+
+    // FOCAL DEADBAND: ±4.2 world units around focused fish is 100% SHARP (ZERO BLUR!)
+    float focalBand = 4.2;
+    if ( abs(diff) <= focalBand ) {
+      gl_FragColor = centerCol;
+      return;
+    }
+
+    // Only blur the background (objects behind the focused specimen)
+    float blurAmount = 0.0;
+    if ( diff > focalBand ) {
+      float bgDelta = diff - focalBand;
+      blurAmount = clamp( bgDelta * aperture * 2.2, 0.0, maxblur );
+    }
+
+    if ( blurAmount <= 0.0001 ) {
+      gl_FragColor = centerCol;
+      return;
+    }
+
+    vec2 dofblur = vec2( blurAmount );
+    vec2 dofblur9 = dofblur * 0.9;
+    vec2 dofblur7 = dofblur * 0.7;
+    vec2 dofblur4 = dofblur * 0.4;
+
+    vec4 col = vec4( 0.0 );
+    col += texture2D( tColor, vUv.xy );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.0,   0.4  ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.15,  0.37 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.29,  0.29 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.37,  0.15 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.40,  0.0  ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.37, -0.15 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.29, -0.29 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.15, -0.37 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.0,  -0.4  ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.15,  0.37 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.29,  0.29 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.37,  0.15 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.4,   0.0  ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.37, -0.15 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.29, -0.29 ) * aspectcorrect ) * dofblur );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.15, -0.37 ) * aspectcorrect ) * dofblur );
+
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.15,  0.37 ) * aspectcorrect ) * dofblur9 );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.37,  0.15 ) * aspectcorrect ) * dofblur9 );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.37, -0.15 ) * aspectcorrect ) * dofblur9 );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.15, -0.37 ) * aspectcorrect ) * dofblur9 );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.15,  0.37 ) * aspectcorrect ) * dofblur7 );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.37,  0.15 ) * aspectcorrect ) * dofblur7 );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.37, -0.15 ) * aspectcorrect ) * dofblur7 );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.15, -0.37 ) * aspectcorrect ) * dofblur7 );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.29,  0.29 ) * aspectcorrect ) * dofblur4 );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.40,  0.0  ) * aspectcorrect ) * dofblur4 );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.29,  0.29 ) * aspectcorrect ) * dofblur4 );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.0,   0.4  ) * aspectcorrect ) * dofblur4 );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.29, -0.29 ) * aspectcorrect ) * dofblur4 );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.0,  -0.4  ) * aspectcorrect ) * dofblur4 );
+    col += texture2D( tColor, vUv.xy + ( vec2(  0.29, -0.29 ) * aspectcorrect ) * dofblur4 );
+    col += texture2D( tColor, vUv.xy + ( vec2( -0.4,   0.0  ) * aspectcorrect ) * dofblur4 );
+
+    gl_FragColor = col / 33.0;
+  }
+`
 
 export function createTankComposer(
   renderer: THREE.WebGLRenderer,
@@ -92,9 +204,13 @@ export function createTankComposer(
   const aspect = new THREE.Vector2(1, height / Math.max(1, width))
 
   if (effects) {
-    // Aperture stays modest: a shallow depth of field on a wide tank reads as
-    // a broken renderer, not as a camera.
-    bokeh = new BokehPass(scene, camera, { focus: 20, aperture: 0.0004, maxblur: 0 })
+    // Bokeh pass patched with background-only depth of field
+    bokeh = new BokehPass(scene, camera, { focus: 20, aperture: 0.0012, maxblur: 0 })
+    const mat = (bokeh as unknown as { materialBokeh?: THREE.ShaderMaterial }).materialBokeh
+    if (mat) {
+      mat.fragmentShader = BACKGROUND_BOKEH_FRAGMENT
+      mat.needsUpdate = true
+    }
     composer.addPass(bokeh)
 
     bloom = new UnrealBloomPass(
@@ -117,7 +233,7 @@ export function createTankComposer(
   return {
     render(state: TankFrameState) {
       if (bokeh) {
-        // Blur only while a specimen is locked; free-swimming views stay sharp.
+        // Blur only background while a specimen is locked; focused specimen stays 100% sharp.
         const focusing = state.focusDistance > 0
         bokeh.uniforms.focus.value = focusing ? state.focusDistance : 20
         bokeh.uniforms.maxblur.value = focusing ? FOCUS_MAX_BLUR : 0
