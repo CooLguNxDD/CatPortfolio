@@ -18,6 +18,10 @@ import { Button } from "@/components/ui/button"
 import type { DemoSearch } from "@/router"
 import { clearDemoSearch, mergeDemoSearch } from "@/lib/demoSearch"
 
+// Stable identity so the router selector doesn't return a fresh object
+// (and re-render the shell) every time `location.search` is undefined.
+const EMPTY_SEARCH: DemoSearch = {}
+
 const ACCENTS: { id: Accent; label: string }[] = [
   { id: "amber", label: "Amber" },
   { id: "pink", label: "Pink" },
@@ -45,7 +49,7 @@ function App() {
 
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const liveSearch = useRouterState({
-    select: (s) => (s.location.search as DemoSearch | undefined) ?? {},
+    select: (s) => (s.location.search as DemoSearch | undefined) ?? EMPTY_SEARCH,
   })
   const searchJ = liveSearch?.j
 

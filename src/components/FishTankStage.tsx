@@ -8,7 +8,7 @@
  * component only reads the resolved value off useFishTank for the dossier.
  */
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { Link } from "@tanstack/react-router"
 import { FishTankView } from "@/blocks/FishTank"
 import { FishDossier } from "@/components/fish/FishDossier"
@@ -36,11 +36,29 @@ export function FishTankStage({
 }: FishTankStageProps) {
   const tank = useFishTank(layout)
 
+  // Element focused when the dossier opened, so Escape hands focus back
+  // instead of dropping keyboard users at the top of the document.
+  const dossierOpenerRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!tank.focusedSlug) {
+      dossierOpenerRef.current = null
+      return
+    }
+    if (dossierOpenerRef.current) return
+    const active = document.activeElement
+    dossierOpenerRef.current =
+      active instanceof HTMLElement && active !== document.body ? active : null
+  }, [tank.focusedSlug])
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return
       if (tank.focusedSlug) {
+        const opener = dossierOpenerRef.current
+        dossierOpenerRef.current = null
         fishBus.emit("fish:release")
+        if (opener && document.contains(opener)) opener.focus()
         return
       }
       if (tank.tankScene === "tank") fishBus.emit("tank:surface")
