@@ -13,19 +13,11 @@ import {
   type LayoutLoadResult,
 } from "@/content/loadLayout"
 import { useLayoutStore } from "@/store"
+import { isValidJobId } from "@/lib/jobId"
 
 /** Defines the TanStack Query key for resolving the demo layout. */
 export const demoLayoutQueryKey = (j: string | null | undefined) =>
   ["layout", "demo", j ?? "none"] as const
-
-// Mirrors the backend contract exactly: plugins/portfolio_plugin/routes.py
-// JOB_ID_RE — anything else 400s server-side, so don't bother firing the
-// fetch (and don't hydrate the store / query key with garbage).
-const JOB_ID_RE = /^[a-z0-9_]{1,80}$/
-
-function isValidJobId(id: string): boolean {
-  return JOB_ID_RE.test(id)
-}
 
 /**
  * Resolves the active demo short id from URL param first, then temporary store.

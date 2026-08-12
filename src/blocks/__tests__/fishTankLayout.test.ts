@@ -6,11 +6,15 @@ import {
   focusedOrbit,
   cameraFromOrbit,
   stageOrbitTarget,
+  yearsToDepthBandHalf,
+  DEFAULT_DEPTH_WOBBLE,
   MAX_ORBIT_RADIUS,
   MIN_ORBIT_RADIUS,
   WATER_Y,
   FLOOR_Y,
   TANK_CENTER_Y,
+  SWIM_Y_MAX,
+  SWIM_Y_MIN,
   type FishSpecimenInput,
 } from "../fishTankLayout"
 
@@ -58,6 +62,22 @@ describe("computeFishPose", () => {
     expect(depthToY(0)).toBeGreaterThan(depthToY(1))
   })
 
+  it("keeps the shoal below the waterline with a visible surface gap", () => {
+    expect(depthToY(0)).toBeLessThanOrEqual(WATER_Y - 6.5)
+    const pose = computeFishPose(sample({ depth: 0 }), 0)
+    expect(pose.position.y).toBeLessThanOrEqual(WATER_Y - 4)
+  })
+
+  it("scatters swim paths across most of the tank, not the middle third", () => {
+    const seeds = Array.from({ length: 24 }, (_, i) =>
+      computeFishPose(sample({ slug: `scatter-${i}`, school: i % 4 }), 0),
+    )
+    const xs = seeds.map((p) => p.center.x)
+    const zs = seeds.map((p) => p.center.z)
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(28)
+    expect(Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(16)
+  })
+
   it("floor is deeper than tank mid (not a mid-frame bed)", () => {
     expect(FLOOR_Y).toBeLessThan(TANK_CENTER_Y)
     expect(FLOOR_Y).toBeLessThan(WATER_Y - 10)
@@ -103,5 +123,54 @@ describe("clamp01", () => {
     expect(clamp01(-1)).toBe(0)
     expect(clamp01(2)).toBe(1)
     expect(clamp01(Number.NaN)).toBe(0.5)
+  })
+})
+
+describe("yearsToDepthBandHalf", () => {
+  it("falls back to the default wobble when there is no tank timeSpan", () => {
+    expect(yearsToDepthBandHalf(2020, 2021, undefined)).toBe(DEFAULT_DEPTH_WOBBLE)
+  })
+
+  it("falls back to the default wobble when the fish has no dates", () => {
+    expect(yearsToDepthBandHalf(undefined, undefined, { min: 2019, max: 2026 })).toBe(
+      DEFAULT_DEPTH_WOBBLE,
+    )
+  })
+
+  it("a project spanning the whole tank range gets close to the max band", () => {
+    const half = yearsToDepthBandHalf(2019, 2026, { min: 2019, max: 2026 })
+    expect(half).toBeCloseTo((SWIM_Y_MAX - SWIM_Y_MIN) / 2, 5)
+  })
+
+  it("a short project relative to a long tank range gets the default wobble (floored)", () => {
+    const half = yearsToDepthBandHalf(2025, 2025.1, { min: 2019, max: 2026 })
+    expect(half).toBe(DEFAULT_DEPTH_WOBBLE)
+  })
+
+  it("longer duration yields a taller band than shorter duration", () => {
+    const short = yearsToDepthBandHalf(2025, 2025.5, { min: 2019, max: 2026 })
+    const long = yearsToDepthBandHalf(2020, 2025, { min: 2019, max: 2026 })
+    expect(long).toBeGreaterThan(short)
+  })
+})
+
+describe("computeFishPose depth band", () => {
+  it("a fish with a wide depthBandHalf wanders further than the default", () => {
+    const narrow = sample({ depthBandHalf: DEFAULT_DEPTH_WOBBLE })
+    const wide = sample({ depthBandHalf: 10 })
+    let maxNarrow = -Infinity
+    let maxWide = -Infinity
+    for (let t = 0; t < 20; t += 0.25) {
+      maxNarrow = Math.max(maxNarrow, Math.abs(computeFishPose(narrow, t).position.y - computeFishPose(narrow, 0).center.y))
+      maxWide = Math.max(maxWide, Math.abs(computeFishPose(wide, t).position.y - computeFishPose(wide, 0).center.y))
+    }
+    expect(maxWide).toBeGreaterThan(maxNarrow)
+  })
+
+  it("without depthBandHalf, behaves exactly as before (default wobble)", () => {
+    const fish = sample()
+    const pose = computeFishPose(fish, 1.5)
+    expect(pose.position.y).toBeGreaterThanOrEqual(FLOOR_Y)
+    expect(pose.position.y).toBeLessThanOrEqual(WATER_Y)
   })
 })

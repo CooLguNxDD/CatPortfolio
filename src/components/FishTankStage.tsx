@@ -14,6 +14,8 @@ import { FishTankView } from "@/blocks/FishTank"
 import { FishDossier } from "@/components/fish/FishDossier"
 import { FishFlatGrid } from "@/components/fish/FishFlatGrid"
 import { FishTankChrome } from "@/components/fish/FishTankChrome"
+import { SonarMiniMap } from "@/components/fish/SonarMiniMap"
+import { DepthScrubber } from "@/components/fish/DepthScrubber"
 import { useFishTank } from "@/hooks/useFishTank"
 import { fishBus } from "@/fish/fishBus"
 import { canDiveOnScroll } from "@/fish/tankMachine"
@@ -172,11 +174,8 @@ export function FishTankStage({
             domains={tank.domains}
             curationLabel={tank.curationLabel}
           />
-          <div className="ft-depthmarks" aria-hidden>
-            <div>▸ Surface · shipped now</div>
-            <div>▸ Mid water · last year</div>
-            <div>▸ Deep bed · archived</div>
-          </div>
+          <SonarMiniMap fish={tank.fish} />
+          <DepthScrubber />
         </>
       )}
 

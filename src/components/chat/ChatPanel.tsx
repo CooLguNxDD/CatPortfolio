@@ -132,16 +132,22 @@ export function ChatPanel() {
         ? patchDirective(sessionShortId!)
         : ENRICHMENT_DIRECTIVE;
 
-      // Parallel fast path only when NOT in a short_id patch session.
-      const layoutPromise = patchMode
-        ? Promise.resolve({ layout: null as never, source: "snapshot" as const })
-        : loadLayoutForQuery(userMessageText, { timeoutMs: 10000 });
-      const composePromise = patchMode
-        ? Promise.resolve({ layout: null as never, source: "snapshot" as const })
+      // Parallel fast path only when NOT in a short_id patch session. Both
+      // loaders already fail-open internally, but attach .catch at creation
+      // (not just in `finally`) so a promise that rejects before it's
+      // awaited never surfaces as an unhandled rejection.
+      const snapshotFallback = { layout: null as never, source: "snapshot" as const };
+      const layoutPromise: Promise<LayoutLoadResult> = patchMode
+        ? Promise.resolve(snapshotFallback)
+        : loadLayoutForQuery(userMessageText, { timeoutMs: 10000 }).catch(
+            () => snapshotFallback,
+          );
+      const composePromise: Promise<LayoutLoadResult> = patchMode
+        ? Promise.resolve(snapshotFallback)
         : composeLayoutLive(
             { query: userMessageText, refresh: true },
             { timeoutMs: 12000 },
-          );
+          ).catch(() => snapshotFallback);
 
       try {
         const result = await askOct(userMessageText, sessionId, directive);
@@ -202,8 +208,6 @@ export function ChatPanel() {
           }
         }
       } finally {
-        void layoutPromise.catch(() => undefined);
-        void composePromise.catch(() => undefined);
         setPending(false);
       }
     },

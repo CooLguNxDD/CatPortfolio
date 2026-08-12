@@ -22,6 +22,18 @@ export interface FishAnchor {
 
 export type FishChrome = "3d" | "flat"
 
+/** One radar contact, already projected onto the sonar disc. */
+export interface SonarContact {
+  slug: string
+  species: string
+  school: number
+  /** Disc coordinates in [-1, 1]. */
+  u: number
+  v: number
+  depth01: number
+  lit: number
+}
+
 export type FishEvents = {
   // commands — intent, drive zustand + router
   "tank:dive": void
@@ -34,9 +46,25 @@ export type FishEvents = {
   "filter:domain": string
   "bake:apply": void
   "bake:dismiss": void
+  "feed:drop": { x?: number; y?: number; z?: number }
+  /** Bathymetry scrubber — null releases the depth lock. */
+  "tank:depth": { depth01: number } | null
+  "view:sonar": { open: boolean }
+  "feed:eaten": { pelletId: string; slug: string }
+  "audio:toggle": { enabled: boolean }
+  /**
+   * `at` routes the voice through the HRTF panner (fish/fishAudio.ts). Omit it
+   * for non-diegetic cues so they stay centred.
+   */
+  "audio:fx": {
+    type: "dive" | "surface" | "eat" | "chime" | "bubble"
+    at?: { x: number; y: number; z: number }
+  }
   // observations — 60fps, bus-only, never touch React state
   "tank:progress": number
   "fish:anchor": FishAnchor | null
+  /** Radar contacts, emitted at ~10Hz (not per frame). */
+  "tank:sonar": SonarContact[]
 }
 
 export type FishBus = Emitter<FishEvents>

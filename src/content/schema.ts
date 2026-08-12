@@ -344,6 +344,10 @@ const FishSpecimen = z.object({
   detailRef: z.string().optional(),
   link: Link.optional(),
   metrics: z.array(Stat).default([]),
+  // Fractional-year project timeline (e.g. 2025.67). Omitted (never null)
+  // when the project has no known date. endYear omitted means ongoing.
+  startYear: z.number().optional(),
+  endYear: z.number().optional(),
 });
 
 const FishTank = z.object({
@@ -360,6 +364,8 @@ const FishTank = z.object({
     curationLabel: z.string().optional(),
     palette: AccentId.optional(),
     caption: z.string().optional(),
+    // Fractional-year bounds across all dated fish, for band mapping.
+    timeSpan: z.object({ min: z.number(), max: z.number() }).optional(),
   }),
 });
 
