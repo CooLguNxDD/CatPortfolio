@@ -88,7 +88,7 @@ export function minSpeedFor(maxSpeed: number): number {
  * Cruise ceiling for a specimen's `speed` ∈ [0,1].
  *
  * Floor and slope are set against the orbit's own tangential speed (up to
- * ~9 u/s at `speed` 1, from `fishPathSeed`'s radii × the path's angular rate).
+ * ~14 u/s at `speed` 1, from `fishPathSeed`'s radii × the path's angular rate).
  * A body that cannot outrun its own target would trail it forever, so the
  * ceiling stays comfortably above it at every speed.
  */

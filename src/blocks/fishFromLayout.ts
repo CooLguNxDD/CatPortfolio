@@ -4,7 +4,7 @@
  */
 
 import type { DomainIdType, Layout } from "@/content/schema"
-import { clamp01, type FishSpecimenInput } from "./fishTankLayout"
+import { clamp01, yearsToDepthBandHalf, type FishSpecimenInput } from "./fishTankLayout"
 import { hashToUnit } from "./scene2dLayout"
 import { ALL_DOMAIN_IDS } from "./fishTankTokens"
 
@@ -103,7 +103,8 @@ export function fishFromLayout(layout: Layout | null | undefined): FishSpecimenI
     if (b.type === "fishTank") {
       const fish = b.props?.fish
       if (Array.isArray(fish) && fish.length > 0) {
-        return fish.slice(0, 40).map((f) => normalizeSpecimen(f))
+        const timeSpan = b.props?.timeSpan as { min: number; max: number } | undefined
+        return fish.slice(0, 40).map((f) => normalizeSpecimen(f, timeSpan))
       }
     }
   }
@@ -210,10 +211,15 @@ export function fishFromLayout(layout: Layout | null | undefined): FishSpecimenI
   }))
 }
 
-function normalizeSpecimen(raw: Record<string, unknown> | FishSpecimenInput): FishSpecimenInput {
+function normalizeSpecimen(
+  raw: Record<string, unknown> | FishSpecimenInput,
+  timeSpan?: { min: number; max: number },
+): FishSpecimenInput {
   const r = raw as Record<string, unknown>
   const slug = String(r.slug || "fish").slice(0, 80)
   const size = clamp01(typeof r.size === "number" ? r.size : 0.5)
+  const startYear = typeof r.startYear === "number" ? r.startYear : undefined
+  const endYear = typeof r.endYear === "number" ? r.endYear : undefined
   return {
     slug,
     title: String(r.title || slug).slice(0, 80),
@@ -228,5 +234,8 @@ function normalizeSpecimen(raw: Record<string, unknown> | FishSpecimenInput): Fi
     description: clampBody(r.description),
     metrics: metricsFrom(r.metrics),
     link: linkFrom(r.link),
+    startYear,
+    endYear,
+    depthBandHalf: yearsToDepthBandHalf(startYear, endYear, timeSpan),
   }
 }

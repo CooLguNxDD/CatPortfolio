@@ -169,8 +169,8 @@ describe("minSpeedFor", () => {
 
 describe("maxSpeedFor", () => {
   it("outruns the orbit tangential speed at every specimen speed", () => {
-    // Path radii × angular rate peak near 9 u/s at speed 1 (see fishPathSeed).
-    expect(maxSpeedFor(1)).toBeGreaterThan(9)
+    // Path radii × angular rate peak near 14 u/s at speed 1 (see fishPathSeed).
+    expect(maxSpeedFor(1)).toBeGreaterThan(14)
     expect(maxSpeedFor(0)).toBeGreaterThan(0)
     expect(maxSpeedFor(1)).toBeGreaterThan(maxSpeedFor(0))
   })
