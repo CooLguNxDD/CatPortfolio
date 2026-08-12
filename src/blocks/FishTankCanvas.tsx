@@ -50,7 +50,6 @@ import {
   type Vec3,
 } from "./fishTankLayout"
 import {
-  applyCircadian,
   mixHex,
   resolveCircadianPhase,
   resolveTankThemePalette,
@@ -61,6 +60,7 @@ import {
   type CircadianMode,
   type TankThemePalette,
 } from "./fishTankTokens"
+import { applyCircadian } from "./fishTankCircadian"
 import {
   buildCoral,
   buildCyberCrystal,
@@ -228,6 +228,11 @@ export default function FishTankCanvas({
     renderer.domElement.style.borderRadius = immersive ? "0" : "var(--radius)"
     renderer.domElement.style.cursor = "grab"
     renderer.domElement.setAttribute("aria-label", "Interactive portfolio fish tank")
+    renderer.domElement.setAttribute("aria-keyshortcuts", "F")
+    // Keyboard-focusable so the double-click "drop food" action (below) has
+    // an equivalent for keyboard-only visitors — otherwise it's mouse-only.
+    renderer.domElement.setAttribute("role", "application")
+    renderer.domElement.tabIndex = 0
 
     const tank = new THREE.Group()
     scene.add(tank)
@@ -975,6 +980,15 @@ export default function FishTankCanvas({
       fishBus.emit("audio:fx", { type: "bubble" })
     }
 
+    // Keyboard equivalent for onDblClick — "F" drops food when the canvas
+    // has focus, since dblclick has no keyboard analogue.
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key.toLowerCase() === "f" && !e.repeat) {
+        e.preventDefault()
+        onDblClick()
+      }
+    }
+
     renderer.domElement.addEventListener("pointerdown", onPointerDown)
     renderer.domElement.addEventListener("pointerup", onPointerUp)
     renderer.domElement.addEventListener("pointerleave", onPointerUp)
@@ -982,6 +996,7 @@ export default function FishTankCanvas({
     renderer.domElement.addEventListener("wheel", onWheel, { passive: false })
     renderer.domElement.addEventListener("click", onClick)
     renderer.domElement.addEventListener("dblclick", onDblClick)
+    renderer.domElement.addEventListener("keydown", onKeyDown)
 
     const _v = new THREE.Vector3()
     const _v2 = new THREE.Vector3()
@@ -1607,6 +1622,7 @@ export default function FishTankCanvas({
       renderer.domElement.removeEventListener("wheel", onWheel)
       renderer.domElement.removeEventListener("click", onClick)
       renderer.domElement.removeEventListener("dblclick", onDblClick)
+      renderer.domElement.removeEventListener("keydown", onKeyDown)
       fishBus.off("feed:drop", onDropFood)
       holoReticle.dispose()
       hologram.dispose()

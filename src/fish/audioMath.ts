@@ -17,6 +17,23 @@ function clamp01(v: number): number {
 }
 
 /**
+ * xorshift32 PRNG factory — deterministic across runs and platforms, unlike
+ * `Math.random()`. Shared by any per-frame visual/audio effect that wants
+ * reproducible jitter (tests, screenshots) instead of true randomness.
+ * Returns a `() => number` generator yielding values in [-1, 1).
+ */
+export function makeXorshift32(seed: number): () => number {
+  let state = seed | 0 || 1
+  return () => {
+    state ^= state << 13
+    state ^= state >>> 17
+    state ^= state << 5
+    state >>>= 0
+    return (state / 0xffffffff) * 2 - 1
+  }
+}
+
+/**
  * Lowpass cutoff for an immersion factor (0 = above water, 1 = submerged).
  * Interpolated geometrically: pitch is logarithmic, so a linear sweep spends
  * almost all of its travel in the inaudible top octaves.
@@ -62,15 +79,7 @@ export function impulseResponseCurve(
   const length = Math.max(1, Math.floor(rate * Math.max(0.01, seconds)))
   const chans = Math.max(1, Math.floor(channels) || 1)
   const out: Float32Array[] = []
-  let state = 0x2f6e2b1
-  const rand = () => {
-    // xorshift32 — deterministic across runs and platforms.
-    state ^= state << 13
-    state ^= state >>> 17
-    state ^= state << 5
-    state >>>= 0
-    return (state / 0xffffffff) * 2 - 1
-  }
+  const rand = makeXorshift32(0x2f6e2b1)
   for (let c = 0; c < chans; c++) {
     const data = new Float32Array(length)
     for (let i = 0; i < length; i++) {

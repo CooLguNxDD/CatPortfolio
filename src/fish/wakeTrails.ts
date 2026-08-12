@@ -3,6 +3,8 @@
  * Pure mathematical buffer management (DOM/Three free).
  */
 
+import { makeXorshift32 } from "./audioMath"
+
 export interface WakeParticle {
   x: number
   y: number
@@ -23,9 +25,15 @@ export class WakeTrailPool {
   public particles: WakeParticle[] = []
   private maxParticles: number
   private spawnIndex: number = 0
+  // Deterministic per-pool jitter stream — Math.random() in a
+  // requestAnimationFrame-driven emit() both costs cycles and makes the
+  // trail non-reproducible across runs/tests. Seed varies per pool instance
+  // (multiple emitters shouldn't jitter in lockstep) but is otherwise fixed.
+  private rand: () => number
 
-  constructor(maxParticles = 300) {
+  constructor(maxParticles = 300, seed = 0x9e3779b9) {
     this.maxParticles = maxParticles
+    this.rand = makeXorshift32(seed)
     this.particles = new Array(maxParticles)
     for (let i = 0; i < maxParticles; i++) {
       this.particles[i] = {
@@ -56,22 +64,24 @@ export class WakeTrailPool {
     const p = this.particles[this.spawnIndex]
     this.spawnIndex = (this.spawnIndex + 1) % this.maxParticles
 
+    // this.rand() yields [-1, 1); halve it for a symmetric [-0.5, 0.5) jitter,
+    // or remap to [0, 1) below where the original spread was one-sided.
     const spread = options?.spread ?? 0.25
-    p.x = x + (Math.random() - 0.5) * spread
-    p.y = y + (Math.random() - 0.5) * spread
-    p.z = z + (Math.random() - 0.5) * spread
+    p.x = x + this.rand() * 0.5 * spread
+    p.y = y + this.rand() * 0.5 * spread
+    p.z = z + this.rand() * 0.5 * spread
 
-    p.vx = (Math.random() - 0.5) * 0.4
-    p.vy = 0.15 + Math.random() * 0.25
-    p.vz = (Math.random() - 0.5) * 0.4
+    p.vx = this.rand() * 0.2
+    p.vy = 0.15 + (this.rand() + 1) * 0.5 * 0.25
+    p.vz = this.rand() * 0.2
 
     p.r = rgb.r
     p.g = rgb.g
     p.b = rgb.b
     p.alpha = 0.95
-    p.size = options?.size ?? (1.2 + Math.random() * 0.8)
+    p.size = options?.size ?? (1.2 + (this.rand() + 1) * 0.5 * 0.8)
     p.life = 0
-    p.maxLife = options?.maxLife ?? (1.2 + Math.random() * 0.8)
+    p.maxLife = options?.maxLife ?? (1.2 + (this.rand() + 1) * 0.5 * 0.8)
   }
 
   public update(dt: number): void {

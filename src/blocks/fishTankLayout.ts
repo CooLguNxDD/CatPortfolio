@@ -121,10 +121,21 @@ export function yearsToDepthBandHalf(
 ): number {
   if (timeSpan == null) return DEFAULT_DEPTH_WOBBLE
   const span = timeSpan.max - timeSpan.min
-  if (!(span > 0)) return DEFAULT_DEPTH_WOBBLE
+  // A near-zero span (all dated projects on the same day) would blow the
+  // fraction up before clamp01 catches it — guard with an epsilon, not a
+  // bare > 0, so a tiny float span still falls back cleanly.
+  if (!(span > 1e-5)) return DEFAULT_DEPTH_WOBBLE
   const start = startYear ?? endYear
   const end = endYear ?? startYear
   if (start == null || end == null) return DEFAULT_DEPTH_WOBBLE
+  if (
+    import.meta.env.DEV &&
+    (start < timeSpan.min || start > timeSpan.max || end < timeSpan.min || end > timeSpan.max)
+  ) {
+    console.warn(
+      `[fishTankLayout] fish span [${start}, ${end}] falls outside tank timeSpan [${timeSpan.min}, ${timeSpan.max}]`,
+    )
+  }
   const durationFraction = clamp01(Math.abs(end - start) / span)
   const bandHeight = durationFraction * (SWIM_Y_MAX - SWIM_Y_MIN)
   return clamp(bandHeight / 2, DEFAULT_DEPTH_WOBBLE, (SWIM_Y_MAX - SWIM_Y_MIN) / 2)
@@ -135,15 +146,24 @@ export function sizeToScale(size: number): number {
   return 1.15 + clamp01(size) * 1.75
 }
 
-/** Deterministic swim-path seed from slug (stable across runs). */
-export function fishPathSeed(slug: string): {
+type FishPathSeed = {
   phase: number
   cx: number
   cy: number
   cz: number
   rx: number
   rz: number
-} {
+}
+
+// computeFishPose calls fishPathSeed once per fish per rendered frame — the
+// seed is a pure function of slug (5 sha256-backed hashToUnit calls), so
+// cache by slug instead of re-hashing at 60fps.
+const _pathSeedCache = new Map<string, FishPathSeed>()
+
+/** Deterministic swim-path seed from slug (stable across runs, memoized). */
+export function fishPathSeed(slug: string): FishPathSeed {
+  const cached = _pathSeedCache.get(slug)
+  if (cached) return cached
   const u = hashToUnit(slug)
   const v = hashToUnit(`${slug}:z`)
   const w = hashToUnit(`${slug}:r`)
@@ -151,7 +171,7 @@ export function fishPathSeed(slug: string): {
   const y = hashToUnit(`${slug}:y`)
   // Spread derives from the tank volume so widening the tank spreads the shoal
   // instead of leaving everyone clustered in the middle third.
-  return {
+  const seed: FishPathSeed = {
     phase: p * Math.PI * 2,
     cx: (u - 0.5) * (TANK_HALF_W * 1.55),
     cy: (y - 0.5) * 5.2,
@@ -159,6 +179,8 @@ export function fishPathSeed(slug: string): {
     rx: TANK_HALF_W * (0.24 + w * 0.22),
     rz: TANK_HALF_D * (0.20 + hashToUnit(`${slug}:rz`) * 0.22),
   }
+  _pathSeedCache.set(slug, seed)
+  return seed
 }
 
 /**

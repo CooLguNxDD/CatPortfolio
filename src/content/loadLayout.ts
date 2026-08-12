@@ -96,7 +96,8 @@ export async function loadLayoutForQuery(
     if (!res.ok) throw new Error(String(res.status));
     const json = await res.json();
     return parseLayoutPayload(json) ?? { layout: loadBaked(), source: "snapshot" };
-  } catch {
+  } catch (err) {
+    console.warn("[loadLayout] layout-for-query failed, using snapshot:", err);
     return { layout: loadBaked(), source: "snapshot" };
   }
 }
@@ -131,7 +132,8 @@ export async function composeLayoutLive(
     if (!res.ok) throw new Error(String(res.status));
     const json = await res.json();
     return parseLayoutPayload(json) ?? { layout: loadBaked(), source: "snapshot" };
-  } catch {
+  } catch (err) {
+    console.warn("[loadLayout] compose failed, using snapshot:", err);
     return { layout: loadBaked(), source: "snapshot" };
   }
 }

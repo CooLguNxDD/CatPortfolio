@@ -57,9 +57,11 @@ export function projectSonarBlips(
   const yaw = Number.isFinite(cameraYaw) ? cameraYaw : 0
   const sin = Math.sin(-yaw)
   const cos = Math.cos(-yaw)
-  // Normalise against the tank footprint so a blip at the glass sits on the rim.
-  const spanX = TANK_HALF_W
-  const spanZ = TANK_HALF_D
+  // Normalise against the tank footprint so a blip at the glass sits on the
+  // rim. Both constants are non-zero today, but guard against a future
+  // zero-size tank config turning this into a division by zero.
+  const spanX = TANK_HALF_W || 1
+  const spanZ = TANK_HALF_D || 1
   const band = Math.max(1e-6, SWIM_Y_MAX - SWIM_Y_MIN)
 
   return sources.map((s) => {

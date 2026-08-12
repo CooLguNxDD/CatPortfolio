@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { usePreferencesStore, useFishTankStore } from "@/store"
 import { fishBus } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
@@ -34,11 +35,18 @@ export function FishTankChrome({
   curationLabel,
   showBake = true,
 }: FishTankChromeProps) {
-  const query = useFishTankStore((s) => s.query)
-  const domain = useFishTankStore((s) => s.domain)
-  const soundEnabled = useFishTankStore((s) => s.soundEnabled)
-  const toggleSound = useFishTankStore((s) => s.toggleSound)
-  const dropFood = useFishTankStore((s) => s.dropFood)
+  // These four update together on most interactions — one shallow-compared
+  // selector avoids a re-render per field. tankScene stays separate since
+  // it derives from s.state via deriveScene, a different shape entirely.
+  const { query, domain, soundEnabled, toggleSound, dropFood } = useFishTankStore(
+    useShallow((s) => ({
+      query: s.query,
+      domain: s.domain,
+      soundEnabled: s.soundEnabled,
+      toggleSound: s.toggleSound,
+      dropFood: s.dropFood,
+    })),
+  )
   const tankScene = useFishTankStore((s) => deriveScene(s.state))
   const circadian = usePreferencesStore((s) => s.circadian)
   const cycleCircadian = usePreferencesStore((s) => s.cycleCircadian)

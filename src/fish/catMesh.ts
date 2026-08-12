@@ -15,6 +15,7 @@
 
 import * as THREE from "three"
 import type { Vec3 } from "@/blocks/fishTankLayout"
+import { makeXorshift32 } from "./audioMath"
 
 export interface CatParts {
   group: THREE.Group
@@ -65,6 +66,8 @@ export interface CatAnimationState {
   earTwitchL: number
   earTwitchR: number
   pawWaterDist: number
+  /** Deterministic jitter stream for blink timing / ear twitch — see stepCatAnimation. */
+  rand: () => number
 }
 
 /**
@@ -572,6 +575,9 @@ export function createCatAnimationState(): CatAnimationState {
     earTwitchL: 0,
     earTwitchR: 0,
     pawWaterDist: 10,
+    // Math.random() here would break reproducibility of blink/twitch timing
+    // across runs and tests; fixed seed is fine since only one cat exists.
+    rand: makeXorshift32(0x5eedc47),
   }
 }
 
@@ -656,7 +662,7 @@ export function stepCatAnimation(
     state.isBlinking = true
     if (state.blinkTimer <= -0.14) {
       state.isBlinking = false
-      state.blinkTimer = 2.5 + Math.random() * 4.0
+      state.blinkTimer = 2.5 + (state.rand() + 1) * 0.5 * 4.0
     }
   }
 
@@ -679,8 +685,8 @@ export function stepCatAnimation(
   parts.materials.eye.emissiveIntensity = 2.8 * eyePulse
 
   // 5. Ears: Alert / Twitching
-  if (Math.random() < 0.015) state.earTwitchL = 0.35
-  if (Math.random() < 0.015) state.earTwitchR = 0.35
+  if ((state.rand() + 1) * 0.5 < 0.015) state.earTwitchL = 0.35
+  if ((state.rand() + 1) * 0.5 < 0.015) state.earTwitchR = 0.35
   state.earTwitchL *= 0.88
   state.earTwitchR *= 0.88
 
