@@ -109,6 +109,9 @@ import {
 import { WakeTrailPool } from "@/fish/wakeTrails"
 import type { DomainIdType } from "@/content/schema"
 
+/** Stable empty highlight set — a per-render `[]` remounts the WebGL scene. */
+const NO_HIGHLIGHTS: string[] = []
+
 export interface FishTankCanvasProps {
   fish: FishSpecimenInput[]
   immersive?: boolean
@@ -141,11 +144,14 @@ function shortestAngle(d: number): number {
 export default function FishTankCanvas({
   fish,
   immersive = false,
-  highlightSlugs = [],
+  highlightSlugs = NO_HIGHLIGHTS,
   themeKey = "default",
   circadian = "auto",
 }: FishTankCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
+  const circadianRef = useRef(circadian)
+  circadianRef.current = circadian
+  const applyPaletteRef = useRef<((mode: CircadianMode) => void) | null>(null)
 
   useEffect(() => {
     const root = hostRef.current
@@ -182,7 +188,7 @@ export default function FishTankCanvas({
     const quality = resolveTankQuality()
     // Night fauna drift instead of darting (Pillar 5) — folded into the same
     // multiplier the reduced-motion tier already uses to freeze the tank.
-    const faunaScale = palette.faunaTimeScale
+    let faunaScale = palette.faunaTimeScale
 
     // Shared clock + strength for the world-space caustic injection. Every lit
     // surface samples the same field, so ripples stay continuous across the
@@ -518,12 +524,13 @@ export default function FishTankCanvas({
     const motes = new THREE.Points(moteGeo, moteMat)
     tank.add(motes)
 
-    // Bioluminescent fish wake trails
-    const wakePool = new WakeTrailPool(280)
+    // Bioluminescent fish wake trails — same quality-tier split as the minnow field.
+    const wakeCount = quality.tier === "high" ? 280 : 100
+    const wakePool = new WakeTrailPool(wakeCount)
     const wakeGeo = new THREE.BufferGeometry()
-    const wakePos = new Float32Array(280 * 3)
-    const wakeColors = new Float32Array(280 * 3)
-    for (let i = 0; i < 280; i++) {
+    const wakePos = new Float32Array(wakeCount * 3)
+    const wakeColors = new Float32Array(wakeCount * 3)
+    for (let i = 0; i < wakeCount; i++) {
       wakePos[i * 3 + 1] = -9999
       wakeColors[i * 3] = 0.2
       wakeColors[i * 3 + 1] = 0.8
@@ -555,7 +562,7 @@ export default function FishTankCanvas({
     }
     const shockwaves: Shockwave[] = []
     const shockRingGeo = new THREE.RingGeometry(0.5, 0.9, 32)
-    ;(shockRingGeo as any).rotateX(-Math.PI / 2)
+    shockRingGeo.rotateX(-Math.PI / 2)
     const shockMat = new THREE.MeshBasicMaterial({
       color: palette.cyan,
       transparent: true,
@@ -568,9 +575,12 @@ export default function FishTankCanvas({
     function spawnShockwave(x: number, z: number) {
       if (shockwaves.length > 5) {
         const old = shockwaves.shift()
-        if (old) (tank as any).remove(old.mesh)
+        if (old) {
+          tank.remove(old.mesh)
+          ;(old.mesh.material as THREE.Material).dispose()
+        }
       }
-      const ring = new THREE.Mesh(shockRingGeo, (shockMat as any).clone())
+      const ring = new THREE.Mesh(shockRingGeo, shockMat.clone())
       ring.position.set(x, FLOOR_Y + 0.38, z)
       tank.add(ring)
       shockwaves.push({
@@ -640,9 +650,13 @@ export default function FishTankCanvas({
       })
     }
 
-    // Deferred palette resample
-    let paletteFrame = requestAnimationFrame(() => {
-      palette = applyCircadian(resolveTankThemePalette(), phase)
+    // Deferred / live palette resample. Circadian changes call this in-place
+    // so the scene is not torn down when day/night mode flips.
+    const applyPalette = (mode: CircadianMode) => {
+      const nextPhase = resolveCircadianPhase(new Date(), mode)
+      palette = applyCircadian(resolveTankThemePalette(), nextPhase)
+      faunaScale = palette.faunaTimeScale
+      const nextLight = palette.light
       scene.background?.set(palette.bg)
       if (scene.fog instanceof THREE.FogExp2) {
         scene.fog.color.set(palette.fogColor)
@@ -658,7 +672,9 @@ export default function FishTankCanvas({
       fill.color.set(palette.fillColor)
       fill.intensity = palette.fillIntensity
       accentFill.color.set(palette.accent)
+      accentFill.intensity = nextLight ? 0.65 : 1.8
       bedBounce.color.set(palette.cyan)
+      bedBounce.intensity = nextLight ? 0.45 : 0.85
       glassMat.color.set(palette.glass)
       waterMat.uniforms.uColor.value.set(palette.water)
       waterMat.uniforms.uSun.value.set(palette.sun)
@@ -668,9 +684,13 @@ export default function FishTankCanvas({
         m.uniforms.uStrength.value = palette.rayStrength * 2.4
       }
       causticMat.uniforms.uColor.value.set(palette.sun)
+      causticSurfaceStrength.value = palette.causticStrength * 0.55
+      causticSurfaceColor.set(palette.sun)
       bubbleMat.color.set(palette.bubble)
       moteMat.color.set(palette.motes)
-    })
+    }
+    applyPaletteRef.current = applyPalette
+    let paletteFrame = requestAnimationFrame(() => applyPalette(circadianRef.current))
 
     // Post chain: absorption → bokeh → bloom → wobble → output. The low tier
     // collapses it to scene + output, which is what mobile used to get from the
@@ -746,8 +766,7 @@ export default function FishTankCanvas({
       if (livePellets.length > 25) {
         const old = livePellets.shift()
         if (old) {
-          ;(foodGroup as any).remove(old.mesh)
-          old.mesh.geometry.dispose()
+          foodGroup.remove(old.mesh)
         }
       }
       const pellet = new THREE.Mesh(pelletGeo, pelletMat)
@@ -859,7 +878,7 @@ export default function FishTankCanvas({
       }
 
       if (isSubmerged(progRef.current)) {
-        const vCursor = (new THREE.Vector3(pointer.x, pointer.y, 0.5) as any).unproject(camera)
+        const vCursor = new THREE.Vector3(pointer.x, pointer.y, 0.5).unproject(camera)
         const dx = vCursor.x - camera.position.x
         const dy = vCursor.y - camera.position.y
         const dz = vCursor.z - camera.position.z
@@ -1203,7 +1222,7 @@ export default function FishTankCanvas({
         if (!p.active) {
           p.mesh.scale.multiplyScalar(0.85)
           if (p.mesh.scale.x < 0.05) {
-            ;(foodGroup as any).remove(p.mesh)
+            foodGroup.remove(p.mesh)
             livePellets.splice(i, 1)
           }
           continue
@@ -1462,7 +1481,7 @@ export default function FishTankCanvas({
         }
 
         // Emit bioluminescent wake particles behind fish tail
-        const col = domainColor(o.data.species) as any
+        const col = domainColor(o.data.species)
         const isEmitting = Math.random() < (0.35 + (o.data.speed || 0.5) * 0.45 + boost * 0.3)
         if (isEmitting && prog > 0.4) {
           wakePool.emit(
@@ -1485,26 +1504,29 @@ export default function FishTankCanvas({
         ;(sw.mesh.material as THREE.MeshBasicMaterial).opacity = sw.opacity
         if (progress >= 1) {
           sw.active = false
-          ;(tank as any).remove(sw.mesh)
-          sw.mesh.geometry.dispose()
+          tank.remove(sw.mesh)
           ;(sw.mesh.material as THREE.Material).dispose()
           shockwaves.splice(i, 1)
         }
       }
 
-      // Update wake particle pool & buffers
+      // Pack live wake particles at the front so we only draw/upload actives.
       wakePool.update(dt)
       const wp = wakeGeo.attributes.position.array as Float32Array
       const wc = wakeGeo.attributes.color.array as Float32Array
+      let wakeLive = 0
       for (let i = 0; i < wakePool.particles.length; i++) {
         const p = wakePool.particles[i]
-        wp[i * 3] = p.x
-        wp[i * 3 + 1] = p.y
-        wp[i * 3 + 2] = p.z
-        wc[i * 3] = p.r * p.alpha
-        wc[i * 3 + 1] = p.g * p.alpha
-        wc[i * 3 + 2] = p.b * p.alpha
+        if (p.alpha <= 0.001) continue
+        wp[wakeLive * 3] = p.x
+        wp[wakeLive * 3 + 1] = p.y
+        wp[wakeLive * 3 + 2] = p.z
+        wc[wakeLive * 3] = p.r * p.alpha
+        wc[wakeLive * 3 + 1] = p.g * p.alpha
+        wc[wakeLive * 3 + 2] = p.b * p.alpha
+        wakeLive++
       }
+      wakeGeo.setDrawRange(0, wakeLive)
       wakeGeo.attributes.position.needsUpdate = true
       wakeGeo.attributes.color.needsUpdate = true
 
@@ -1571,6 +1593,7 @@ export default function FishTankCanvas({
 
     return () => {
       disposed = true
+      applyPaletteRef.current = null
       cancelAnimationFrame(raf)
       cancelAnimationFrame(paletteFrame)
       unsubStore()
@@ -1600,8 +1623,18 @@ export default function FishTankCanvas({
           else mat?.dispose?.()
         }
       })
+      // Shared geos/mats may already be gone if a mesh was still in the group;
+      // dispose again is safe, and covers the emptied-group case.
+      shockRingGeo.dispose()
+      pelletGeo.dispose()
+      shockMat.dispose()
+      pelletMat.dispose()
     }
-  }, [fish, immersive, themeKey, circadian, highlightSlugs])
+  }, [fish, immersive, themeKey, highlightSlugs])
+
+  useEffect(() => {
+    applyPaletteRef.current?.(circadian)
+  }, [circadian])
 
   return (
     <div
