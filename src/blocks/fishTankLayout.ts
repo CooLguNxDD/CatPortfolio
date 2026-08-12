@@ -21,7 +21,7 @@ export const TANK_CENTER_Y = (WATER_Y + FLOOR_Y) / 2
 export const TANK_HALF_W = 38
 export const TANK_HALF_D = 26
 /** Usable swim band (keep fish off glass/floor/surface). */
-export const SWIM_Y_MAX = WATER_Y - 2.2
+export const SWIM_Y_MAX = WATER_Y - 7.0
 export const SWIM_Y_MIN = FLOOR_Y + 3.5
 export const MAX_ORBIT_RADIUS = 62
 export const MIN_ORBIT_RADIUS = 8
@@ -58,6 +58,15 @@ export interface FishSpecimenInput {
   description?: string
   metrics?: { label: string; value: string }[]
   link?: { label: string; href: string } | string
+  /** Fractional-year project timeline, when known — see yearsToDepthBandHalf. */
+  startYear?: number
+  endYear?: number
+  /**
+   * Half-height (world Y units) of this fish's vertical swim band, derived
+   * from its dated span relative to the tank's overall time range. Absent
+   * (or undated fish) falls back to DEFAULT_DEPTH_WOBBLE in computeFishPose.
+   */
+  depthBandHalf?: number
 }
 
 export interface Vec3 {
@@ -96,6 +105,31 @@ export function depthToY(depth: number): number {
   return SWIM_Y_MAX - d * (SWIM_Y_MAX - SWIM_Y_MIN)
 }
 
+/** Vertical wobble amplitude (world Y units) for a fish with no dated span. */
+export const DEFAULT_DEPTH_WOBBLE = 1.6
+
+/**
+ * Half-height (world Y units) of a fish's swim band, sized by its own
+ * dated span relative to the tank's overall time range — a project that
+ * ran the whole span wanders across most of the water column; a
+ * point-in-time or undated project keeps the default small wobble.
+ */
+export function yearsToDepthBandHalf(
+  startYear: number | undefined,
+  endYear: number | undefined,
+  timeSpan: { min: number; max: number } | undefined,
+): number {
+  if (timeSpan == null) return DEFAULT_DEPTH_WOBBLE
+  const span = timeSpan.max - timeSpan.min
+  if (!(span > 0)) return DEFAULT_DEPTH_WOBBLE
+  const start = startYear ?? endYear
+  const end = endYear ?? startYear
+  if (start == null || end == null) return DEFAULT_DEPTH_WOBBLE
+  const durationFraction = clamp01(Math.abs(end - start) / span)
+  const bandHeight = durationFraction * (SWIM_Y_MAX - SWIM_Y_MIN)
+  return clamp(bandHeight / 2, DEFAULT_DEPTH_WOBBLE, (SWIM_Y_MAX - SWIM_Y_MIN) / 2)
+}
+
 /** Size 0..1 → mesh scale (tuned against the tank volume, not unit space). */
 export function sizeToScale(size: number): number {
   return 1.15 + clamp01(size) * 1.75
@@ -105,6 +139,7 @@ export function sizeToScale(size: number): number {
 export function fishPathSeed(slug: string): {
   phase: number
   cx: number
+  cy: number
   cz: number
   rx: number
   rz: number
@@ -113,14 +148,16 @@ export function fishPathSeed(slug: string): {
   const v = hashToUnit(`${slug}:z`)
   const w = hashToUnit(`${slug}:r`)
   const p = hashToUnit(`${slug}:ph`)
+  const y = hashToUnit(`${slug}:y`)
   // Spread derives from the tank volume so widening the tank spreads the shoal
   // instead of leaving everyone clustered in the middle third.
   return {
     phase: p * Math.PI * 2,
-    cx: (u - 0.5) * (TANK_HALF_W * 1.15),
-    cz: (v - 0.5) * (TANK_HALF_D * 1.1),
-    rx: TANK_HALF_W * (0.14 + w * 0.16),
-    rz: TANK_HALF_D * (0.12 + hashToUnit(`${slug}:rz`) * 0.14),
+    cx: (u - 0.5) * (TANK_HALF_W * 1.55),
+    cy: (y - 0.5) * 5.2,
+    cz: (v - 0.5) * (TANK_HALF_D * 1.5),
+    rx: TANK_HALF_W * (0.24 + w * 0.22),
+    rz: TANK_HALF_D * (0.20 + hashToUnit(`${slug}:rz`) * 0.22),
   }
 }
 
@@ -132,7 +169,7 @@ export function schoolOffset(school: number, slug: string): number {
   if (s <= 0) return 0
   const lane = ((s * 7) % 11) - 5
   // Lane width scales with the tank so schools separate in open water.
-  return lane * (TANK_HALF_W * 0.055) + (hashToUnit(`${slug}:lane`) - 0.5) * 1.8
+  return lane * (TANK_HALF_W * 0.08) + (hashToUnit(`${slug}:lane`) - 0.5) * 2.4
 }
 
 /** Compute one fish pose at time t (seconds). */
@@ -146,7 +183,7 @@ export function computeFishPose(
   const speed = clamp01(fish.speed)
   const depth = clamp01(fish.depth)
   const seed = fishPathSeed(fish.slug)
-  const y0 = depthToY(depth)
+  const y0 = depthToY(depth) + seed.cy
   const cx = seed.cx + schoolOffset(fish.school, fish.slug)
   const cz = seed.cz
   const scale = sizeToScale(size)
@@ -163,7 +200,8 @@ export function computeFishPose(
   const ph = t * speed * 0.75 * timeScale + seed.phase
   const nx = cx + Math.sin(ph) * seed.rx
   const nz = cz + Math.cos(ph * 0.7) * seed.rz
-  const ny = y0 + Math.sin(ph * 1.6) * 0.7
+  const bandHalf = fish.depthBandHalf ?? DEFAULT_DEPTH_WOBBLE
+  const ny = y0 + Math.sin(ph * 1.6) * bandHalf
   // Approximate heading from path derivative
   const nx2 = cx + Math.sin(ph + 0.05) * seed.rx
   const nz2 = cz + Math.cos((ph + 0.05) * 0.7) * seed.rz
