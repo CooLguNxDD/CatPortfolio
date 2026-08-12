@@ -15,7 +15,7 @@ import { useEffect, useMemo } from "react"
 import type { Layout } from "@/content/schema"
 import { domainsInSchool, matchesFish } from "@/fish/matchFish"
 import { findFishBySlug, fishIndexOf, sceneFromLayout, type FishSceneConfig } from "@/fish/sceneFromLayout"
-import { fishBus } from "@/fish/fishBus"
+import { fishBus, type FishEvents } from "@/fish/fishBus"
 import { deriveScene, type TankState } from "@/fish/tankMachine"
 import { useFishTankStore } from "@/store"
 import type { FishTankChrome as ChromeMode } from "@/store/fishTankSlice"
@@ -50,54 +50,30 @@ export function useFishTank(layout: Layout | null | undefined): FishTankControll
 
   // Command handler: every chrome/canvas control emits intent onto the bus
   // (never calls a setter directly) — this is the one place that applies it.
+  // `register` pairs on/off per call (typed per-event via K) so adding a
+  // command is one line instead of a new function plus two on/off sites
+  // that can drift out of sync.
   useEffect(() => {
     const store = useFishTankStore.getState
-    function onDive() {
-      store().dive()
+    const cleanups: Array<() => void> = []
+    function register<K extends keyof FishEvents>(
+      type: K,
+      handler: (payload: FishEvents[K]) => void,
+    ) {
+      fishBus.on(type, handler)
+      cleanups.push(() => fishBus.off(type, handler))
     }
-    function onSurface() {
-      store().surface()
-    }
-    function onChrome(mode: ChromeMode) {
-      store().setChrome(mode)
-    }
-    function onQuery(q: string) {
-      store().setQuery(q)
-    }
-    function onDomain(d: string) {
-      store().toggleDomain(d)
-    }
-    function onBakeApply() {
-      store().applyBake()
-    }
-    function onBakeDismiss() {
-      store().dismissCuration()
-    }
-    function onDepth(payload: { depth01: number } | null) {
-      store().setDepthFocus(payload ? payload.depth01 : null)
-    }
-    function onSonar({ open }: { open: boolean }) {
-      store().toggleSonar(open)
-    }
-    fishBus.on("tank:dive", onDive)
-    fishBus.on("tank:surface", onSurface)
-    fishBus.on("view:chrome", onChrome)
-    fishBus.on("filter:query", onQuery)
-    fishBus.on("filter:domain", onDomain)
-    fishBus.on("bake:apply", onBakeApply)
-    fishBus.on("bake:dismiss", onBakeDismiss)
-    fishBus.on("tank:depth", onDepth)
-    fishBus.on("view:sonar", onSonar)
+    register("tank:dive", () => store().dive())
+    register("tank:surface", () => store().surface())
+    register("view:chrome", (mode) => store().setChrome(mode))
+    register("filter:query", (q) => store().setQuery(q))
+    register("filter:domain", (d) => store().toggleDomain(d))
+    register("bake:apply", () => store().applyBake())
+    register("bake:dismiss", () => store().dismissCuration())
+    register("tank:depth", (payload) => store().setDepthFocus(payload ? payload.depth01 : null))
+    register("view:sonar", ({ open }) => store().toggleSonar(open))
     return () => {
-      fishBus.off("tank:dive", onDive)
-      fishBus.off("tank:surface", onSurface)
-      fishBus.off("view:chrome", onChrome)
-      fishBus.off("filter:query", onQuery)
-      fishBus.off("filter:domain", onDomain)
-      fishBus.off("bake:apply", onBakeApply)
-      fishBus.off("bake:dismiss", onBakeDismiss)
-      fishBus.off("tank:depth", onDepth)
-      fishBus.off("view:sonar", onSonar)
+      for (const cleanup of cleanups) cleanup()
     }
   }, [])
 

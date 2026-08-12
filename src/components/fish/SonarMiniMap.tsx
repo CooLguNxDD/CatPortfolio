@@ -110,20 +110,16 @@ export function SonarMiniMap({ fish }: SonarMiniMapProps) {
             className="ft-sonar-sweep"
           />
           {fish.map((f) => (
-            <circle
+            // <circle role="button"> is poorly supported by some older
+            // screen readers — wrap it in a <g> so the interactive role and
+            // keyboard handling sit on an element assistive tech expects,
+            // and leave the circle itself purely presentational.
+            <g
               key={f.slug}
-              ref={(el) => {
-                if (el) blipRefs.current.set(f.slug, el)
-                else blipRefs.current.delete(f.slug)
-              }}
-              cx={SIZE / 2}
-              cy={SIZE / 2}
-              r={3}
-              fill={speciesHex(f.species)}
-              className="ft-sonar-blip"
               role="button"
               tabIndex={0}
               aria-label={f.title}
+              className="ft-sonar-blip"
               onClick={() => fishBus.emit("fish:pick", { slug: f.slug })}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -132,8 +128,20 @@ export function SonarMiniMap({ fish }: SonarMiniMapProps) {
                 }
               }}
             >
-              <title>{f.title}</title>
-            </circle>
+              <circle
+                ref={(el) => {
+                  if (el) blipRefs.current.set(f.slug, el)
+                  else blipRefs.current.delete(f.slug)
+                }}
+                cx={SIZE / 2}
+                cy={SIZE / 2}
+                r={3}
+                fill={speciesHex(f.species)}
+                className="ft-sonar-blip"
+              >
+                <title>{f.title}</title>
+              </circle>
+            </g>
           ))}
         </svg>
       ) : null}

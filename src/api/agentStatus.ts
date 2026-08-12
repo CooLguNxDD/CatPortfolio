@@ -1,4 +1,5 @@
 import { getOctBaseUrl } from "@/config/runtimeConfig";
+import { isValidJobId } from "@/lib/jobId";
 
 export interface AgentActivity {
   job_id: string;
@@ -23,6 +24,7 @@ export async function fetchAgentStatus(opts?: {
     return null;
   }
   if (!base) return null;
+  if (opts?.jobId && !isValidJobId(opts.jobId)) return null;
   try {
     const params = opts?.jobId ? `?job_id=${encodeURIComponent(opts.jobId)}` : "";
     const res = await fetch(

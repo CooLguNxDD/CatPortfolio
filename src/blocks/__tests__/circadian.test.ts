@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  applyCircadian,
-  resolveCircadianPhase,
-  resolveTankThemePalette,
-} from "../fishTankTokens"
+import { resolveCircadianPhase, resolveTankThemePalette } from "../fishTankTokens"
+import { applyCircadian } from "../fishTankCircadian"
 
 describe("resolveCircadianPhase", () => {
   it("follows the local clock in auto mode", () => {

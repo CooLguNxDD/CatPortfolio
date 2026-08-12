@@ -218,8 +218,10 @@ function normalizeSpecimen(
   const r = raw as Record<string, unknown>
   const slug = String(r.slug || "fish").slice(0, 80)
   const size = clamp01(typeof r.size === "number" ? r.size : 0.5)
-  const startYear = typeof r.startYear === "number" ? r.startYear : undefined
-  const endYear = typeof r.endYear === "number" ? r.endYear : undefined
+  // Number.isFinite rules out NaN/Infinity, which `typeof === "number"` alone
+  // would let through and corrupt the depth-band/timeline math downstream.
+  const startYear = Number.isFinite(r.startYear) ? (r.startYear as number) : undefined
+  const endYear = Number.isFinite(r.endYear) ? (r.endYear as number) : undefined
   return {
     slug,
     title: String(r.title || slug).slice(0, 80),

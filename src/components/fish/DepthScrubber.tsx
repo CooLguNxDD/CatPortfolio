@@ -7,8 +7,6 @@
  * write and the canvas turns into a camera move.
  */
 
-import { useMemo } from "react"
-
 import { fishBus } from "@/fish/fishBus"
 import { bandForDepth, depthBands } from "@/fish/bathymetry"
 import { useFishTankStore } from "@/store"
@@ -17,7 +15,8 @@ import { cn } from "@/lib/utils"
 /** Vertical depth rail with one stop per bathymetric band. */
 export function DepthScrubber() {
   const depthFocus = useFishTankStore((s) => s.depthFocus)
-  const bands = useMemo(() => depthBands(), [])
+  // depthBands() is a pure, cheap static-array build — no useMemo needed.
+  const bands = depthBands()
   const activeZone = depthFocus == null ? null : bandForDepth(depthFocus).zone
 
   return (
