@@ -42,6 +42,15 @@ export interface FishTankSlice {
   bakeActive: boolean
   /** Cleared curation hides the bake label without touching layout. */
   curationDismissed: boolean
+  /** Sound synthesizer active state (default false for accessibility). */
+  soundEnabled: boolean
+  /**
+   * Bathymetry lock: depth01 the camera is parked at, or null when free.
+   * Depth doubles as the timeline axis — see fish/bathymetry.ts.
+   */
+  depthFocus: number | null
+  /** Sonar mini-map visibility. */
+  sonarOpen: boolean
 
   dive: () => void
   surface: () => void
@@ -54,6 +63,10 @@ export interface FishTankSlice {
   applyBake: (active?: boolean) => void
   clearBake: () => void
   dismissCuration: () => void
+  toggleSound: (enabled?: boolean) => void
+  setDepthFocus: (depth01: number | null) => void
+  toggleSonar: (open?: boolean) => void
+  dropFood: (pos?: { x?: number; y?: number; z?: number }) => void
   /** Full reset when leaving tank mode / unmounting stage. */
   resetFishTankUi: () => void
 }
@@ -67,6 +80,9 @@ const DEFAULTS: Pick<
   | "focus"
   | "bakeActive"
   | "curationDismissed"
+  | "soundEnabled"
+  | "depthFocus"
+  | "sonarOpen"
 > = {
   state: "surface",
   chrome: "3d",
@@ -75,6 +91,9 @@ const DEFAULTS: Pick<
   focus: null,
   bakeActive: false,
   curationDismissed: false,
+  soundEnabled: false,
+  depthFocus: null,
+  sonarOpen: true,
 }
 
 /** Creates the fish-tank transient UI slice. */
@@ -96,6 +115,7 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
       const target = next(get().state, "dive")
       if (!target) return
       set({ state: target })
+      fishBus.emit("audio:fx", { type: "dive" })
       runTransition(1, DIVE_DURATION_MS)
     },
 
@@ -103,6 +123,7 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
       const target = next(get().state, "surface")
       if (!target) return
       set({ state: target, focus: null })
+      fishBus.emit("audio:fx", { type: "surface" })
       runTransition(0, SURFACE_DURATION_MS)
     },
 
@@ -122,6 +143,9 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
       const cur = get().state
       const target = slug ? next(cur, "focus") : next(cur, "release")
       if (target) set({ state: target })
+      if (slug) {
+        fishBus.emit("audio:fx", { type: "chime" })
+      }
     },
 
     applyBake: (active = true) =>
@@ -141,6 +165,37 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
         curationDismissed: true,
         bakeActive: false,
       }),
+
+    toggleSound: (enabled) => {
+      const nextVal = enabled !== undefined ? enabled : !get().soundEnabled
+      set({ soundEnabled: nextVal })
+      fishBus.emit("audio:toggle", { enabled: nextVal })
+    },
+
+    setDepthFocus: (depth01) => {
+      if (depth01 == null) {
+        set({ depthFocus: null })
+        return
+      }
+      const clamped = Number.isFinite(depth01) ? Math.max(0, Math.min(1, depth01)) : 0
+      set({ depthFocus: clamped })
+      // Scrubbing implies you want to be in the water, not on the rim.
+      const target = next(get().state, "dive")
+      if (target) {
+        set({ state: target })
+        runTransition(1, DIVE_DURATION_MS)
+      }
+    },
+
+    toggleSonar: (open) => {
+      const nextVal = open !== undefined ? open : !get().sonarOpen
+      set({ sonarOpen: nextVal })
+    },
+
+    dropFood: (pos) => {
+      fishBus.emit("feed:drop", pos ?? {})
+      fishBus.emit("audio:fx", { type: "bubble" })
+    },
 
     resetFishTankUi: () => {
       animator.cancel()

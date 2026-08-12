@@ -42,18 +42,20 @@ export function normalizeDagLevels(
   }));
 }
 
-/**
- * Vertical slack past the focus line before a level counts as "reached".
- * Enough for short final bands (L7 Ask) without needing huge page bottom pad.
- */
-const LEVEL_REACH_SLACK_PX = 100;
-
-/**
- * Near document end, force last story level current so L7 lights without
- * large empty space above the footer.
- */
-const SCROLL_END_PROGRESS = 0.9;
-const SCROLL_END_REMAINING_PX = 220;
+/** Scroll-trigger tuning, gathered from three previously scattered constants. */
+const DAG_SCROLL_TUNING = {
+  /**
+   * Vertical slack past the focus line before a level counts as "reached".
+   * Enough for short final bands (L7 Ask) without needing huge page bottom pad.
+   */
+  levelReachSlackPx: 100,
+  /**
+   * Near document end, force last story level current so L7 lights without
+   * large empty space above the footer.
+   */
+  scrollEndProgress: 0.9,
+  scrollEndRemainingPx: 220,
+};
 
 /**
  * Pick the active level index from live DOM geometry.
@@ -61,9 +63,11 @@ const SCROLL_END_REMAINING_PX = 220;
  *
  * Queries `.dag-level[data-dag-level]` once (not once per level) — this runs
  * on every scroll/resize rAF tick, so per-level querySelector calls thrash
- * the DOM under heavy scrolling.
+ * the DOM under heavy scrolling. `chromeEl` is passed in (queried once per
+ * `levels` change, not re-queried every tick) — only its geometry is
+ * re-read here, since `.matrix-sticky-chrome` moves as it (un)sticks.
  */
-function measureActiveIndex(): {
+function measureActiveIndex(chromeEl: HTMLElement | null): {
   activeIdx: number;
   progress: number;
 } {
@@ -78,14 +82,9 @@ function measureActiveIndex(): {
     return { activeIdx: 0, progress: 0 };
   }
   // Focus line sits just under sticky app header + matrix chrome.
-  const chrome = document.querySelector(
-    ".matrix-sticky-chrome",
-  ) as HTMLElement | null;
-  const chromeBottom = chrome
-    ? chrome.getBoundingClientRect().bottom
-    : 56;
+  const chromeBottom = chromeEl ? chromeEl.getBoundingClientRect().bottom : 56;
   const focusY = chromeBottom + 24;
-  const reachLine = focusY + LEVEL_REACH_SLACK_PX;
+  const reachLine = focusY + DAG_SCROLL_TUNING.levelReachSlackPx;
 
   let best = 0;
   // Highest level whose top has crossed the (relaxed) focus line wins.
@@ -110,7 +109,8 @@ function measureActiveIndex(): {
   const lastIdx = nodes.length - 1;
   if (
     lastIdx > 0 &&
-    (progress >= SCROLL_END_PROGRESS || remaining <= SCROLL_END_REMAINING_PX)
+    (progress >= DAG_SCROLL_TUNING.scrollEndProgress ||
+      remaining <= DAG_SCROLL_TUNING.scrollEndRemainingPx)
   ) {
     best = Math.max(best, lastIdx);
   }
@@ -132,9 +132,13 @@ export function useLayoutDag(layout: Layout | null | undefined) {
   useEffect(() => {
     if (!levels.length) return;
 
+    // Queried once per `levels` change, not re-queried on every scroll tick —
+    // only its (sticky, so still per-tick) geometry gets re-read in measureActiveIndex.
+    const chromeEl = document.querySelector<HTMLElement>(".matrix-sticky-chrome");
+
     let raf = 0;
     const tick = () => {
-      const m = measureActiveIndex();
+      const m = measureActiveIndex(chromeEl);
       setActiveIdx((prev) => (prev === m.activeIdx ? prev : m.activeIdx));
       setProgress((prev) =>
         Math.abs(prev - m.progress) < 0.005 ? prev : m.progress,
@@ -216,7 +220,7 @@ export function useLayoutDag(layout: Layout | null | undefined) {
       );
       setActiveIdx(idx);
       const settle = () => {
-        const m = measureActiveIndex();
+        const m = measureActiveIndex(chrome);
         setActiveIdx(m.activeIdx);
         setProgress(m.progress);
         settleCleanupRef.current = null;

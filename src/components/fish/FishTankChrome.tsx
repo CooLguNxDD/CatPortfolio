@@ -10,7 +10,8 @@
  */
 
 import { useEffect, useRef } from "react"
-import { useFishTankStore } from "@/store"
+import { useShallow } from "zustand/react/shallow"
+import { usePreferencesStore, useFishTankStore } from "@/store"
 import { fishBus } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
 import { deriveScene } from "@/fish/tankMachine"
@@ -34,9 +35,21 @@ export function FishTankChrome({
   curationLabel,
   showBake = true,
 }: FishTankChromeProps) {
-  const query = useFishTankStore((s) => s.query)
-  const domain = useFishTankStore((s) => s.domain)
+  // These four update together on most interactions — one shallow-compared
+  // selector avoids a re-render per field. tankScene stays separate since
+  // it derives from s.state via deriveScene, a different shape entirely.
+  const { query, domain, soundEnabled, toggleSound, dropFood } = useFishTankStore(
+    useShallow((s) => ({
+      query: s.query,
+      domain: s.domain,
+      soundEnabled: s.soundEnabled,
+      toggleSound: s.toggleSound,
+      dropFood: s.dropFood,
+    })),
+  )
   const tankScene = useFishTankStore((s) => deriveScene(s.state))
+  const circadian = usePreferencesStore((s) => s.circadian)
+  const cycleCircadian = usePreferencesStore((s) => s.cycleCircadian)
 
   const rootRef = useRef<HTMLDivElement | null>(null)
   const surfaceSectionRef = useRef<HTMLElement | null>(null)
@@ -106,7 +119,7 @@ export function FishTankChrome({
               className="ft-sub"
               style={{ fontFamily: "var(--ft-mono)", fontSize: 10 }}
             >
-              drag orbit · wheel zoom · click a fish · esc to surface
+              drag orbit · wheel zoom · click fish · dbl-click feed · esc surface
             </div>
           </div>
         </div>
@@ -139,6 +152,30 @@ export function FishTankChrome({
               </b>{" "}
               lit
             </div>
+            <button
+              type="button"
+              className="ft-chip"
+              onClick={() => dropFood()}
+              title="Drop food pellets into the tank (or double-click canvas)"
+            >
+              🍲 Feed
+            </button>
+            <button
+              type="button"
+              className={cn("ft-chip", soundEnabled && "on")}
+              onClick={() => toggleSound()}
+              title="Toggle hydro-acoustic sound synthesizer"
+            >
+              {soundEnabled ? "🔊 Audio" : "🔇 Muted"}
+            </button>
+            <button
+              type="button"
+              className={cn("ft-chip", circadian !== "auto" && "on")}
+              onClick={() => cycleCircadian()}
+              title="Day / night cycle (auto follows your local clock)"
+            >
+              {circadian === "night" ? "🌙 Abyss" : circadian === "day" ? "☀️ Lagoon" : "🕓 Auto"}
+            </button>
             {showBake ? (
               <button
                 type="button"

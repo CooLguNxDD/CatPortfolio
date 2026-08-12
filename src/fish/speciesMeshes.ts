@@ -480,73 +480,11 @@ export function buildCyberCrystal(color: THREE.Color, scale = 1): THREE.Group {
   return crystal
 }
 
-/** Low-poly cat on the rim with animatable tail, ears, and paw. */
+import { buildGiantCatMesh } from "./catMesh"
+
+export { buildGiantCatMesh }
+
+/** Giant predator cyber-cat on the rim with interactive hunting animations. */
 export function buildCatMesh(waterY: number): THREE.Group {
-  const cat = new THREE.Group()
-  const fur = new THREE.MeshStandardMaterial({
-    color: 0x4a5f80,
-    emissive: 0x1d2a44,
-    emissiveIntensity: 0.55,
-    roughness: 0.72,
-    flatShading: true,
-  })
-  const pink = new THREE.MeshStandardMaterial({
-    color: 0xf472b6,
-    emissive: 0x7a2350,
-    emissiveIntensity: 0.5,
-    roughness: 0.6,
-  })
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 12), fur)
-  cat.add(head)
-
-  for (const side of [-1, 1] as const) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.2, 4), fur)
-    ear.position.set(side * 1.6, 2.8, 0)
-    ear.rotation.z = side * 0.25
-    ear.name = side < 0 ? "earL" : "earR"
-    cat.add(ear)
-
-    const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.62, 10, 8),
-      new THREE.MeshStandardMaterial({
-        color: 0xfbbf24,
-        emissive: 0xf59e0b,
-        emissiveIntensity: 0.85,
-      }),
-    )
-    eye.position.set(side * 1.1, 0.4, 2.6)
-    eye.name = side < 0 ? "eyeL" : "eyeR"
-    cat.add(eye)
-  }
-
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.5, 4), pink)
-  nose.position.set(0, -0.4, 3.1)
-  nose.rotation.x = Math.PI / 2
-  cat.add(nose)
-
-  // Paw
-  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.68, 5.2, 8), fur)
-  arm.position.set(-2.6, -3.6, 1.8)
-  arm.rotation.z = 0.22
-  arm.name = "paw"
-  cat.add(arm)
-
-  const pad = new THREE.Mesh(new THREE.SphereGeometry(1.05, 12, 10), fur)
-  pad.position.set(-3.3, -6.0, 1.9)
-  arm.add(pad)
-
-  // Animated tail
-  const tailGroup = new THREE.Group()
-  tailGroup.position.set(2.4, -1.0, -1.8)
-  tailGroup.name = "cat_tail"
-  for (let i = 0; i < 4; i++) {
-    const tSeg = new THREE.Mesh(new THREE.SphereGeometry(0.5 - i * 0.08, 8, 6), fur)
-    tSeg.position.set(i * 0.6, Math.sin(i * 0.8) * 0.4, -i * 0.5)
-    tailGroup.add(tSeg)
-  }
-  cat.add(tailGroup)
-
-  cat.position.set(0, waterY + 3.6, 0)
-  return cat
+  return buildGiantCatMesh(waterY).group
 }

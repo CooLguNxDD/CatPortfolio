@@ -172,6 +172,38 @@ export interface TankThemePalette {
   causticStrength: number
   /** God-ray opacity through the surface (0..1). */
   rayStrength: number
+  /**
+   * Beer-Lambert extinction per world unit, [r, g, b]. Red dies first, blue
+   * reaches the bed — see fish/shaders/absorption.ts.
+   */
+  sigma: [number, number, number]
+  /** Which half of the circadian cycle this palette was resolved for. */
+  phase: CircadianPhase
+  /** Global swim/beat multiplier — night fauna drift instead of darting. */
+  faunaTimeScale: number
+}
+
+/** Daylight lagoon vs midnight abyss. */
+export type CircadianPhase = "day" | "night"
+
+/** User-selectable circadian mode; `auto` follows the local clock. */
+export type CircadianMode = "auto" | CircadianPhase
+
+/** Local hours counted as daylight (inclusive start, exclusive end). */
+const DAY_START_HOUR = 7
+const DAY_END_HOUR = 19
+
+/**
+ * Resolve the circadian phase. An explicit mode always wins; `auto` (or an
+ * unset mode) reads the local clock so an evening visitor lands in the abyss.
+ */
+export function resolveCircadianPhase(
+  date: Date = new Date(),
+  mode: CircadianMode = "auto",
+): CircadianPhase {
+  if (mode === "day" || mode === "night") return mode
+  const hour = date.getHours()
+  return hour >= DAY_START_HOUR && hour < DAY_END_HOUR ? "day" : "night"
 }
 
 /**
@@ -246,7 +278,79 @@ export function resolveTankThemePalette(): TankThemePalette {
     causticStrength: light ? 0.55 : 0.38,
     // Per-surface opacity, and they overlap — keep it barely there.
     rayStrength: light ? 0.035 : 0.05,
+    // Shallow lagoon water is clearer than the open column, so daylight loses
+    // red more slowly than a night dive does.
+    sigma: light ? [0.28, 0.06, 0.015] : [0.35, 0.08, 0.02],
+    phase: "day",
+    faunaTimeScale: 1,
   }
+}
+
+// applyCircadian moved to ./fishTankCircadian.ts (circadian-specific color
+// logic, split out of this general theme-tokens file) — import it from
+// there directly; kept out of this file's exports to avoid a circular
+// import (fishTankCircadian imports mixHex/TankThemePalette from here).
+
+/** Render budget for the tank's procedural shaders. */
+export interface TankQuality {
+  tier: "low" | "high"
+  /** fbm octave count compiled into every tank shader. */
+  octaves: number
+  /** God-ray cone count. */
+  rayCount: number
+  /** Water plane segment counts [width, depth]. */
+  waterSegments: [number, number]
+  /** Fullscreen underwater wobble pass enabled. */
+  wobble: boolean
+  /** Multiplier on shader time — 0 freezes animation for reduce-motion users. */
+  timeScale: number
+}
+
+const HIGH_QUALITY: TankQuality = {
+  tier: "high",
+  octaves: 4,
+  rayCount: 9,
+  waterSegments: [64, 48],
+  wobble: true,
+  timeScale: 1,
+}
+
+const LOW_QUALITY: TankQuality = {
+  tier: "low",
+  octaves: 3,
+  rayCount: 5,
+  waterSegments: [32, 24],
+  wobble: false,
+  timeScale: 1,
+}
+
+/** Safe media-query probe — SSR and bare-node tests have no matchMedia. */
+function prefers(query: string): boolean {
+  const mm = (globalThis as { matchMedia?: (q: string) => MediaQueryList }).matchMedia
+  if (typeof mm !== "function") return false
+  try {
+    return mm.call(globalThis, query).matches
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Resolve the shader budget from the device and the user's motion preference.
+ * SSR / tests fall back to the full-quality defaults without throwing.
+ */
+export function resolveTankQuality(): TankQuality {
+  const win = (globalThis as { devicePixelRatio?: number; innerWidth?: number })
+
+  const coarse = prefers("(pointer: coarse)")
+  const dense = (win.devicePixelRatio || 1) > 2 && (win.innerWidth || 1280) < 900
+  const base = coarse || dense ? { ...LOW_QUALITY } : { ...HIGH_QUALITY }
+
+  if (prefers("(prefers-reduced-motion: reduce)")) {
+    base.timeScale = 0
+    base.wobble = false
+  }
+  return base
 }
 
 /** Linear mix of two 0xRRGGBB colours (t = weight of b). */

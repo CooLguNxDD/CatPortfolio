@@ -37,6 +37,7 @@ export const usePreferencesStore = create<PreferencesStore>()(
         theme: state.theme,
         accent: state.accent,
         density: state.density,
+        circadian: state.circadian,
         notifications: state.notifications,
       }),
     },

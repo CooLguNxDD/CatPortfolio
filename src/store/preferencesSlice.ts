@@ -7,6 +7,8 @@
 
 import type { StateCreator } from "zustand"
 
+import type { CircadianMode } from "@/blocks/fishTankTokens"
+
 export type Theme = string
 export type Accent = "amber" | "pink" | "neon" | "cyan" | "violet"
 export type Density = "comfortable" | "compact"
@@ -24,10 +26,18 @@ export interface PreferencesSlice {
   theme: Theme
   accent: Accent
   density: Density
+  /**
+   * Fish tank day/night cycle. A device preference (react-app-guide §2), so it
+   * persists rather than living in the transient tank slice.
+   */
+  circadian: CircadianMode
   notifications: NotificationPreferences
   setTheme: (theme: Theme) => void
   setAccent: (accent: Accent) => void
   setDensity: (density: Density) => void
+  setCircadian: (mode: CircadianMode) => void
+  /** Cycle auto → day → night → auto, for the single chrome chip. */
+  cycleCircadian: () => void
   setNotification: (key: keyof NotificationPreferences, enabled: boolean) => void
   toggleNotification: (key: keyof NotificationPreferences) => void
 }
@@ -55,10 +65,17 @@ export const createPreferencesSlice: StateCreator<PreferencesSlice> = (set) => (
   theme: "cozy",
   accent: "amber",
   density: "comfortable",
+  circadian: "auto",
   notifications: DEFAULT_NOTIFICATIONS,
   setTheme: (theme) => set({ theme }),
   setAccent: (accent) => set({ accent }),
   setDensity: (density) => set({ density }),
+  setCircadian: (circadian) => set({ circadian }),
+  cycleCircadian: () =>
+    set((state) => ({
+      circadian:
+        state.circadian === "auto" ? "day" : state.circadian === "day" ? "night" : "auto",
+    })),
   setNotification: (key, enabled) =>
     set((state) => ({
       notifications: { ...state.notifications, [key]: enabled },
