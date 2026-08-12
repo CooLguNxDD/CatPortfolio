@@ -24,6 +24,13 @@ import {
 
 export type AudioFxType = "dive" | "surface" | "eat" | "chime" | "bubble"
 
+/** Autoplay / AudioContext rejection is expected; log only in dev. */
+function audioWarn(where: string, err: unknown): void {
+  if (import.meta.env.DEV) {
+    console.debug(`[fishAudio:${where}]`, err)
+  }
+}
+
 export interface AudioPoint {
   x: number
   y: number
@@ -55,13 +62,14 @@ class FishAudioEngine {
       try {
         this.ctx = new AudioCtx()
         this.buildGraph(this.ctx)
-      } catch {
+      } catch (err) {
+        audioWarn("createContext", err)
         this.ctx = null
         return null
       }
     }
     if (this.ctx.state === "suspended") {
-      this.ctx.resume().catch(() => {})
+      this.ctx.resume().catch((err) => audioWarn("resume", err))
     }
     return this.ctx
   }
@@ -104,8 +112,9 @@ class FishAudioEngine {
       for (let c = 0; c < channels.length; c++) buffer.getChannelData(c).set(channels[c])
       this.convolver.buffer = buffer
       this.convolver.connect(this.wetGain)
-    } catch {
+    } catch (err) {
       // No convolver support → dry path only, everything else still works.
+      audioWarn("convolver", err)
       this.convolver = null
     }
   }
@@ -188,8 +197,8 @@ class FishAudioEngine {
         legacy.setPosition?.(position.x, position.y, position.z)
         legacy.setOrientation?.(forward.x, forward.y, forward.z, up.x, up.y, up.z)
       }
-    } catch {
-      /* listener automation unsupported — fall back to non-spatial output */
+    } catch (err) {
+      audioWarn("listener", err)
     }
   }
 
@@ -214,7 +223,8 @@ class FishAudioEngine {
           .setPosition?.(at.x, at.y, at.z)
       }
       return panner
-    } catch {
+    } catch (err) {
+      audioWarn("panner", err)
       return null
     }
   }
@@ -242,8 +252,8 @@ class FishAudioEngine {
       this.ambientGain.connect(this.waterFilter ?? this.masterGain)
 
       this.ambientOsc.start()
-    } catch {
-      /* ignore audio error */
+    } catch (err) {
+      audioWarn("ambient", err)
     }
   }
 
@@ -331,8 +341,8 @@ class FishAudioEngine {
         osc.start(now)
         osc.stop(now + 0.8)
       }
-    } catch {
-      /* ignore audio error */
+    } catch (err) {
+      audioWarn("playFx", err)
     }
   }
 
@@ -370,8 +380,8 @@ class FishAudioEngine {
       this.lowShelf?.disconnect()
       this.masterGain?.disconnect()
       this.ctx?.close()
-    } catch {
-      /* ignore cleanup error */
+    } catch (err) {
+      audioWarn("dispose", err)
     }
     this.ambientOsc = null
     this.ambientGain = null

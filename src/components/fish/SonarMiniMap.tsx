@@ -121,7 +121,16 @@ export function SonarMiniMap({ fish }: SonarMiniMapProps) {
               r={3}
               fill={speciesHex(f.species)}
               className="ft-sonar-blip"
+              role="button"
+              tabIndex={0}
+              aria-label={f.title}
               onClick={() => fishBus.emit("fish:pick", { slug: f.slug })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  fishBus.emit("fish:pick", { slug: f.slug })
+                }
+              }}
             >
               <title>{f.title}</title>
             </circle>

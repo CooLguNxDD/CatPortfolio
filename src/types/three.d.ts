@@ -1,6 +1,9 @@
 /** Ambient module when @types/three is not installed. */
 declare module "three" {
   export class Color {
+    r: number
+    g: number
+    b: number
     constructor(color?: string | number)
     getHex(): number
     getHexString(): string
@@ -22,6 +25,7 @@ declare module "three" {
     copy(v: Vector3): this
     clone(): Vector3
     project(camera: Camera): this
+    unproject(camera: Camera): this
     lerp(v: Vector3, alpha: number): this
     sub(v: Vector3): this
     add(v: Vector3): this
@@ -45,6 +49,7 @@ declare module "three" {
     name: string
     visible: boolean
     add(...objects: Object3D[]): this
+    remove(...objects: Object3D[]): this
     getObjectByName(name: string): Object3D | undefined
     traverse(cb: (obj: Object3D) => void): void
     lookAt(v: Vector3): void
@@ -143,6 +148,7 @@ declare module "three" {
     getAttribute(name: string): BufferAttributeLike
     computeVertexNormals(): void
     setFromPoints(points: Vector3[]): this
+    setDrawRange(start: number, count: number): void
     toNonIndexed(): BufferGeometry
     scale(x: number, y: number, z: number): this
     translate(x: number, y: number, z: number): this
@@ -166,6 +172,7 @@ declare module "three" {
     transparent: boolean
     onBeforeCompile?: (shader: WebGLShaderPatch, renderer: WebGLRenderer) => void
     customProgramCacheKey?: () => string
+    clone(): this
     dispose(): void
   }
   export class ShaderMaterial extends Material {

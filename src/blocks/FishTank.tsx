@@ -18,6 +18,9 @@ import { useLayoutStore, usePreferencesStore } from "@/store"
 
 const FishTankCanvas = lazy(() => import("./FishTankCanvas"))
 
+/** Stable empty highlight set — a per-render `[]` remounts the WebGL scene. */
+const NO_HIGHLIGHTS: string[] = []
+
 export interface FishTankViewProps {
   fish: FishSpecimenInput[]
   title?: string
@@ -40,7 +43,7 @@ export function FishTankView({
   title,
   caption,
   immersive = false,
-  highlightSlugs = [],
+  highlightSlugs = NO_HIGHLIGHTS,
   className,
 }: FishTankViewProps) {
   const reduced = useReducedMotion()
@@ -51,7 +54,7 @@ export function FishTankView({
   const themeOverride = useLayoutStore((s) => s.themeOverride)
   const bakeTheme = useLayoutStore((s) => s.bakeTheme)
   const isDemoSession = useLayoutStore((s) => s.isDemoSession)
-  // Remount WebGL scene when shell theme/accent changes so lights re-sample CSS.
+  // Remount on theme/accent only. Circadian is applied in-place on the live scene.
   const themeKey = useMemo(() => {
     const t =
       isDemoSession && themeOverride
@@ -59,8 +62,8 @@ export function FishTankView({
         : isDemoSession && bakeTheme
           ? bakeTheme
           : prefTheme
-    return `${t}:${accent}:${circadian}`
-  }, [prefTheme, accent, circadian, themeOverride, bakeTheme, isDemoSession])
+    return `${t}:${accent}`
+  }, [prefTheme, accent, themeOverride, bakeTheme, isDemoSession])
 
   if (!fish.length || reduced || !webgl2) {
     return null
@@ -136,7 +139,7 @@ export function FishTank(props: PropsOf<"fishTank">) {
       fish={fish}
       title={props.title}
       caption={props.caption}
-      highlightSlugs={props.highlightSlugs ?? []}
+      highlightSlugs={props.highlightSlugs ?? NO_HIGHLIGHTS}
       immersive={false}
     />
   )

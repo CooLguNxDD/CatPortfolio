@@ -531,6 +531,12 @@
   stroke-width: 1.5;
 }
 
+.ft-sonar-blip:focus-visible {
+  stroke: #fff;
+  stroke-width: 1.5;
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ft-sonar-sweep {
     display: none;
