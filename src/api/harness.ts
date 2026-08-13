@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getSharedClient, resetSharedClient, type OctToolResult } from "./octClient.ts";
 import { getAskTimeoutMs } from "../config/runtimeConfig.ts";
 import { wrapMessage } from "./instructions.ts";
-import { LayoutSchema, type Layout } from "../content/schema.ts";
+import { BlockSchema, LayoutSchema, type Block, type Layout } from "../content/schema.ts";
 
 /**
  * Present when OpenCat short-circuited the turn to a single headless CLI agent
@@ -230,6 +230,125 @@ export function extractCarryLayout(data: unknown): Layout | null {
     return null;
   }
   return parsed.data;
+}
+
+/** An ask-mode overlay: changed blocks only, never a whole layout. */
+export interface BlockPatchResult {
+  blocks: Block[];
+  patchedIds: string[];
+  dag?: Layout["meta"]["dag"] | null;
+  highlightSlugs?: string[];
+  dropped: number;
+}
+
+/** A queued read-only discovery job for a question with no inventory match. */
+export const PendingJobSchema = z.object({
+  job_id: z.string().min(1),
+  status: z.string().optional(),
+  query: z.string().optional(),
+});
+export type PendingJob = z.infer<typeof PendingJobSchema>;
+
+/** Walk the usual envelope bags looking for an ask-overlay payload. */
+function findOverlayCandidate(data: unknown): Record<string, any> | null {
+  if (!data || typeof data !== "object") return null;
+  const obj = data as Record<string, any>;
+  const candidates: unknown[] = [
+    obj?.response?.carry,
+    obj?.carry,
+    obj?.response,
+    obj,
+  ];
+  const bags = [obj?.data, obj?.step_results, obj?.response?.step_results, obj?.response?.data];
+  for (const bag of bags) {
+    if (Array.isArray(bag)) {
+      // Newest step first — a later stage's overlay supersedes an earlier one.
+      for (let i = bag.length - 1; i >= 0; i--) candidates.push(bag[i]);
+    } else if (bag && typeof bag === "object") {
+      candidates.push(bag);
+    }
+  }
+  for (const c of candidates) {
+    if (c && typeof c === "object" && Array.isArray((c as any).blocks)) {
+      return c as Record<string, any>;
+    }
+  }
+  return null;
+}
+
+/**
+ * Best-effort block patch from an ask turn.
+ *
+ * Each block is validated independently and invalid ones are dropped rather
+ * than failing the turn — one malformed block must not cost the visitor the
+ * whole answer (a whole-layout parse would do exactly that).
+ */
+export function extractBlockPatch(data: unknown): BlockPatchResult | null {
+  const candidate = findOverlayCandidate(data);
+  if (!candidate) return null;
+
+  const blocks: Block[] = [];
+  let dropped = 0;
+  for (const raw of candidate.blocks as unknown[]) {
+    const parsed = BlockSchema.safeParse(raw);
+    if (parsed.success) blocks.push(parsed.data);
+    else {
+      dropped += 1;
+      console.warn(
+        "[extractBlockPatch] block failed BlockSchema validation:",
+        parsed.error.issues.slice(0, 3),
+      );
+    }
+  }
+  if (!blocks.length) return null;
+
+  const ids = candidate.patched_block_ids ?? candidate.patchedBlockIds;
+  const highlights = candidate.highlight_slugs ?? candidate.highlightSlugs;
+  return {
+    blocks,
+    patchedIds: Array.isArray(ids)
+      ? ids.map(String)
+      : blocks.map((b) => b.id).filter(Boolean),
+    dag:
+      candidate.dag && typeof candidate.dag === "object"
+        ? (candidate.dag as Layout["meta"]["dag"])
+        : null,
+    highlightSlugs: Array.isArray(highlights) ? highlights.map(String) : undefined,
+    dropped,
+  };
+}
+
+/** Slug the ask router wants focused in the tank, if any. */
+export function extractFocusSlug(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const obj = data as Record<string, any>;
+  const bags: unknown[] = [obj?.response?.carry, obj?.carry, obj?.response, obj];
+  for (const bag of [obj?.data, obj?.step_results, obj?.response?.step_results]) {
+    if (Array.isArray(bag)) for (let i = bag.length - 1; i >= 0; i--) bags.push(bag[i]);
+  }
+  for (const b of bags) {
+    if (!b || typeof b !== "object") continue;
+    const e = b as Record<string, any>;
+    const slug = e.focus_slug ?? e.focusSlug;
+    if (typeof slug === "string" && slug.trim()) return slug.trim();
+  }
+  return null;
+}
+
+/** A queued discovery job token from an ask turn that found no match. */
+export function extractPendingJob(data: unknown): PendingJob | null {
+  if (!data || typeof data !== "object") return null;
+  const obj = data as Record<string, any>;
+  const bags: unknown[] = [obj?.response?.carry, obj?.carry, obj?.response, obj];
+  for (const bag of [obj?.data, obj?.step_results, obj?.response?.step_results]) {
+    if (Array.isArray(bag)) for (let i = bag.length - 1; i >= 0; i--) bags.push(bag[i]);
+  }
+  for (const b of bags) {
+    if (!b || typeof b !== "object") continue;
+    const parsed = PendingJobSchema.safeParse((b as Record<string, any>).pending_job);
+    if (parsed.success) return parsed.data;
+  }
+  return null;
 }
 
 /** Theme id from a validated carry layout, if present. */

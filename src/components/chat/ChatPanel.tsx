@@ -4,55 +4,98 @@ import { getSharedClient } from "@/api/octClient";
 import {
   askOct,
   extractBakeMeta,
+  extractBlockPatch,
   extractCarryLayout,
+  extractFocusSlug,
+  extractPendingJob,
   type CliMeta,
+  type PendingJob,
 } from "@/api/harness";
-import {
-  composeLayoutLive,
-  loadJobLayout,
-  loadLayoutForQuery,
-  type LayoutLoadResult,
-} from "@/content/loadLayout";
-import { ChatMessage, type Message } from "./ChatMessage";
+import { loadJobLayout } from "@/content/loadLayout";
+import { ChatMessage, type Message, type MessageAction } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/store/chatSlice";
-import { useLayoutStore } from "@/store";
-import { applyLayoutToCache } from "@/store/applyLayout";
+import { useFishTankStore, useLayoutStore } from "@/store";
+import { applyBlockPatch, applyLayoutToCache } from "@/store/applyLayout";
+import { fishBus } from "@/fish/fishBus";
+import { bestFishForQuestion } from "@/fish/matchFish";
+import { sceneFromLayout } from "@/fish/sceneFromLayout";
+import type { Layout } from "@/content/schema";
 
-/** Soft planner nudge — prefer bake / design / scoped compose for Ask re-render. */
-const ENRICHMENT_DIRECTIVE =
-  "\n\n[System: CatPortfolio Ask mode re-renders the page from layout carry. " +
-  "Prefer: (1) bake_portfolio_for_job when the visitor describes a job/role/company (returns short_id + layout); " +
-  "(2) design_layout or compose_scoped_layout for creative redesign; " +
-  "(3) emit_layout(refresh=true) only as a thin fallback. " +
-  "Always put a valid layout in the response so the page updates. " +
-  "If portfolio content is thin, follow live-layout-enrichment: local RAG first, " +
-  "then get_project_context(slug) for DB context_sources only (never invent refs from chat). " +
-  "Do not call compose_from_fragments (removed). " +
-  "When a demo short_id is already in session (visitor opened ?j=…), expand that " +
-  "layout in place — do not replace it with an unrelated audience template.]";
+/** The client skeleton an ask turn needs: block identity, not block content. */
+export interface AskContext {
+  view: "tank" | "text";
+  blockIndex: { id: string; type: string; slug?: string }[];
+  tankSlugs: string[];
+  dag: Layout["meta"]["dag"] | null;
+  timeSpan: { min: number; max: number } | null;
+}
+
+/** Project slug carried by a block, when it has one. */
+function slugOfBlock(block: Layout["blocks"][number]): string | undefined {
+  const props = block.props as Record<string, unknown> | undefined;
+  const explicit = props?.slug;
+  if (typeof explicit === "string" && explicit.trim()) return explicit.trim();
+  // ``card-<slug>`` — the same prefix convention fishFromLayout strips.
+  const prefix = `${block.type}-`;
+  if (block.id?.startsWith(prefix)) return block.id.slice(prefix.length);
+  return undefined;
+}
 
 /**
- * Patch directive when a short_id demo session is active.
- * Instructs 1–2 block build + patch_job_layout (derived fork).
+ * Describe the layout on screen without shipping it.
+ *
+ * The server addresses blocks by (type, slug) and only needs `(id, type)` pairs
+ * to recompute DAG bands, so an ask turn sends a skeleton instead of 100kB of
+ * layout JSON. `timeSpan` is echoed back so a rebuilt tank keeps its depth
+ * scale and existing fish don't visibly resettle.
  */
-export function patchDirective(shortId: string, derivedShortId?: string | null): string {
-  const base = shortId.trim();
-  const derived = (derivedShortId || "").trim();
-  const derivedArg = derived && derived !== base ? derived : "";
+export function buildAskContext(
+  layout: Layout | null | undefined,
+  view: "tank" | "text",
+): AskContext {
+  if (!layout) {
+    return { view, blockIndex: [], tankSlugs: [], dag: null, timeSpan: null };
+  }
+  const scene = sceneFromLayout(layout);
+  const tank = layout.blocks.find((b) => b.type === "fishTank");
+  const span = (tank?.props as { timeSpan?: { min: number; max: number } } | undefined)
+    ?.timeSpan;
+  return {
+    view,
+    blockIndex: layout.blocks.map((b) => {
+      const slug = slugOfBlock(b);
+      return { id: b.id, type: b.type, ...(slug ? { slug } : {}) };
+    }),
+    tankSlugs: scene.fish.map((f) => f.slug),
+    dag: layout.meta?.dag ?? null,
+    timeSpan: span ?? null,
+  };
+}
+
+/**
+ * Ask directive — hands the server the page skeleton and names the flow.
+ *
+ * Deliberately thin compared to the directive it replaces: the routing decision
+ * now lives in `portfolio_ask_v1`'s deterministic stages, so this no longer
+ * tries to talk the agent out of a full-page compose. Prompt-steering that was
+ * exactly what kept failing.
+ */
+export function askDirective(ctx: AskContext): string {
   return (
-    "\n\n[System: CatPortfolio demo session short_id=" +
-    JSON.stringify(base) +
-    (derivedArg ? ` derived_short_id=${JSON.stringify(derivedArg)}` : "") +
-    ". Incremental patch mode: do NOT bake_portfolio_for_job or full-page design_layout/compose_scoped_layout/emit_layout. " +
-    "Instead: (1) search_portfolio_context for the visitor topic; " +
-    "(2) build_layout_block × 1–2 targeted blocks only; " +
-    `(3) patch_job_layout(base_short_id=${JSON.stringify(base)}` +
-    (derivedArg ? `, derived_short_id=${JSON.stringify(derivedArg)}` : "") +
-    ", sections=[block1, …]). " +
-    "Return the tool layout + short_id so the page patches in place. " +
-    "Original HR bake is immutable — first patch mints a derived short_id.]"
+    "\n\n[System: CatPortfolio ask turn (goal_class=scoped_ask). Route via " +
+    "portfolio_ask_v1: route_portfolio_ask -> build_ask_overlay. Return changed " +
+    "blocks only; do not compose or bake a whole page unless the visitor is " +
+    "actually describing a job posting. Page context: " +
+    JSON.stringify({
+      view: ctx.view,
+      block_index: ctx.blockIndex,
+      tank_slugs: ctx.tankSlugs,
+      dag: ctx.dag,
+      time_span: ctx.timeSpan,
+    }) +
+    "]"
   );
 }
 
@@ -64,25 +107,25 @@ function oneShotPillLabel(cli: CliMeta): string {
   return `one-shot cli · ${cli.agent}`;
 }
 
-/** Apply the first non-snapshot of rest/compose REST races (when allowed). */
-async function applyFirstRestLayout(
-  queryClient: ReturnType<typeof useQueryClient>,
-  layoutPromise: Promise<LayoutLoadResult>,
-  composePromise: Promise<LayoutLoadResult>,
-) {
-  const [restResult, composeResult] = await Promise.all([layoutPromise, composePromise]);
-  if (composeResult.source !== "snapshot") {
-    applyLayoutToCache(queryClient, composeResult);
-  } else if (restResult.source !== "snapshot") {
-    applyLayoutToCache(queryClient, restResult);
-  }
+export interface ChatPanelProps {
+  /** The layout currently on screen — the thing an ask turn patches. */
+  layout?: Layout | null;
+  /** Which canvas the visitor is looking at; decides fish vs text intents. */
+  view?: "tank" | "text";
 }
 
-export function ChatPanel() {
+export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [cliMeta, setCliMeta] = useState<CliMeta | null>(null);
+  const [discoveryJob, setDiscoveryJob] = useState<PendingJob | null>(null);
+  // Read at send time, not captured in the callback's deps — a layout patch
+  // mid-turn must not re-create sendText and cancel the in-flight turn.
+  const currentLayoutRef = useRef<Layout | null>(layout);
+  const viewRef = useRef<"tank" | "text">(view);
+  currentLayoutRef.current = layout;
+  viewRef.current = view;
   const demoShortId = useLayoutStore((s) => s.shortId);
   const [lastBakeId, setLastBakeId] = useState<string | null>(
     () => useLayoutStore.getState().shortId,
@@ -123,45 +166,70 @@ export function ChatPanel() {
 
       setMessages((prev) => [...prev, { role: "user", markdown: userMessageText }]);
 
-      // Patch mode when a short_id session exists — skip whole-page REST races
-      // that would clobber an incremental patch.
-      const sessionShortId = useLayoutStore.getState().shortId;
-      const patchMode = Boolean(sessionShortId?.trim());
-      // Session id is both the load key and (after first patch) the derived fork.
-      const directive = patchMode
-        ? patchDirective(sessionShortId!)
-        : ENRICHMENT_DIRECTIVE;
+      const currentLayout = currentLayoutRef.current;
+      const ctx = buildAskContext(currentLayout, viewRef.current);
+      const directive = askDirective(ctx);
 
-      // Parallel fast path only when NOT in a short_id patch session. Both
-      // loaders already fail-open internally, but attach .catch at creation
-      // (not just in `finally`) so a promise that rejects before it's
-      // awaited never surfaces as an unhandled rejection.
-      const snapshotFallback = { layout: null as never, source: "snapshot" as const };
-      const layoutPromise: Promise<LayoutLoadResult> = patchMode
-        ? Promise.resolve(snapshotFallback)
-        : loadLayoutForQuery(userMessageText, { timeoutMs: 10000 }).catch(
-            () => snapshotFallback,
-          );
-      const composePromise: Promise<LayoutLoadResult> = patchMode
-        ? Promise.resolve(snapshotFallback)
-        : composeLayoutLive(
-            { query: userMessageText, refresh: true },
-            { timeoutMs: 12000 },
-          ).catch(() => snapshotFallback);
+      // Focus a fish the visitor can already see, before the round trip. The
+      // server's focus_slug overrides this when the turn lands; this only
+      // removes the wait, it never picks a fish that isn't in the tank.
+      if (ctx.view === "tank" && currentLayout) {
+        const local = bestFishForQuestion(
+          sceneFromLayout(currentLayout).fish,
+          userMessageText,
+        );
+        if (local) fishBus.emit("fish:pick", { slug: local.slug });
+      }
+
+      // No REST race. `loadLayoutForQuery` / `composeLayoutLive` each rebuild
+      // the whole page, which is precisely what an ask turn must not do — that
+      // race was the real cause of "the page reset itself" on every question.
+      // A whole layout is applied only when the turn was actually a bake.
 
       try {
         const result = await askOct(userMessageText, sessionId, directive);
         if (result.ok) {
           if (result.cli) setCliMeta(result.cli);
-          setMessages((prev) => [...prev, { role: "assistant", markdown: result.markdown }]);
 
-          // 1) Agentic layout carry (design / bake / patch.layout)
-          const carryLayout = extractCarryLayout(result.raw);
-          // 2) Bake/patch short_id → load persisted job layout (or stamp id onto carry)
+          // 1) Surgical overlay — the ask path. Changed blocks only.
+          const patch = extractBlockPatch(result.raw);
+          const focusSlug = extractFocusSlug(result.raw);
+          const pendingJob = extractPendingJob(result.raw);
+
+          // Chips let the visitor jump to what changed without re-asking.
+          const actions: MessageAction[] = [];
+          if (focusSlug) {
+            actions.push({ kind: "focus", target: focusSlug, label: focusSlug });
+          }
+          for (const id of patch?.patchedIds ?? []) {
+            if (actions.length >= 4) break;
+            actions.push({ kind: "view", target: id, label: id });
+          }
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              markdown: result.markdown,
+              ...(actions.length ? { actions } : {}),
+            },
+          ]);
+
+          // 2) Whole-layout carry — only a real bake should produce one.
+          const carryLayout = patch ? null : extractCarryLayout(result.raw);
           const bake = extractBakeMeta(result.raw);
           if (bake?.shortId) setLastBakeId(bake.shortId);
 
-          if (carryLayout) {
+          if (patch) {
+            const applied = applyBlockPatch(queryClient, {
+              blocks: patch.blocks,
+              patchedIds: patch.patchedIds,
+              dag: patch.dag,
+              highlightSlugs: patch.highlightSlugs,
+            });
+            if (!applied) {
+              console.warn("[ChatPanel] block patch had no layout to apply to");
+            }
+          } else if (carryLayout) {
             applyLayoutToCache(queryClient, {
               layout: carryLayout,
               source: bake?.shortId ? "bake" : "live",
@@ -172,10 +240,11 @@ export function ChatPanel() {
             applyLayoutToCache(queryClient, baked);
           }
 
-          // 3) Fast REST path only when agent didn't return a layout AND not patch session
-          if (!carryLayout && !bake?.shortId && !patchMode) {
-            await applyFirstRestLayout(queryClient, layoutPromise, composePromise);
+          if (focusSlug) {
+            useFishTankStore.getState().setFocus(focusSlug);
+            fishBus.emit("fish:pick", { slug: focusSlug });
           }
+          if (pendingJob) setDiscoveryJob(pendingJob);
         } else {
           setMessages((prev) => [
             ...prev,
@@ -187,9 +256,8 @@ export function ChatPanel() {
               isError: true,
             },
           ]);
-          if (!patchMode) {
-            await applyFirstRestLayout(queryClient, layoutPromise, composePromise);
-          }
+          // A failed turn leaves the layout alone. Rebuilding the page as a
+          // consolation prize is worse than answering nothing.
         }
       } catch (err: any) {
         setMessages((prev) => [
@@ -200,19 +268,69 @@ export function ChatPanel() {
             isError: true,
           },
         ]);
-        if (!patchMode) {
-          try {
-            await applyFirstRestLayout(queryClient, layoutPromise, composePromise);
-          } catch {
-            // ignore layout fallback failures
-          }
-        }
       } finally {
         setPending(false);
       }
     },
-    [pending, isOnline, sessionId, queryClient, lastBakeId],
+    [pending, isOnline, sessionId, queryClient],
   );
+
+  // A question with no inventory match queues a read-only discovery job.
+  // Poll it, then re-ask once so the grounded project can enter the tank.
+  useEffect(() => {
+    if (!discoveryJob?.job_id) return;
+    let cancelled = false;
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        markdown: "_Nothing in the inventory matches that yet — looking it up…_",
+      },
+    ]);
+
+    const started = Date.now();
+    const timer = window.setInterval(async () => {
+      if (cancelled) return;
+      if (Date.now() - started > 60_000) {
+        window.clearInterval(timer);
+        setDiscoveryJob(null);
+        return;
+      }
+      try {
+        const client = await getSharedClient();
+        const res = await client.callTool("get_context_discovery", {
+          job_id: discoveryJob.job_id,
+        });
+        const status = (res.data as { status?: string } | undefined)?.status;
+        if (!status || status === "pending") return;
+        window.clearInterval(timer);
+        if (cancelled) return;
+        setDiscoveryJob(null);
+        if (status === "ready") {
+          void sendText(discoveryJob.query || "");
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              markdown: "I don't have a project that matches that.",
+            },
+          ]);
+        }
+      } catch {
+        window.clearInterval(timer);
+        setDiscoveryJob(null);
+      }
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+    // sendText is intentionally excluded: re-creating the poller on every
+    // layout patch would restart the interval and re-post the notice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discoveryJob]);
 
   // QuickActions chips seed chat via pendingPrompt.
   useEffect(() => {
@@ -334,7 +452,13 @@ export function ChatPanel() {
           </div>
         ) : (
           messages.map((msg, idx) => (
-            <ChatMessage key={idx} role={msg.role} markdown={msg.markdown} isError={msg.isError} />
+            <ChatMessage
+              key={idx}
+              role={msg.role}
+              markdown={msg.markdown}
+              isError={msg.isError}
+              actions={msg.actions}
+            />
           ))
         )}
         {pending && (
