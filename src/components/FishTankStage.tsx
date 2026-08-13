@@ -8,7 +8,7 @@
  * component only reads the resolved value off useFishTank for the dossier.
  */
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link } from "@tanstack/react-router"
 import { FishTankView } from "@/blocks/FishTank"
 import { FishDossier } from "@/components/fish/FishDossier"
@@ -16,8 +16,10 @@ import { FishFlatGrid } from "@/components/fish/FishFlatGrid"
 import { FishTankChrome } from "@/components/fish/FishTankChrome"
 import { SonarMiniMap } from "@/components/fish/SonarMiniMap"
 import { DepthScrubber } from "@/components/fish/DepthScrubber"
+import { ChatPanel } from "@/components/chat/ChatPanel"
 import { useFishTank } from "@/hooks/useFishTank"
 import { fishBus } from "@/fish/fishBus"
+import { useChatStore } from "@/store"
 import { canDiveOnScroll } from "@/fish/tankMachine"
 import type { Layout } from "@/content/schema"
 import type { DemoSearch } from "@/router"
@@ -37,6 +39,30 @@ export function FishTankStage({
   className,
 }: FishTankStageProps) {
   const tank = useFishTank(layout)
+  const [askOpen, setAskOpen] = useState(false)
+
+  useEffect(() => {
+    function onAskToggle() {
+      setAskOpen((prev) => !prev)
+    }
+    function onAskOpen(payload?: { prompt?: string } | void) {
+      setAskOpen(true)
+      if (payload && typeof payload === "object" && payload.prompt) {
+        useChatStore.getState().setPendingPrompt(payload.prompt)
+      }
+    }
+    function onAskClose() {
+      setAskOpen(false)
+    }
+    fishBus.on("ask:toggle", onAskToggle)
+    fishBus.on("ask:open", onAskOpen)
+    fishBus.on("ask:close", onAskClose)
+    return () => {
+      fishBus.off("ask:toggle", onAskToggle)
+      fishBus.off("ask:open", onAskOpen)
+      fishBus.off("ask:close", onAskClose)
+    }
+  }, [])
 
   // Element focused when the dossier opened, so Escape hands focus back
   // instead of dropping keyboard users at the top of the document.
@@ -56,6 +82,10 @@ export function FishTankStage({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return
+      if (askOpen) {
+        setAskOpen(false)
+        return
+      }
       if (tank.focusedSlug) {
         const opener = dossierOpenerRef.current
         dossierOpenerRef.current = null
@@ -67,7 +97,7 @@ export function FishTankStage({
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [tank.focusedSlug, tank.tankScene])
+  }, [askOpen, tank.focusedSlug, tank.tankScene])
 
   useEffect(() => {
     if (tank.chrome !== "3d") return
@@ -185,6 +215,31 @@ export function FishTankStage({
         total={tank.fish.length}
         onClose={() => fishBus.emit("fish:release")}
       />
+
+      {askOpen && tank.tankScene === "tank" ? (
+        <aside
+          className="ft-ask-dock glass"
+          aria-label="Submerged Ask Agent"
+        >
+          <div className="flex items-center justify-between border-b border-(--hairline) px-3 py-2">
+            <span className="text-xs font-mono font-bold text-(--amber) flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-(--neon) animate-pulse" />
+              Ask Tank Agent · Live Patch
+            </span>
+            <button
+              type="button"
+              className="ft-chip-btn text-xs px-2 py-0.5"
+              onClick={() => setAskOpen(false)}
+              title="Close Ask Panel (Esc)"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <div className="p-2 overflow-y-auto max-h-[calc(100svh-190px)]">
+            <ChatPanel layout={layout} view="tank" />
+          </div>
+        </aside>
+      ) : null}
     </div>
   )
 }
