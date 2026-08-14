@@ -568,6 +568,46 @@
   font-family: var(--ft-mono);
 }
 
+/* ---------- Submerged Ask Agent HUD Dock ---------- */
+.ft-ask-dock {
+  position: absolute;
+  top: 50px;
+  left: 16px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100svh - 175px);
+  z-index: 30;
+  border-radius: var(--radius-lg, 16px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  animation: ftAskFadeIn 0.2s ease-out;
+}
+
+.ft-ask-dock > div:last-child {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.ft-ask-dock .w-full.border {
+  border: none;
+  background: transparent;
+  padding: 0.85rem;
+  box-shadow: none;
+}
+
+@keyframes ftAskFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* canvas host fills stage under toolbar */
 .ft-canvas-host {
   position: absolute;

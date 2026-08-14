@@ -606,3 +606,37 @@
 .cost-tot.save .val {
   color: var(--neon);
 }
+
+/* ---------------------------------------------------------------------------
+ * Ask-mode patch pulse
+ *
+ * An ask turn replaces one or two blocks in place. Without a cue the visitor
+ * cannot tell a surgical patch from a full re-render, so the patched blocks
+ * glow briefly (see LayoutRenderer::usePatchHighlight, driven by
+ * meta.patchedBlockIds).
+ * ------------------------------------------------------------------------ */
+@keyframes patch-glow {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--amber) 55%, transparent);
+  }
+  35% {
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--amber) 28%, transparent),
+      0 0 22px 2px color-mix(in oklch, var(--neon) 30%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+[data-block-id].is-patched {
+  border-radius: var(--radius-lg, 14px);
+  animation: patch-glow 2.1s ease-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-block-id].is-patched {
+    animation: none;
+    outline: 2px solid color-mix(in oklch, var(--amber) 45%, transparent);
+    outline-offset: 3px;
+  }
+}

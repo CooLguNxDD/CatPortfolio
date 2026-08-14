@@ -577,6 +577,35 @@ const DagMeta = z.object({
   levels: z.array(DagLevel).default([]),
 });
 
+/**
+ * One layout block. Exported so an ask-mode patch can validate a single
+ * arriving block without wrapping it in a throwaway layout — the same reason
+ * the Python side has `_validate_and_stamp` next to `validate_layout`.
+ */
+export const BlockSchema = z.discriminatedUnion("type", [
+  Hero,
+  ProjectGrid,
+  StatStrip,
+  StarStory,
+  ArchDiagram,
+  CodeSnippet,
+  Prose,
+  Chart,
+  Timeline,
+  FlowAnim,
+  KpiGrid,
+  Comparison,
+  QuickActions,
+  Card,
+  McpSandbox,
+  CostSim,
+  Composite,
+  Scene2d,
+  FishTank,
+]);
+
+export type Block = z.infer<typeof BlockSchema>;
+
 export const LayoutSchema = z.object({
   version: z.literal(1),
   meta: z.object({
@@ -618,30 +647,14 @@ export const LayoutSchema = z.object({
     planSource: z.string().optional(),
     enrichment: z.string().optional(),
     patchedBlockIds: z.array(z.string()).optional(),
+    /**
+     * JD-scored curation slugs. Mirrors UILayoutMeta.highlightSlugs — the
+     * Python side must declare it too or Pydantic drops it on every
+     * validate_layout round-trip, silently erasing fish curation.
+     */
+    highlightSlugs: z.array(z.string()).optional(),
   }),
-  blocks: z.array(
-    z.discriminatedUnion("type", [
-      Hero,
-      ProjectGrid,
-      StatStrip,
-      StarStory,
-      ArchDiagram,
-      CodeSnippet,
-      Prose,
-      Chart,
-      Timeline,
-      FlowAnim,
-      KpiGrid,
-      Comparison,
-      QuickActions,
-      Card,
-      McpSandbox,
-      CostSim,
-      Composite,
-      Scene2d,
-      FishTank,
-    ]),
-  ),
+  blocks: z.array(BlockSchema),
 });
 
 export type Layout = z.infer<typeof LayoutSchema>;

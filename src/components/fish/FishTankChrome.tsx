@@ -128,10 +128,17 @@ export function FishTankChrome({
           <div className="ft-toolbar glass">
             <input
               type="search"
+              id="q"
               className="ft-input"
               value={query}
               onChange={(e) => fishBus.emit("filter:query", e.target.value)}
-              placeholder="Ask the tank — mcp, terraform, clinician…"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && query.trim()) {
+                  e.preventDefault()
+                  fishBus.emit("ask:open", { prompt: query.trim() })
+                }
+              }}
+              placeholder="Ask the tank — mcp, kubernetes, planner"
               aria-label="Search projects"
             />
             <div className="ft-chips" role="group" aria-label="Domain filter">
@@ -152,6 +159,14 @@ export function FishTankChrome({
               </b>{" "}
               lit
             </div>
+            <button
+              type="button"
+              className="ft-chip"
+              onClick={() => fishBus.emit("ask:toggle")}
+              title="Open Ask AI agent chat dock"
+            >
+              💬 Ask
+            </button>
             <button
               type="button"
               className="ft-chip"

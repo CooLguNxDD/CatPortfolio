@@ -12,7 +12,7 @@ import { sceneFromLayout } from "@/fish/sceneFromLayout"
 import { FishTankStage } from "@/components/FishTankStage"
 import { FishTankErrorBoundary } from "@/components/FishTankErrorBoundary"
 import { fishBus } from "@/fish/fishBus"
-import { useFishTankStore } from "@/store"
+import { useFishTankStore, useLayoutStore } from "@/store"
 import {
   prefersReducedMotion,
   probeWebGL2,
@@ -29,13 +29,15 @@ export function HomePage() {
   const { j, v, f } = search
   const { shortId, isDemoSession } = useDemoShortId(j)
   const { result, isLoading } = useDemoLayoutQuery(shortId)
+  const workingLayout = useLayoutStore((s) => s.workingLayout)
 
   const layout =
-    isDemoSession && shortId && result.source !== "snapshot"
+    workingLayout ??
+    (isDemoSession && shortId && result.source !== "snapshot"
       ? result.layout
       : j
         ? result.layout
-        : loadBaked()
+        : loadBaked())
 
   const scene = useMemo(() => sceneFromLayout(layout), [layout])
   const caps = useMemo(

@@ -90,3 +90,4 @@ export type {
   FishTankChrome,
   TankState,
 } from "./fishTankSlice"
+export { useChatStore, type ChatSlice } from "./chatSlice"
