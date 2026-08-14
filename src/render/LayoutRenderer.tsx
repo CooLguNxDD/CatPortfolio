@@ -9,7 +9,9 @@
  */
 
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentType,
   type CSSProperties,
@@ -63,6 +65,8 @@ function renderBlock(
     return (
       <section
         key={block.id}
+        id={`block-${block.id}`}
+        data-block-id={block.id}
         data-dag-id={block.id}
         style={opts.style}
         className={cn("min-w-0 h-full", opts.isCurrent && "is-current")}
@@ -75,6 +79,8 @@ function renderBlock(
   return (
     <motion.section
       key={block.id}
+      id={`block-${block.id}`}
+      data-block-id={block.id}
       style={opts?.style}
       initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -303,6 +309,56 @@ function MatrixLevels({
   );
 }
 
+/**
+ * Show the visitor *what* changed after an ask patch.
+ *
+ * `meta.patchedBlockIds` has been stamped by the backend for a while and read
+ * by nobody — without it a surgical patch is indistinguishable from a page
+ * flash. Scrolls the first patched block into view and pulses each one.
+ */
+function usePatchHighlight(
+  patchedIds: string[] | undefined,
+  reduced: boolean | null,
+) {
+  const seen = useRef<string>("");
+  useEffect(() => {
+    const ids = patchedIds ?? [];
+    const key = ids.join(",");
+    // Re-render with the same patch set must not re-pulse.
+    if (!ids.length || key === seen.current) return;
+    seen.current = key;
+
+    const nodes = ids
+      .map((id) => document.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(id)}"]`))
+      .filter((n): n is HTMLElement => Boolean(n));
+    if (!nodes.length) return;
+
+    nodes[0].scrollIntoView({
+      behavior: reduced ? "auto" : "smooth",
+      block: "center",
+    });
+    // Move keyboard focus too, not just the scroll — otherwise a keyboard
+    // user is left in the chat input and has to tab through unrelated
+    // content to reach what just changed.
+    nodes[0].setAttribute("tabindex", "-1");
+    nodes[0].focus({ preventScroll: true });
+
+    const unmark = () => {
+      for (const node of nodes) {
+        if (document.body.contains(node)) node.classList.remove("is-patched");
+      }
+    };
+    for (const node of nodes) node.classList.add("is-patched");
+    const timer = window.setTimeout(unmark, 2200);
+    // Unmark on cleanup too — an unmount/re-render before the timer fires
+    // must not leave the class stuck on a node that outlives this effect.
+    return () => {
+      window.clearTimeout(timer);
+      unmark();
+    };
+  }, [patchedIds, reduced]);
+}
+
 export function LayoutRenderer({
   layout,
   themeMode = "auto",
@@ -312,6 +368,8 @@ export function LayoutRenderer({
 }) {
   const reduced = useReducedMotion();
   useLayoutTheme(layout, { mode: themeMode });
+
+  usePatchHighlight(layout.meta.patchedBlockIds, reduced);
 
   const hasDag = Boolean(layout.meta.dag?.levels?.length);
 

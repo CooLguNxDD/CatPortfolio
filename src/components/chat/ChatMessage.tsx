@@ -1,12 +1,25 @@
 import { memo } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { fishBus } from "@/fish/fishBus";
+import { useFishTankStore } from "@/store";
 import { cn } from "@/lib/utils";
+
+/** A follow-up the visitor can take on what this turn changed. */
+export interface MessageAction {
+  kind: "focus" | "view";
+  /** Fish slug for `focus`, block id for `view`. */
+  target: string;
+  label: string;
+}
 
 export interface Message {
   role: "user" | "assistant";
   markdown: string;
   isError?: boolean;
+  /** Chips rendered under an assistant bubble (focus a fish / jump to a block). */
+  actions?: MessageAction[];
 }
 
 // Destructure `node` (react-markdown AST) so it is not spread onto DOM elements.
@@ -81,8 +94,43 @@ const mdComponents = {
   },
 };
 
-export const ChatMessage = memo(function ChatMessage({ role, markdown, isError }: Message) {
+/**
+ * Renders a single chat message (user or assistant) with markdown formatting.
+ * Optionally displays action chips for jumping to a focused fish or block.
+ */
+export const ChatMessage = memo(function ChatMessage({
+  role,
+  markdown,
+  isError,
+  actions,
+}: Message) {
   const isUser = role === "user";
+  const navigate = useNavigate();
+
+  /** Focus a specimen or jump to a patched block without re-asking. */
+  const runAction = (action: MessageAction) => {
+    if (action.kind === "focus") {
+      useFishTankStore.getState().setFocus(action.target);
+      void navigate({
+        to: "/ask",
+        search: (prev) => ({ ...(prev || {}), v: "tank", f: action.target }),
+        replace: true,
+      });
+      fishBus.emit("fish:pick", { slug: action.target });
+      return;
+    }
+    void navigate({
+      to: "/ask",
+      search: (prev) => ({ ...(prev || {}), v: "text" }),
+      replace: true,
+    });
+    // Let the matrix mount before scrolling to the block.
+    requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-block-id="${CSS.escape(action.target)}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  };
 
   return (
     <div
@@ -113,6 +161,21 @@ export const ChatMessage = memo(function ChatMessage({ role, markdown, isError }
             </ReactMarkdown>
           </div>
         )}
+        {!isUser && actions?.length ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {actions.map((action) => (
+              <button
+                key={`${action.kind}-${action.target}`}
+                type="button"
+                onClick={() => runAction(action)}
+                className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors"
+              >
+                <span aria-hidden="true">{action.kind === "focus" ? "🐟 " : "📄 "}</span>
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );

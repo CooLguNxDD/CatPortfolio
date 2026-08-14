@@ -46,6 +46,9 @@ export type FishEvents = {
   "filter:domain": string
   "bake:apply": void
   "bake:dismiss": void
+  "ask:toggle": void
+  "ask:open": { prompt?: string } | void
+  "ask:close": void
   "feed:drop": { x?: number; y?: number; z?: number }
   /** Bathymetry scrubber — null releases the depth lock. */
   "tank:depth": { depth01: number } | null

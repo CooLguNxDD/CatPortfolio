@@ -153,10 +153,23 @@ export default function FishTankCanvas({
   circadianRef.current = circadian
   const applyPaletteRef = useRef<((mode: CircadianMode) => void) | null>(null)
 
+  // Scene lifetime is keyed on *roster* identity, not array identity. An
+  // ask-mode patch replaces the whole fishTank block, so `fish` is a fresh
+  // array on every turn — depending on it tore down and rebuilt the scene,
+  // which the visitor reads as "the tank reset". Same slugs in the same order
+  // => same scene, and unchanged fish keep their position and locomotion.
+  const rosterKey = fish.map((f) => f.slug).join("|")
+  const highlightKey = highlightSlugs.join("|")
+  const fishRef = useRef(fish)
+  fishRef.current = fish
+
   useEffect(() => {
     const root = hostRef.current
     if (!root) return
     const host: HTMLDivElement = root
+    // Latest specimens for this roster (blurbs/metrics may have been rewritten
+    // by the same patch that kept the roster stable).
+    const fish = fishRef.current
 
     // Discrete interaction state, read imperatively
     const focusedRef = { current: useFishTankStore.getState().focus }
@@ -1646,7 +1659,11 @@ export default function FishTankCanvas({
       shockMat.dispose()
       pelletMat.dispose()
     }
-  }, [fish, immersive, themeKey, highlightSlugs])
+    // `fish` / `highlightSlugs` are intentionally absent: they are read through
+    // refs and represented by rosterKey/highlightKey, so a same-roster patch
+    // does not remount the WebGL scene.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rosterKey, immersive, themeKey, highlightKey])
 
   useEffect(() => {
     applyPaletteRef.current?.(circadian)
