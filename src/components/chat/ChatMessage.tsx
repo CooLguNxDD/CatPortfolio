@@ -94,6 +94,10 @@ const mdComponents = {
   },
 };
 
+/**
+ * Renders a single chat message (user or assistant) with markdown formatting.
+ * Optionally displays action chips for jumping to a focused fish or block.
+ */
 export const ChatMessage = memo(function ChatMessage({
   role,
   markdown,
@@ -166,7 +170,7 @@ export const ChatMessage = memo(function ChatMessage({
                 onClick={() => runAction(action)}
                 className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors"
               >
-                {action.kind === "focus" ? "🐟 " : "📄 "}
+                <span aria-hidden="true">{action.kind === "focus" ? "🐟 " : "📄 "}</span>
                 {action.label}
               </button>
             ))}

@@ -114,6 +114,15 @@ export interface ChatPanelProps {
   view?: "tank" | "text";
 }
 
+/** Poll cadence for an in-flight discovery job. */
+const DISCOVERY_POLL_MS = 3000;
+/** A discovery job older than this is abandoned client-side. */
+const DISCOVERY_TIMEOUT_MS = 60_000;
+
+/**
+ * Renders the interactive chat panel, managing the conversation state and
+ * executing ask-mode layout patches or fish tank focus changes.
+ */
 export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -205,11 +214,18 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
             if (actions.length >= 4) break;
             actions.push({ kind: "view", target: id, label: id });
           }
+          // A dropped block means the agent's output was partially malformed —
+          // tell the visitor rather than silently rendering fewer blocks than
+          // it meant to (previously only a console.warn in extractBlockPatch).
+          const droppedNote =
+            patch?.dropped && patch.dropped > 0
+              ? `\n\n_(${patch.dropped} block${patch.dropped === 1 ? "" : "s"} couldn't be rendered)_`
+              : "";
           setMessages((prev) => [
             ...prev,
             {
               role: "assistant",
-              markdown: result.markdown,
+              markdown: result.markdown + droppedNote,
               ...(actions.length ? { actions } : {}),
             },
           ]);
@@ -275,11 +291,20 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
     [pending, isOnline, sessionId, queryClient],
   );
 
+  // Latest sendText for the poller below — read at fire time, not captured at
+  // effect-setup time, so the poller doesn't need sendText in its deps (which
+  // would restart the interval and re-post the notice on every render).
+  const sendTextRef = useRef(sendText);
+  useEffect(() => {
+    sendTextRef.current = sendText;
+  }, [sendText]);
+
   // A question with no inventory match queues a read-only discovery job.
   // Poll it, then re-ask once so the grounded project can enter the tank.
   useEffect(() => {
     if (!discoveryJob?.job_id) return;
     let cancelled = false;
+    let timer: ReturnType<typeof window.setTimeout> | null = null;
     setMessages((prev) => [
       ...prev,
       {
@@ -289,10 +314,12 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
     ]);
 
     const started = Date.now();
-    const timer = window.setInterval(async () => {
+    // Recursive setTimeout, not setInterval: the next poll is scheduled only
+    // after the previous one resolves, so a slow tool call can't overlap
+    // itself into a race of out-of-order status updates.
+    const poll = async () => {
       if (cancelled) return;
-      if (Date.now() - started > 60_000) {
-        window.clearInterval(timer);
+      if (Date.now() - started > DISCOVERY_TIMEOUT_MS) {
         setDiscoveryJob(null);
         return;
       }
@@ -301,13 +328,15 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
         const res = await client.callTool("get_context_discovery", {
           job_id: discoveryJob.job_id,
         });
-        const status = (res.data as { status?: string } | undefined)?.status;
-        if (!status || status === "pending") return;
-        window.clearInterval(timer);
         if (cancelled) return;
+        const status = (res.data as { status?: string } | undefined)?.status;
+        if (!status || status === "pending") {
+          timer = window.setTimeout(poll, DISCOVERY_POLL_MS);
+          return;
+        }
         setDiscoveryJob(null);
         if (status === "ready") {
-          void sendText(discoveryJob.query || "");
+          void sendTextRef.current(discoveryJob.query || "");
         } else {
           setMessages((prev) => [
             ...prev,
@@ -318,18 +347,15 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           ]);
         }
       } catch {
-        window.clearInterval(timer);
-        setDiscoveryJob(null);
+        if (!cancelled) setDiscoveryJob(null);
       }
-    }, 3000);
+    };
+    timer = window.setTimeout(poll, DISCOVERY_POLL_MS);
 
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      if (timer != null) window.clearTimeout(timer);
     };
-    // sendText is intentionally excluded: re-creating the poller on every
-    // layout patch would restart the interval and re-post the notice.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [discoveryJob]);
 
   // QuickActions chips seed chat via pendingPrompt.

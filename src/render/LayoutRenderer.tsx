@@ -337,11 +337,25 @@ function usePatchHighlight(
       behavior: reduced ? "auto" : "smooth",
       block: "center",
     });
+    // Move keyboard focus too, not just the scroll — otherwise a keyboard
+    // user is left in the chat input and has to tab through unrelated
+    // content to reach what just changed.
+    nodes[0].setAttribute("tabindex", "-1");
+    nodes[0].focus({ preventScroll: true });
+
+    const unmark = () => {
+      for (const node of nodes) {
+        if (document.body.contains(node)) node.classList.remove("is-patched");
+      }
+    };
     for (const node of nodes) node.classList.add("is-patched");
-    const timer = window.setTimeout(() => {
-      for (const node of nodes) node.classList.remove("is-patched");
-    }, 2200);
-    return () => window.clearTimeout(timer);
+    const timer = window.setTimeout(unmark, 2200);
+    // Unmark on cleanup too — an unmount/re-render before the timer fires
+    // must not leave the class stuck on a node that outlives this effect.
+    return () => {
+      window.clearTimeout(timer);
+      unmark();
+    };
   }, [patchedIds, reduced]);
 }
 
