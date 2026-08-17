@@ -58,14 +58,38 @@ export function fishLitFactor(
   return 1
 }
 
-/** Words too common to carry signal when scoring a visitor question. */
+/** Words too common to carry signal when scoring a visitor question.
+ *  Keep in sync with OpenCat ``ask/router.py`` ``_ASK_STOPWORDS``. */
 const STOPWORDS = new Set([
-  "the", "and", "for", "you", "your", "with", "was", "are", "did", "any",
-  "have", "has", "how", "what", "when", "where", "which", "who", "why",
-  "tell", "show", "about", "work", "worked", "built", "build", "building",
-  "project", "projects", "experience", "can", "could", "would", "does",
-  "this", "that", "there", "some", "from", "into", "over", "more", "much",
-  "like", "just", "also", "been", "them", "they", "were", "will",
+  "a", "an", "the", "this", "that", "these", "those",
+  "i", "im", "ive", "id", "me", "my", "mine", "we", "us", "our",
+  "you", "your", "yours", "they", "them", "their", "it", "its",
+  "is", "am", "are", "was", "were", "be", "been", "being",
+  "do", "does", "did", "done", "have", "has", "had", "having",
+  "can", "could", "would", "should", "will", "shall", "may", "might", "must",
+  "dont", "didnt", "cant", "wont",
+  "how", "what", "when", "where", "which", "who", "whom", "why",
+  "tell", "show", "describe", "explain", "walk", "talk", "ask",
+  "give", "list", "see", "look", "looking", "know", "knew",
+  "want", "wanted", "need", "needed", "get", "got", "getting",
+  "make", "made", "use", "used", "using",
+  "about", "regarding", "related",
+  "work", "worked", "working", "works",
+  "built", "build", "building",
+  "project", "projects", "experience", "experiences",
+  "portfolio", "resume", "site", "page",
+  "thing", "things", "stuff", "one", "ones",
+  "info", "information", "detail", "details",
+  "and", "or", "but", "for", "with", "from", "into", "onto", "over", "under",
+  "of", "on", "in", "at", "to", "by", "as", "if", "than", "then", "so",
+  "not", "no", "nor", "through", "across", "around", "between",
+  "after", "before", "during", "while", "because",
+  "any", "some", "more", "much", "many", "most", "other", "another", "such", "same",
+  "like", "just", "also", "too", "very", "really", "quite", "still", "even", "only",
+  "please", "maybe", "actually", "basically",
+  "something", "anything", "everything", "nothing",
+  "here", "there", "now", "again", "well", "yeah", "yes", "ok", "okay",
+  "hey", "hi", "hello",
 ])
 
 /** Tokens worth scoring from a free-text question. */
