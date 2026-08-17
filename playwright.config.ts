@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const origin = process.env.E2E_ORIGIN ?? 'http://localhost:11000'
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +10,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:11000/CatPortfolio/',
+    baseURL: `${origin}/CatPortfolio/`,
     trace: 'on-first-retry',
   },
   projects: [
@@ -21,10 +23,12 @@ export default defineConfig({
       use: { ...devices['Desktop Firefox'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:11000/CatPortfolio/',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  webServer: process.env.E2E_ORIGIN
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:11000/CatPortfolio/',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120 * 1000,
+      },
 });

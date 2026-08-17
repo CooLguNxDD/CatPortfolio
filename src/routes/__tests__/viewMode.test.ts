@@ -20,8 +20,12 @@ describe("resolveViewMode", () => {
     )
   })
 
-  it("zero fish → text", () => {
+  it("zero fish and no authored tank → text", () => {
     expect(resolveViewMode({}, capable, 0)).toBe("text")
+  })
+
+  it("zero fish with authored tank → tank", () => {
+    expect(resolveViewMode({}, capable, 0, true)).toBe("tank")
   })
 
   it("default → tank when capable", () => {

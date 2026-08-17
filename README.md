@@ -2,7 +2,7 @@
 
 Personal portfolio site that **self-renders** from a Zod-validated GenUI layout (`src/content/layout.json`). The layout grows; the React shell stays stable.
 
-OpenCat MCP (“OCT”) can bake job-specific layouts (`?j=<short_id>`), power the `/ask` chat via `run_graph`, and serve public REST under `/api/portfolio/...`.
+OpenCat MCP (“OCT”) can bake job-specific layouts (`?j=<short_id>`), power the homepage ask chat (`?v=text`) via `run_graph`, and serve public REST under `/api/portfolio/...`. Legacy `/ask` URLs redirect to `/`.
 
 ## Stack
 

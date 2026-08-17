@@ -48,7 +48,7 @@ export function sceneFromLayout(layout: Layout | null | undefined): FishSceneCon
       : [],
     curationLabel:
       typeof props?.curationLabel === "string" ? props.curationLabel : undefined,
-    hasAuthoredTank: Boolean(block && Array.isArray(props?.fish) && props.fish.length > 0),
+    hasAuthoredTank: Boolean(block),
   }
 }
 

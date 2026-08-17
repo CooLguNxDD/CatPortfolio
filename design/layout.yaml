@@ -207,123 +207,127 @@ blocks:
   #   weltel_mobile_contribution.md
   #   weltel_platform_contribution.md
   # species = DomainId (ai|devops|mobile|platform); numerics bounded 0..1.
+  # fish: [] is an explicit empty school. Commenting this whole block out
+  # does NOT empty the tank — cards/projectGrid would be derived instead.
   - type: fishTank
     id: fish-tank-1
     props:
       renderer: webgl
       title: WelTel job tracks · aquarium
-      curationLabel: From secrets_projects contribution reports
-      caption: >-
-        Four employer job tracks as specimens — size/glow from impact depth,
-        school groups WelTel work. Text view keeps the matrix cards below.
-      highlightSlugs:
-        - weltel-ai
-        - weltel-devops
-      fish:
-        - slug: weltel-ai
-          title: WelTel MCP & Clinician AI
-          species: ai
-          size: 1.0
-          depth: 0.08
-          speed: 0.55
-          glow: 1.0
-          school: 0
-          tags: [WelTel, MCP, clinician-AI, job, LangGraph]
-          blurb: >-
-            Greenfield AI gateway — 42 clinical tools, multi-provider Command
-            Center, streaming specialist sub-agent.
-          description: >-
-            Primary builder of WelTel’s AI layer (secrets_projects/weltel_AI_contribution.md).
-            Greenfield WelTel MCP Server (~395 commits) exposes 42 clinical tools
-            as controlled skills; Clinician AI Assistant (“Command Center”) in the
-            main product streams live tool calls and charts; multi-provider design
-            (Gemini / OpenAI / offline) plus session memory and MCP external tools.
-          metrics:
-            - label: MCP commits
-              value: "~395"
-            - label: clinical tools
-              value: "42"
-            - label: providers
-              value: "3+"
-          link:
-            label: related mirror
-            href: https://github.com/CooLguNxDD/Weltel-MCP
+      fish: []
+  # Restore specimens below (uncomment fish: and drop the empty list above).
+  #     curationLabel: From secrets_projects contribution reports
+  #     caption: >-
+  #       Four employer job tracks as specimens — size/glow from impact depth,
+  #       school groups WelTel work. Text view keeps the matrix cards below.
+  #     highlightSlugs:
+  #       - weltel-ai
+  #       - weltel-devops
+  #     fish:
+  #       - slug: weltel-ai
+  #         title: WelTel MCP & Clinician AI
+  #         species: ai
+  #         size: 1.0
+  #         depth: 0.08
+  #         speed: 0.55
+  #         glow: 1.0
+  #         school: 0
+  #         tags: [WelTel, MCP, clinician-AI, job, LangGraph]
+  #         blurb: >-
+  #           Greenfield AI gateway — 42 clinical tools, multi-provider Command
+  #           Center, streaming specialist sub-agent.
+  #         description: >-
+  #           Primary builder of WelTel’s AI layer (secrets_projects/weltel_AI_contribution.md).
+  #           Greenfield WelTel MCP Server (~395 commits) exposes 42 clinical tools
+  #           as controlled skills; Clinician AI Assistant (“Command Center”) in the
+  #           main product streams live tool calls and charts; multi-provider design
+  #           (Gemini / OpenAI / offline) plus session memory and MCP external tools.
+  #         metrics:
+  #           - label: MCP commits
+  #             value: "~395"
+  #           - label: clinical tools
+  #             value: "42"
+  #           - label: providers
+  #             value: "3+"
+  #         link:
+  #           label: related mirror
+  #           href: https://github.com/CooLguNxDD/Weltel-MCP
 
-        - slug: weltel-devops
-          title: WelTel EKS · Terraform · runners
-          species: devops
-          size: 0.92
-          depth: 0.18
-          speed: 0.4
-          glow: 0.95
-          school: 0
-          tags: [WelTel, AWS, Terraform, EKS, job]
-          blurb: >-
-            Self-hosted org runners, multi-AZ VPC, AWS monthly bill
-            $4k+ → ~$2.8k (−30%).
-          description: >-
-            DevOps track from secrets_projects/weltel_DevOps_contribution.md —
-            ~570+ infra commits covering self-hosted GitHub runners, Terraform
-            multi-AZ VPC, and cloud cost reduction that cut WelTel’s AWS bill
-            by about $1.2k/mo while keeping clinical deploys reliable.
-          metrics:
-            - label: infra commits
-              value: "570+"
-            - label: AWS cost
-              value: "-30%"
-            - label: monthly save
-              value: "~$1.2k"
+  #       - slug: weltel-devops
+  #         title: WelTel EKS · Terraform · runners
+  #         species: devops
+  #         size: 0.92
+  #         depth: 0.18
+  #         speed: 0.4
+  #         glow: 0.95
+  #         school: 0
+  #         tags: [WelTel, AWS, Terraform, EKS, job]
+  #         blurb: >-
+  #           Self-hosted org runners, multi-AZ VPC, AWS monthly bill
+  #           $4k+ → ~$2.8k (−30%).
+  #         description: >-
+  #           DevOps track from secrets_projects/weltel_DevOps_contribution.md —
+  #           ~570+ infra commits covering self-hosted GitHub runners, Terraform
+  #           multi-AZ VPC, and cloud cost reduction that cut WelTel’s AWS bill
+  #           by about $1.2k/mo while keeping clinical deploys reliable.
+  #         metrics:
+  #           - label: infra commits
+  #             value: "570+"
+  #           - label: AWS cost
+  #             value: "-30%"
+  #           - label: monthly save
+  #             value: "~$1.2k"
 
-        - slug: weltel-mobile
-          title: WelTel React Native · Amplify
-          species: mobile
-          size: 0.88
-          depth: 0.28
-          speed: 0.65
-          glow: 0.85
-          school: 0
-          tags: [WelTel, React-Native, Amplify, GraphQL, job]
-          blurb: >-
-            Mobile foundation, Amplify GraphQL real-time chat, media & push
-            deep-links — 531+ commits · 39+ tickets.
-          description: >-
-            Mobile track from secrets_projects/weltel_mobile_contribution.md —
-            React Native + Amplify GraphQL foundation for clinical mobile over
-            ~9 months: real-time chat, media, push deep-links, 531+ commits and
-            39+ tickets shipping patient/clinician workflows on device.
-          metrics:
-            - label: mobile commits
-              value: "531+"
-            - label: tickets
-              value: "39+"
-            - label: span
-              value: "~9 mo"
+  #       - slug: weltel-mobile
+  #         title: WelTel React Native · Amplify
+  #         species: mobile
+  #         size: 0.88
+  #         depth: 0.28
+  #         speed: 0.65
+  #         glow: 0.85
+  #         school: 0
+  #         tags: [WelTel, React-Native, Amplify, GraphQL, job]
+  #         blurb: >-
+  #           Mobile foundation, Amplify GraphQL real-time chat, media & push
+  #           deep-links — 531+ commits · 39+ tickets.
+  #         description: >-
+  #           Mobile track from secrets_projects/weltel_mobile_contribution.md —
+  #           React Native + Amplify GraphQL foundation for clinical mobile over
+  #           ~9 months: real-time chat, media, push deep-links, 531+ commits and
+  #           39+ tickets shipping patient/clinician workflows on device.
+  #         metrics:
+  #           - label: mobile commits
+  #             value: "531+"
+  #           - label: tickets
+  #             value: "39+"
+  #           - label: span
+  #             value: "~9 mo"
 
-        - slug: weltel-platform
-          title: WelTel SMS & clinical UI
-          species: platform
-          size: 0.72
-          depth: 0.42
-          speed: 0.35
-          glow: 0.7
-          school: 0
-          tags: [WelTel, Axios, SMS, Angular, job]
-          blurb: >-
-            SMS request→Axios across 5 gateways, patient portal test results,
-            clinical UI production fixes (~105 commits).
-          description: >-
-            Platform track from secrets_projects/weltel_platform_contribution.md —
-            messaging modernization (request → Axios across Africa’s Talking,
-            Oxygen8, SMSGateway, Mixed2, …), patient portal test results, search
-            debounce, task-queue and clinical UI fixes — ~105 commits of
-            end-to-end full-stack platform work.
-          metrics:
-            - label: platform commits
-              value: "105"
-            - label: SMS gateways
-              value: "5"
-            - label: period
-              value: "10 mo"
+  #       - slug: weltel-platform
+  #         title: WelTel SMS & clinical UI
+  #         species: platform
+  #         size: 0.72
+  #         depth: 0.42
+  #         speed: 0.35
+  #         glow: 0.7
+  #         school: 0
+  #         tags: [WelTel, Axios, SMS, Angular, job]
+  #         blurb: >-
+  #           SMS request→Axios across 5 gateways, patient portal test results,
+  #           clinical UI production fixes (~105 commits).
+  #         description: >-
+  #           Platform track from secrets_projects/weltel_platform_contribution.md —
+  #           messaging modernization (request → Axios across Africa’s Talking,
+  #           Oxygen8, SMSGateway, Mixed2, …), patient portal test results, search
+  #           debounce, task-queue and clinical UI fixes — ~105 commits of
+  #           end-to-end full-stack platform work.
+  #         metrics:
+  #           - label: platform commits
+  #             value: "105"
+  #           - label: SMS gateways
+  #             value: "5"
+  #           - label: period
+  #             value: "10 mo"
 
   - type: mcpSandbox
     id: mcp-sandbox

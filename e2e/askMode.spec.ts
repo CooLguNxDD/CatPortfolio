@@ -3,6 +3,13 @@ import { mockMcp } from './fixtures/mockMcp';
 
 test.describe('Ask Mode E2E', () => {
   test('1. Tank focus patch', async ({ page }) => {
+    const discarded: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.text().includes('block patch had no layout to apply to')) {
+        discarded.push(msg.text());
+      }
+    });
+
     await mockMcp(page, {
       run_graph: async () => ({
         content: [
@@ -30,7 +37,7 @@ test.describe('Ask Mode E2E', () => {
       }),
     });
 
-    await page.goto('./ask?v=text');
+    await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
     const textarea = page.locator('textarea[placeholder*="Ask"]');
@@ -47,6 +54,7 @@ test.describe('Ask Mode E2E', () => {
     // Chat shows focus chip
     const chip = page.locator('button', { hasText: 'weltel-ai' });
     await expect(chip).toBeVisible();
+    expect(discarded).toEqual([]);
   });
 
   test('2. Discovery poll — single in-flight request', async ({ page }) => {
@@ -100,7 +108,7 @@ test.describe('Ask Mode E2E', () => {
       },
     });
 
-    await page.goto('./ask?v=text');
+    await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
     const textarea = page.locator('textarea[placeholder*="Ask"]');
@@ -156,7 +164,7 @@ test.describe('Ask Mode E2E', () => {
       },
     });
 
-    await page.goto('./ask?v=text');
+    await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
     const textarea = page.locator('textarea[placeholder*="Ask"]');
@@ -209,7 +217,7 @@ test.describe('Ask Mode E2E', () => {
       }),
     });
 
-    await page.goto('./ask?v=text');
+    await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
     const textarea = page.locator('textarea[placeholder*="Ask"]');
@@ -233,7 +241,7 @@ test.describe('Ask Mode E2E', () => {
       }),
     });
 
-    await page.goto('./ask?v=text');
+    await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
     const textarea = page.locator('textarea[placeholder*="Ask"]');
@@ -272,7 +280,7 @@ test.describe('Ask Mode E2E', () => {
       }),
     });
 
-    await page.goto('./ask?v=text');
+    await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
     const textarea = page.locator('textarea[placeholder*="Ask"]');
@@ -309,7 +317,7 @@ test.describe('Ask Mode E2E', () => {
       }),
     });
 
-    await page.goto('./ask?v=text');
+    await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
     const textarea = page.locator('textarea[placeholder*="Ask"]');

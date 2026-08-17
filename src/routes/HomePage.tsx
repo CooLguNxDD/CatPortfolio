@@ -1,43 +1,57 @@
 /**
- * Home — static bake, or `?j=<short_id>` demo layout.
- * Default view is the fish tank when capable; `?v=text` forces the layout.
+ * Home — live/baked layout, or `?j=<short_id>` demo.
+ * Default view is the fish tank when capable; `?v=text` is the matrix + chat
+ * column. Tank chrome opens the same ChatPanel as a dock.
  */
 
 import { useEffect, useMemo } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
-import { loadBaked } from "@/content/loadLayout"
 import { LayoutRenderer } from "@/render/LayoutRenderer"
-import { useDemoLayoutQuery, useDemoShortId } from "@/hooks/useDemoLayout"
+import { usePageLayout } from "@/hooks/usePageLayout"
 import { sceneFromLayout } from "@/fish/sceneFromLayout"
 import { FishTankStage } from "@/components/FishTankStage"
 import { FishTankErrorBoundary } from "@/components/FishTankErrorBoundary"
+import { ChatPanel } from "@/components/chat/ChatPanel"
+import { AgentStatusPill } from "@/components/AgentStatusPill"
 import { fishBus } from "@/fish/fishBus"
-import { useFishTankStore, useLayoutStore } from "@/store"
+import { useFishTankStore } from "@/store"
 import {
   prefersReducedMotion,
   probeWebGL2,
   resolveViewMode,
 } from "@/routes/viewMode"
 import { cn } from "@/lib/utils"
+import type { LayoutLoadResult } from "@/content/loadLayout"
 import type { DemoSearch } from "@/router"
 
 export { resolveViewMode } from "@/routes/viewMode"
+
+function sourceLabel(data: LayoutLoadResult): string {
+  const mode = data.layout?.meta?.mode
+  if (mode === "scoped") return "live · scoped GenUI"
+  if (mode === "template") return "live · template"
+  if (mode === "showcase") {
+    return data.shortId ? `demo · j=${data.shortId}` : "demo · showcase"
+  }
+  switch (data.source) {
+    case "fragments":
+      return data.fragments?.length
+        ? `live · fragments (${data.fragments.length})`
+        : "live · fragments"
+    case "bake":
+      return data.shortId ? `bake · j=${data.shortId}` : "bake"
+    case "live":
+      return mode ? `live · ${mode}` : "live"
+    default:
+      return `snapshot · ${data.layout.meta.generatedAt}`
+  }
+}
 
 export function HomePage() {
   const navigate = useNavigate()
   const search = useSearch({ from: "/" })
   const { j, v, f } = search
-  const { shortId, isDemoSession } = useDemoShortId(j)
-  const { result, isLoading } = useDemoLayoutQuery(shortId)
-  const workingLayout = useLayoutStore((s) => s.workingLayout)
-
-  const layout =
-    workingLayout ??
-    (isDemoSession && shortId && result.source !== "snapshot"
-      ? result.layout
-      : j
-        ? result.layout
-        : loadBaked())
+  const { data, layout, isLoading, shortId, isDemoSession } = usePageLayout(j)
 
   const scene = useMemo(() => sceneFromLayout(layout), [layout])
   const caps = useMemo(
@@ -47,7 +61,17 @@ export function HomePage() {
     }),
     [],
   )
-  const mode = resolveViewMode({ v }, caps, scene.fish.length)
+  const mode = resolveViewMode({ v }, caps, scene.fish.length, scene.hasAuthoredTank)
+  const canShowTank =
+    (scene.fish.length > 0 || scene.hasAuthoredTank) &&
+    caps.webgl2 &&
+    !caps.reducedMotion
+
+  const isLive = data.source !== "snapshot"
+  const isDemo =
+    data.source === "bake" ||
+    data.layout?.meta?.mode === "showcase" ||
+    (!!data.shortId && isDemoSession)
 
   const demoSearch: DemoSearch = {
     ...(j ? { j } : {}),
@@ -55,11 +79,6 @@ export function HomePage() {
     ...(f ? { f } : {}),
   }
 
-  // Router owns `?f=` (see fish/fishBus.ts header). Sync URL → store so the
-  // canvas can subscribe focus without prop drilling, and subscribe the
-  // canvas's pick/release intent → URL, matching the pre-refactor round trip
-  // (focusFish callback → navigate → new focusedSlug prop → canvas), just
-  // through the bus instead of props.
   useEffect(() => {
     useFishTankStore.getState().setFocus(f ?? null)
   }, [f])
@@ -91,6 +110,13 @@ export function HomePage() {
     }
   }, [navigate])
 
+  const setView = (next: "tank" | "text") =>
+    void navigate({
+      to: "/",
+      search: (prev) => ({ ...((prev || {}) as DemoSearch), v: next }),
+      replace: true,
+    })
+
   const hasDag = Boolean(layout?.meta?.dag?.levels?.length)
   const usesSpanGrid =
     !hasDag &&
@@ -100,10 +126,10 @@ export function HomePage() {
       ),
     )
 
-  const textShell = (
+  const matrix = (
     <div
       className={cn(
-        "w-full",
+        "w-full min-w-0",
         hasDag && "layout-shell layout-shell--matrix pt-4 md:pt-6",
         usesSpanGrid &&
           "layout-shell layout-shell--grid mx-auto max-w-[1180px] px-4 py-6 md:py-8",
@@ -118,34 +144,13 @@ export function HomePage() {
           loading demo layout…
         </p>
       ) : null}
-      {mode === "text" && scene.fish.length > 0 ? (
-        <div className="mb-4 flex justify-end px-4 md:px-0">
-          <button
-            type="button"
-            className="rounded-full border border-(--hairline) bg-(--card) px-3 py-1 text-xs font-mono text-(--fg-muted) hover:text-(--fg)"
-            onClick={() =>
-              void navigate({
-                to: "/",
-                search: (prev) => {
-                  const p = { ...((prev || {}) as DemoSearch) }
-                  delete p.v
-                  return p
-                },
-                replace: true,
-              })
-            }
-          >
-            View as tank
-          </button>
-        </div>
-      ) : null}
-      <LayoutRenderer layout={layout} themeMode="home" />
+      <LayoutRenderer layout={layout} themeMode="ask" />
     </div>
   )
 
   if (mode === "tank") {
     return (
-      <FishTankErrorBoundary fallback={textShell}>
+      <FishTankErrorBoundary fallback={matrix}>
         {isLoading ? (
           <p className="p-6 text-sm font-mono text-(--fg-muted) animate-pulse">
             loading demo layout…
@@ -156,5 +161,70 @@ export function HomePage() {
     )
   }
 
-  return textShell
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 md:py-8 space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono inline-flex items-center gap-2 w-fit">
+          <span
+            className={cn(
+              "h-2 w-2 rounded-full",
+              data.source === "fragments"
+                ? "bg-(--neon)"
+                : isDemo || data.source === "bake"
+                  ? "bg-(--amber)"
+                  : isLive
+                    ? "bg-(--neon)"
+                    : "bg-(--amber)",
+            )}
+          />
+          <span>{sourceLabel(data)}</span>
+        </div>
+        {data.audience ? (
+          <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono text-(--fg-muted)">
+            audience · {data.audience}
+          </div>
+        ) : null}
+        {shortId ? (
+          <div className="rounded-full border border-(--amber)/30 px-3 py-1 text-xs font-mono text-(--amber)">
+            j={shortId}
+          </div>
+        ) : null}
+        <AgentStatusPill />
+        {canShowTank ? (
+          <div
+            className="inline-flex rounded-full border border-(--hairline) p-0.5 text-xs font-mono"
+            role="group"
+            aria-label="Canvas view"
+          >
+            {(["tank", "text"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={mode === option}
+                onClick={() => setView(option)}
+                className={cn(
+                  "rounded-full px-3 py-0.5 transition-colors",
+                  mode === option
+                    ? "bg-(--amber)/15 text-(--amber)"
+                    : "text-(--fg-muted) hover:text-(--fg)",
+                )}
+              >
+                {option === "tank" ? "3D tank" : "matrix"}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <span className="text-[11px] font-mono text-(--fg-subtle)">
+          live layout engine · chat patches the blocks it needs
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:items-start">
+        <aside className="lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card)/40 p-3">
+          <ChatPanel layout={layout} view="text" />
+        </aside>
+        <div className="min-w-0">{matrix}</div>
+      </div>
+    </div>
+  )
 }
