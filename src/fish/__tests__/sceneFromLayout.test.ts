@@ -55,6 +55,28 @@ describe("sceneFromLayout", () => {
     expect(scene.title).toBe("WelTel tank")
   })
 
+  it("treats authored empty fish as empty, not a card fallback", () => {
+    const empty = {
+      version: 1,
+      meta: {},
+      blocks: [
+        {
+          type: "fishTank",
+          id: "fish-tank-1",
+          props: { renderer: "webgl", fish: [], highlightSlugs: [] },
+        },
+        {
+          type: "card",
+          id: "card-ai",
+          props: { title: "AI", domain: "ai", body: "Not a fish." },
+        },
+      ],
+    } as unknown as Layout
+    const scene = sceneFromLayout(empty)
+    expect(scene.hasAuthoredTank).toBe(true)
+    expect(scene.fish).toEqual([])
+  })
+
   it("finds specimens by slug", () => {
     const scene = sceneFromLayout(layout)
     expect(findFishBySlug(scene.fish, "weltel-ai")?.title).toBe("AI")

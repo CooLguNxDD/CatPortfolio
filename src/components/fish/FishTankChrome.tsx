@@ -93,6 +93,14 @@ export function FishTankChrome({
               <button
                 type="button"
                 className="ft-btn"
+                onClick={() => fishBus.emit("ask:open")}
+                title="Ask about a project — patches the tank live"
+              >
+                💬 Ask
+              </button>
+              <button
+                type="button"
+                className="ft-btn"
                 onClick={() => fishBus.emit("tank:dive")}
               >
                 🐾 Tap the surface
@@ -139,7 +147,7 @@ export function FishTankChrome({
                 }
               }}
               placeholder="Ask the tank — mcp, kubernetes, planner"
-              aria-label="Search projects"
+              aria-label="Search projects or ask a question"
             />
             <div className="ft-chips" role="group" aria-label="Domain filter">
               {domains.map((d) => (
@@ -163,7 +171,7 @@ export function FishTankChrome({
               type="button"
               className="ft-chip"
               onClick={() => fishBus.emit("ask:toggle")}
-              title="Open Ask AI agent chat dock"
+              title="Open Ask — live patch the tank"
             >
               💬 Ask
             </button>

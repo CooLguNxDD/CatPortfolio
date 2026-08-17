@@ -142,8 +142,6 @@ export function FishTankStage({
     }
   }, [tank.chrome, tank.tankState])
 
-  if (!tank.fish.length) return null
-
   return (
     <div
       className={cn("ft-stage", className)}
@@ -216,10 +214,10 @@ export function FishTankStage({
         onClose={() => fishBus.emit("fish:release")}
       />
 
-      {askOpen && tank.tankScene === "tank" ? (
+      {askOpen ? (
         <aside
           className="ft-ask-dock glass"
-          aria-label="Submerged Ask Agent"
+          aria-label="Ask Agent"
         >
           <div className="flex items-center justify-between border-b border-(--hairline) px-3 py-2">
             <span className="text-xs font-mono font-bold text-(--amber) flex items-center gap-1.5">

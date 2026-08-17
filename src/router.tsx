@@ -1,14 +1,13 @@
 /**
- * TanStack Router tree. Both Home and Ask accept optional `?j=<short_id>` so
- * the demo bake stays in the URL when navigating (react-app-guide: params as
- * shareable route state).
+ * TanStack Router tree. `/` is the only page; `/ask` redirects here so
+ * old links keep working. Optional `?j=<short_id>` keeps the demo bake in
+ * the URL (react-app-guide: params as shareable route state).
  */
 
-import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router"
+import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router"
 import { z } from "zod"
 import App from "./App"
 import { HomePage } from "./routes/HomePage"
-import { AskPage } from "./routes/AskPage"
 
 const rootRoute = createRootRoute({
   component: App,
@@ -37,7 +36,10 @@ const askRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/ask",
   validateSearch: demoSearchSchema,
-  component: AskPage,
+  beforeLoad: ({ search }) => {
+    throw redirect({ to: "/", search, replace: true })
+  },
+  component: () => null,
 })
 
 export const router = createRouter({

@@ -260,7 +260,11 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
             useFishTankStore.getState().setFocus(focusSlug);
             fishBus.emit("fish:pick", { slug: focusSlug });
           }
-          if (pendingJob) setDiscoveryJob(pendingJob);
+          // Only poll a job that is still running. A ready/empty token is
+          // leftover from the same-turn wait and must not re-ask.
+          if (pendingJob && (pendingJob.status ?? "pending") === "pending") {
+            setDiscoveryJob(pendingJob);
+          }
         } else {
           setMessages((prev) => [
             ...prev,

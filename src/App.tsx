@@ -47,7 +47,6 @@ function App() {
   const clearDemo = useLayoutStore((s) => s.clearDemo)
   const setThemeOverride = useLayoutStore((s) => s.setThemeOverride)
 
-  const pathname = useRouterState({ select: (s) => s.location.pathname })
   const liveSearch = useRouterState({
     select: (s) => (s.location.search as DemoSearch | undefined) ?? EMPTY_SEARCH,
   })
@@ -58,13 +57,12 @@ function App() {
   useEffect(() => {
     if (!isDemoSession || !shortId) return
     if (searchJ === shortId) return
-    const onAsk = pathname.includes("/ask")
     void navigate({
-      to: onAsk ? "/ask" : "/",
+      to: "/",
       search: (prev) => mergeDemoSearch(prev as DemoSearch, shortId),
       replace: true,
     })
-  }, [isDemoSession, shortId, searchJ, pathname, navigate])
+  }, [isDemoSession, shortId, searchJ, navigate])
 
   // Preserve j/v/f across header nav links.
   const demoSearch: DemoSearch = {
@@ -90,7 +88,7 @@ function App() {
     }
     queryClient.removeQueries({ queryKey: ["layout", "default"] })
     void navigate({
-      to: pathname.includes("/ask") ? "/ask" : "/",
+      to: "/",
       search: (prev) => clearDemoSearch(prev as DemoSearch),
       replace: true,
     })
@@ -131,14 +129,6 @@ function App() {
                 className="text-(--fg-muted) hover:text-(--fg)"
               >
                 Home
-              </Link>
-              <Link
-                to="/ask"
-                search={demoSearch}
-                activeProps={{ className: "text-(--amber)" }}
-                className="text-(--fg-muted) hover:text-(--fg)"
-              >
-                Ask
               </Link>
             </nav>
             {isDemoSession && shortId ? (

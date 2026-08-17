@@ -46,7 +46,7 @@ export const usePreferencesStore = create<PreferencesStore>()(
 
 /**
  * Demo session — temporary in-memory store (no sessionStorage / localStorage).
- * Survives Home ↔ Ask client navigation; cleared on hard reload.
+ * Survives tank ↔ text client navigation; cleared on hard reload.
  * Re-enter via `?j=` in the URL.
  */
 export const useLayoutStore = create<LayoutSlice>()((...args) => ({
