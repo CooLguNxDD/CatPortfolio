@@ -27,3 +27,5 @@ dist-ssr
 *.sw?
 /mcps
 /.playwright-mcp
+/graphify-out/
+/test-results/

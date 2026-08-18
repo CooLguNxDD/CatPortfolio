@@ -88,12 +88,13 @@ export function useDemoLayoutQuery(shortId: string | null): {
   }, [serverTheme, setBakeTheme])
 
   // Expansion wins over network bake when it belongs to this shortId.
+  // A homepage-fallback patch may carry source "snapshot"; that is still
+  // the visitor's working copy and must not be discarded.
   if (
     shortId &&
     storeShortId === shortId &&
     workingLayout &&
-    workingSource &&
-    workingSource !== "snapshot"
+    workingSource
   ) {
     return {
       result: {

@@ -112,7 +112,7 @@ export const ChatMessage = memo(function ChatMessage({
     if (action.kind === "focus") {
       useFishTankStore.getState().setFocus(action.target);
       void navigate({
-        to: "/ask",
+        to: "/",
         search: (prev) => ({ ...(prev || {}), v: "tank", f: action.target }),
         replace: true,
       });
@@ -120,7 +120,7 @@ export const ChatMessage = memo(function ChatMessage({
       return;
     }
     void navigate({
-      to: "/ask",
+      to: "/",
       search: (prev) => ({ ...(prev || {}), v: "text" }),
       replace: true,
     });

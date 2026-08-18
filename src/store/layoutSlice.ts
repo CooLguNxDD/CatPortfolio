@@ -42,6 +42,11 @@ export interface LayoutSlice {
   clearThemeOverride: () => void
   /** Apply an Ask/compose expansion onto the active demo. */
   setWorkingLayout: (result: LayoutLoadResult) => void
+  /**
+   * Write a patched working layout without touching demo identity.
+   * A homepage overlay must not invent `?j=`; an active bake must survive.
+   */
+  setPatchedLayout: (layout: Layout, source: LayoutSource) => void
   /** Exit demo — clear session + working layout. */
   clearDemo: () => void
 }
@@ -132,6 +137,13 @@ export const createLayoutSlice: StateCreator<LayoutSlice> = (set, get) => ({
       audience: audienceOf(result) ?? get().audience,
       // Expansion may carry a new theme; otherwise keep prior bake theme.
       bakeTheme: bakeFromLayout ?? get().bakeTheme,
+    })
+  },
+
+  setPatchedLayout: (layout, source) => {
+    set({
+      workingLayout: layout,
+      workingSource: source,
     })
   },
 

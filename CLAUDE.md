@@ -4,10 +4,10 @@
 
 - Personal portfolio SPA: **React 19 · Vite 8 · TypeScript 6 · Tailwind v4 · TanStack Router/Query · Zustand · Zod v3 · three.js**.
 - **Self-rendering:** the page is data. A Zod-validated layout spec (`src/content/layout.json`) flows through a whitelisted block registry (`src/render/registry.ts`). Layout grows; component code doesn't change. Unknown block type = skipped, never crashes.
-- **Two front doors on `/`:**
-  - **Fish tank (default)** — a WebGL aquarium where each fish is a project/track. Falls back to the text layout when WebGL2 is missing, `prefers-reduced-motion` is set, no fish exist, or `?v=text`.
-  - **Text matrix** — level-row DAG (`meta.dag.levels`) rendered as horizontal story bands with viewport-aligned lighting.
-- **`/ask`** — chat panel + live layout that re-renders from the chat turn.
+- **One front door on `/`:**
+  - **Fish tank (default)** — a WebGL aquarium where each fish is a project/track. Falls back to the text layout when WebGL2 is missing, `prefers-reduced-motion` is set, no tank is authored and no fish exist, or `?v=text`. The default bake authors four WelTel specimens (`weltel-ai`, `weltel-devops`, `weltel-mobile`, `weltel-platform`). An authored `fishTank` with `fish: []` still opens an empty aquarium.
+  - **Text matrix (`?v=text`)** — chat panel + live layout. An ask turn patches the 1–3 blocks it needs; both views read the same working layout, so a spawned fish appears after switching views.
+- **`/ask`** — kept as a `beforeLoad` redirect to `/` (same search params) so old links still resolve. Bare `/ask` now opens the tank, matching the single front door.
 - Layout source of truth is `design/layout.yaml` → `npm run compile:layout` → `src/content/layout.json`. CI verifies sync (`check:layout`), never generates.
 - Backend is **OpenCat Tunnel (OCT)**, an MCP + REST server. All calls degrade to the baked snapshot — the site never hard-fails on a backend outage (it backs a public HR-facing link).
 - Deployed to GitHub Pages (`base: "/CatPortfolio/"`); also runs under local Docker/nginx on **localhost:11000**.
@@ -22,6 +22,7 @@
 6. **New block type checklist:** Zod member in `schema.ts` → reviewed component in `src/blocks/` → barrel export → registry entry → tests → Python mirror sync (or a `design/pending-mirror/<date>-<type>.md` note). Enforced by `scripts/__tests__/mirror-drift.test.ts` against `design/mirror-manifest.json`.
 7. Generated/agent changes go through a PR on `portfolio-gen/<date>-<slug>`. Never push `main`, never touch `.github/workflows/deploy.yml`.
 8. **State ownership** (see `.claude/skills/react-app-guide`): shareable state → URL search params; server payloads → TanStack Query; device prefs → persisted Zustand; transient UI → non-persisted Zustand. Do not duplicate across layers.
+9. `graphify-out/` and `test-results/` are generated local artifacts; both are gitignored and excluded from Docker build context.
 
 ## Routes & URL State
 
@@ -33,8 +34,8 @@
 | `v`   | `tank` \| `text` view mode. Absent → tank when capable. |
 | `f`   | Focused fish slug (deep-linkable specimen). |
 
-- `/` → `routes/HomePage.tsx` — resolves layout (baked or `?j=`), builds the fish scene, picks mode via `routes/viewMode.ts::resolveViewMode`, renders `FishTankStage` or `LayoutRenderer`.
-- `/ask` → `routes/AskPage.tsx` — `loadLiveWithStatus("default")` in Query with baked `placeholderData`, a source pill (`live · scoped GenUI`, `bake · j=…`, `snapshot · …`), `ChatPanel`, and `AgentStatusPill`.
+- `/` → `routes/HomePage.tsx` — `usePageLayout` resolves demo (`?j=`), live default, or a patched working copy. Tank mode renders `FishTankStage` (Ask dock + chrome); text mode is the two-column ask + matrix.
+- `/ask` → `beforeLoad` redirect onto `/` with the same search params. No page component.
 - `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`).
 
 ## Fish Tank
@@ -112,7 +113,7 @@ Loaders in `src/content/loadLayout.ts` — every one falls back to `loadBaked()`
 CatPortfolio/
 ├── src/
 │   ├── main.tsx                # Root: runtime config gate → ThemeProvider > QueryClient > Router
-│   ├── router.tsx              # Routes / and /ask, demoSearchSchema (j / v / f)
+│   ├── router.tsx              # Route / + /ask→/ redirect, demoSearchSchema (j / v / f)
 │   ├── App.tsx                 # Shell: nav, theme + accent switcher, demo chip, Outlet
 │   ├── index.css               # Tailwind v4 CSS-first config + OKLCH tokens + shadcn bridge
 │   ├── config/runtimeConfig.ts # public/config.json fetch (octBaseUrl, mcpApiKey, askTimeoutMs)
@@ -136,7 +137,7 @@ CatPortfolio/
 │   │                           # shaders/ (noiseCommon water caustic godRay spineDeform absorption
 │   │                           #   causticProjection underwaterPass) · postprocessing/tankComposer
 │   │                           # components/ (HoloReticle ArchHologram)
-│   ├── routes/                 # HomePage AskPage viewMode.ts
+│   ├── routes/                 # HomePage viewMode.ts
 │   ├── components/
 │   │   ├── FishTankStage.tsx FishTankErrorBoundary.tsx
 │   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber
@@ -144,7 +145,7 @@ CatPortfolio/
 │   │   ├── ThemeProvider.tsx AgenticHeader.tsx SourceCitations.tsx AgentStatusPill.tsx
 │   │   └── ui/                 # shadcn: button card
 │   ├── store/                  # index.ts + preferences (persisted) / layout / fishTank / chat slices, applyLayout.ts
-│   ├── hooks/                  # useFishTank useDemoLayout useLayoutDag useLayoutTheme
+│   ├── hooks/                  # useFishTank useDemoLayout usePageLayout useLayoutDag useLayoutTheme
 │   │                           # useThemeRegistry useThemeTokens useLayoutSessionHydrated
 │   ├── api/                    # octClient harness instructions agentStatus
 │   ├── themes/                 # cozy / neon / paper theme JSONs + registry + context

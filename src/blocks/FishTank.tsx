@@ -65,7 +65,12 @@ export function FishTankView({
     return `${t}:${accent}`
   }, [prefTheme, accent, themeOverride, bakeTheme, isDemoSession])
 
-  if (!fish.length || reduced || !webgl2) {
+  if (reduced || !webgl2) {
+    return null
+  }
+  // Inline registry block with no specimens stays out of the text matrix.
+  // Immersive stage still mounts so an authored empty tank can render water.
+  if (!fish.length && !immersive) {
     return null
   }
 

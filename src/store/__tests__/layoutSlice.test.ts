@@ -69,6 +69,25 @@ describe("layoutSlice demo session", () => {
     expect(store.getState().workingLayout).toBeNull()
   })
 
+  it("setPatchedLayout writes working copy without inventing a demo", () => {
+    const patched = makeLayout("patched")
+    store.getState().setPatchedLayout(patched, "snapshot")
+    const s = store.getState()
+    expect(s.workingLayout).toEqual(patched)
+    expect(s.workingSource).toBe("snapshot")
+    expect(s.isDemoSession).toBe(false)
+    expect(s.shortId).toBeNull()
+  })
+
+  it("setPatchedLayout leaves an active demo identity untouched", () => {
+    store.getState().enterDemo("andrew_opencat_showcase_4")
+    store.getState().setPatchedLayout(makeLayout("patched"), "bake")
+    const s = store.getState()
+    expect(s.isDemoSession).toBe(true)
+    expect(s.shortId).toBe("andrew_opencat_showcase_4")
+    expect(s.workingSource).toBe("bake")
+  })
+
   it("setWorkingLayout ignores snapshot", () => {
     store.getState().enterDemo("andrew_opencat_showcase_4")
     store.getState().setWorkingLayout({

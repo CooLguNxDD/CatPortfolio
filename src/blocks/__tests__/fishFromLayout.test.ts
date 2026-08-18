@@ -102,6 +102,38 @@ describe("fishFromLayout", () => {
     expect((f.tags ?? []).length).toBeLessThanOrEqual(24)
   })
 
+  it("empty authored fishTank wins over cards", () => {
+    const fish = fishFromLayout(
+      layout([
+        {
+          type: "fishTank",
+          id: "fish-tank-1",
+          props: { renderer: "webgl", fish: [], highlightSlugs: [] },
+        },
+        {
+          type: "card",
+          id: "card-ai",
+          props: { title: "AI", domain: "ai", body: "Should not become a fish." },
+        },
+      ]),
+    )
+    expect(fish).toEqual([])
+  })
+
+  it("missing fishTank still derives from cards", () => {
+    const fish = fishFromLayout(
+      layout([
+        {
+          type: "card",
+          id: "card-ai",
+          props: { title: "AI", domain: "ai", body: "Derived when no tank block." },
+        },
+      ]),
+    )
+    expect(fish).toHaveLength(1)
+    expect(fish[0].slug).toBe("ai")
+  })
+
   it("school ids are stable across invocations", () => {
     const l = layout([
       {

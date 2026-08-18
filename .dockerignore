@@ -4,6 +4,8 @@ node_modules/
 # Build output (built inside container)
 dist/
 dist-ssr/
+graphify-out/
+test-results/
 
 # Local env files
 *.local

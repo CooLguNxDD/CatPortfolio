@@ -98,14 +98,14 @@ interface PartialFish {
 export function fishFromLayout(layout: Layout | null | undefined): FishSpecimenInput[] {
   if (!layout?.blocks?.length) return []
 
-  // Phase 2 path: authored fishTank block wins when present and non-empty.
+  // Authored fishTank wins whenever the block exists — including fish: [].
+  // Card/projectGrid derivation is only for layouts with no tank block at all.
   for (const b of layout.blocks) {
     if (b.type === "fishTank") {
       const fish = b.props?.fish
-      if (Array.isArray(fish) && fish.length > 0) {
-        const timeSpan = b.props?.timeSpan as { min: number; max: number } | undefined
-        return fish.slice(0, 40).map((f) => normalizeSpecimen(f, timeSpan))
-      }
+      if (!Array.isArray(fish) || fish.length === 0) return []
+      const timeSpan = b.props?.timeSpan as { min: number; max: number } | undefined
+      return fish.slice(0, 40).map((f) => normalizeSpecimen(f, timeSpan))
     }
   }
 
