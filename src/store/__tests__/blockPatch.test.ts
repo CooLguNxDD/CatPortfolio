@@ -111,9 +111,25 @@ describe("applyBlockPatch", () => {
     useLayoutStore.getState().clearDemo()
   })
 
-  it("returns false when there is no layout on screen", () => {
-    const queryClient = { setQueryData: vi.fn(), getQueryData: () => undefined } as any
-    expect(applyBlockPatch(queryClient, { blocks: [card("card-a", "A2")] })).toBe(false)
+  it("falls back to the baked snapshot when nothing is on screen", () => {
+    const setQueryData = vi.fn()
+    const queryClient = { setQueryData, getQueryData: () => undefined } as any
+    expect(applyBlockPatch(queryClient, { blocks: [card("card-a", "A2")] })).toBe(true)
+    expect(useLayoutStore.getState().workingLayout).not.toBeNull()
+    expect(setQueryData).toHaveBeenCalledWith(
+      ["layout", "default"],
+      expect.objectContaining({ source: "live" }),
+    )
+  })
+
+  it("does not invent a demo session for a non-demo patch", () => {
+    const queryClient = {
+      setQueryData: vi.fn(),
+      getQueryData: () => ({ layout: makeLayout(), source: "live" as const }),
+    } as any
+    expect(applyBlockPatch(queryClient, { blocks: [card("card-a", "A2")] })).toBe(true)
+    expect(useLayoutStore.getState().isDemoSession).toBe(false)
+    expect(useLayoutStore.getState().shortId).toBeNull()
   })
 
   it("returns false for an empty patch", () => {

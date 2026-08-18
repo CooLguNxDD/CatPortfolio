@@ -85,13 +85,13 @@ describe("loadJobLayout", () => {
     expect(result.layout).toStrictEqual(loadBaked());
   });
 
-  it("URL-encodes the job id in the request path", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 }) as unknown as typeof fetch;
-
-    await loadJobLayout("weird id/with slash");
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "http://localhost:10000/api/portfolio/public/layout/weird%20id%2Fwith%20slash",
-      expect.any(Object)
-    );
-  });
+  it.each(["../secret", "job/id", "job id", "job%2Fid", ""])(
+    "rejects invalid public job id %j before fetching",
+    async (jobId) => {
+      globalThis.fetch = vi.fn();
+      const result = await loadJobLayout(jobId);
+      expect(result).toEqual({ layout: loadBaked(), source: "snapshot" });
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    },
+  );
 });

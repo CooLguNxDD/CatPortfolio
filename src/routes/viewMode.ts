@@ -11,17 +11,19 @@ export interface ViewCaps {
 
 /**
  * Resolve whether to show the tank stage or the text layout.
- * Explicit `v=text` always wins. Tank only when capable + fish exist.
+ * Explicit `v=text` always wins. Tank when capable and either specimens
+ * exist or a fishTank block is authored (including fish: []).
  */
 export function resolveViewMode(
   search: { v?: "text" | "tank" | undefined } | null | undefined,
   caps: ViewCaps,
   fishCount: number,
+  hasAuthoredTank = false,
 ): ViewMode {
   if (search?.v === "text") return "text"
   if (!caps.webgl2) return "text"
   if (caps.reducedMotion) return "text"
-  if (fishCount < 1) return "text"
+  if (fishCount < 1 && !hasAuthoredTank) return "text"
   return "tank"
 }
 

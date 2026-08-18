@@ -130,7 +130,7 @@ export class OctClient {
   async callTool(
     name: string,
     args?: Record<string, unknown>,
-    opts?: { timeoutMs?: number }
+    opts?: { timeoutMs?: number; signal?: AbortSignal }
   ): Promise<OctToolResult> {
     if (!this.client) {
       throw new Error("client_not_connected");
@@ -145,9 +145,10 @@ export class OctClient {
       const res = await this.client.callTool(
         { name, arguments: args },
         undefined,
-        timeoutMs
+        timeoutMs || opts?.signal
           ? {
-              timeout: timeoutMs,
+              ...(timeoutMs ? { timeout: timeoutMs } : {}),
+              ...(opts?.signal ? { signal: opts.signal } : {}),
               resetTimeoutOnProgress: true,
               // Registers progressToken even when we don't surface events in the UI.
               onprogress: () => {},

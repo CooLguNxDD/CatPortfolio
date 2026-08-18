@@ -7,7 +7,8 @@
 
 import type { QueryClient } from "@tanstack/react-query"
 import type { LayoutLoadResult } from "@/content/loadLayout"
-import type { Block, Layout } from "@/content/schema"
+import { loadBaked } from "@/content/loadLayout"
+import { LayoutSchema, type Block, type Layout } from "@/content/schema"
 import { demoLayoutQueryKey } from "@/hooks/useDemoLayout"
 import { useLayoutStore } from "@/store"
 
@@ -89,7 +90,7 @@ export function mergeBlockPatch(base: Layout, patch: BlockPatch): Layout {
  * Ephemeral by design: this writes the working layout and the Query cache and
  * nothing else. No short_id is minted and no bake is mutated, so a reload
  * returns the visitor to the layout they were served.
- * Returns false when there is no current layout to patch.
+ * Falls back to the baked snapshot when nothing is on screen yet.
  */
 export function applyBlockPatch(
   queryClient: QueryClient,
@@ -103,15 +104,25 @@ export function applyBlockPatch(
   // The store holds a bare Layout; the cache holds a LayoutLoadResult. Prefer
   // the store — it already carries any earlier patch from this session.
   const cached = queryClient.getQueryData<LayoutLoadResult>(key)
-  const base = store.workingLayout ?? cached?.layout
-  if (!base) return false
+  // Homepage never seeds the cache; fall back to the committed snapshot so
+  // a patch always has a base, on any route, at any load stage.
+  const base = store.workingLayout ?? cached?.layout ?? loadBaked()
+  const inheritedSource = cached?.source ?? store.workingSource ?? "snapshot"
+  // A successful visitor patch is live state even when its base was the baked fallback.
+  const source = inheritedSource === "snapshot" ? "live" : inheritedSource
+  const merged = LayoutSchema.safeParse(mergeBlockPatch(base, patch))
+  if (!merged.success) {
+    console.warn("[applyBlockPatch] rejected invalid merged layout", merged.error.flatten())
+    return false
+  }
 
   const next: LayoutLoadResult = {
-    ...(cached ?? { source: store.workingSource ?? "live" }),
+    ...(cached ?? {}),
+    source,
     ...(shortId ? { shortId } : {}),
-    layout: mergeBlockPatch(base, patch),
+    layout: merged.data,
   }
-  store.setWorkingLayout(next)
+  store.setPatchedLayout(next.layout, next.source)
   queryClient.setQueryData(key, next)
   return true
 }

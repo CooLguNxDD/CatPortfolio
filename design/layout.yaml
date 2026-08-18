@@ -207,6 +207,8 @@ blocks:
   #   weltel_mobile_contribution.md
   #   weltel_platform_contribution.md
   # species = DomainId (ai|devops|mobile|platform); numerics bounded 0..1.
+  # fish: [] is an explicit empty school. Commenting this whole block out
+  # does NOT empty the tank — cards/projectGrid would be derived instead.
   - type: fishTank
     id: fish-tank-1
     props:
