@@ -1,15 +1,33 @@
 export interface RuntimeConfig {
+  /**
+   * OCT backend base URL.
+   *
+   * **Docker (localhost / ngrok)**: intentionally absent from config.json.
+   * `resolveOctBaseUrl("")` returns `window.location.origin`, so the browser
+   * uses same-origin `/api/` and `/mcp` paths that nginx proxies to the real
+   * backend. The backend URL never reaches the browser.
+   *
+   * **GitHub Pages**: baked into the JS bundle at build time via `VITE_OCT_URL`
+   * (injected from a GitHub Actions secret in deploy.yml).
+   */
   octBaseUrl: string;
   /**
-   * Bearer token for the /mcp endpoint. The server's FastMCP OAuth resource-server
-   * gate requires SOME valid authenticated principal for any /mcp request (even
-   * run_graph) — this is a deny-all-scoped (`scopes: []`) API key, so it can only
-   * ever invoke gateway-always-visible tools (run_graph, discover_tools,
-   * authenticate, complete_authentication). It is not a secret in the usual
-   * sense: this is a public SPA, so the token is inherently visible to anyone
-   * loading the site (network tab, bundled config.json). Its only job is to
-   * satisfy the outer auth gate; least-privilege (deny-all) scoping is what
-   * keeps that acceptable.
+   * Bearer token for the /mcp endpoint.
+   *
+   * **Docker (localhost / ngrok)**: nginx injects `Authorization: Bearer <key>`
+   * server-side via envsubst templating (see nginx.conf + docker-entrypoint.sh).
+   * The key is never written to config.json or sent to the browser — this field
+   * will be empty string in that deployment.
+   *
+   * **GitHub Pages**: no server-side injection is available, so the key is
+   * baked into the JS bundle at build time via `VITE_OCT_API_KEY` (injected
+   * from a GitHub Actions secret in deploy.yml). `loadRuntimeConfig` falls back
+   * to `envFallback()` which reads `import.meta.env.VITE_OCT_API_KEY`.
+   *
+   * In both cases the key is deny-all-scoped (`scopes: []`), so it can only
+   * invoke gateway-always-visible tools (run_graph, discover_tools,
+   * authenticate, complete_authentication). Least-privilege scoping limits the
+   * blast radius of any accidental exposure.
    */
   mcpApiKey: string;
   /**
@@ -75,10 +93,15 @@ function envFallback(): RuntimeConfig {
 
 /**
  * Fetches /config.json (unhashed, patchable post-deploy without a rebuild —
- * see public/config.json) to discover the OCT backend base URL + API key at
+ * see public/config.json) to discover the OCT backend base URL + timeout at
  * runtime, since GitHub Pages static hosting has no build-time env injection.
- * Falls back to VITE_OCT_URL/VITE_OCT_API_KEY/VITE_ASK_TIMEOUT_MS, then defaults,
- * on any fetch/parse failure.
+ *
+ * mcpApiKey is NOT present in config.json for Docker deployments (nginx
+ * injects the Authorization header server-side). For GitHub Pages it falls
+ * back to VITE_OCT_API_KEY baked into the bundle at CI build time.
+ *
+ * Falls back to VITE_OCT_URL/VITE_OCT_API_KEY/VITE_ASK_TIMEOUT_MS, then
+ * defaults, on any fetch/parse failure.
  */
 export function loadRuntimeConfig(): Promise<RuntimeConfig> {
   if (loadPromise) return loadPromise;
