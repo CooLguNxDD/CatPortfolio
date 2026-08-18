@@ -32,6 +32,14 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # OCT_API_KEY and OCT_BASE_URL must be set in GitHub → Settings → Secrets → Actions.
+          # Vite bakes both into the JS bundle at build time (standard SPA pattern for
+          # GitHub Pages — no server-side injection is available there).
+          # The key is deny-all-scoped; the URL omission from config.json prevents
+          # casual discovery even if the bundle is inspected.
+          VITE_OCT_API_KEY: ${{ secrets.OCT_API_KEY }}
+          VITE_OCT_URL: ${{ secrets.OCT_BASE_URL }}
 
       - name: Copy index.html to 404.html (SPA deep-link fallback)
         run: |

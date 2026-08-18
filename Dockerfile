@@ -20,11 +20,13 @@ RUN rm -rf /usr/share/nginx/html/*
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Install nginx.conf as a template.  docker-entrypoint.sh runs envsubst to
+# substitute ${OCT_API_KEY} and write the live default.conf at container start,
+# so the key never appears in the image layers or any browser-visible resource.
+COPY nginx.conf /etc/nginx/conf.d/default.conf.template
 
-# Writes config.json from OCT_BASE_URL/OCT_API_KEY env vars at container start
-# (see docker-entrypoint.sh) — keeps the /mcp API key out of git and the image layers.
+# Writes config.json (non-secret values only) and templates nginx.conf at start
+# (see docker-entrypoint.sh) — OCT_API_KEY is injected by nginx, not the browser.
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
