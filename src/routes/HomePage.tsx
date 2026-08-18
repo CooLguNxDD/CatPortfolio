@@ -193,17 +193,18 @@ export function HomePage() {
         {canShowTank ? (
           <div
             className="inline-flex rounded-full border border-(--hairline) p-0.5 text-xs font-mono"
-            role="group"
+            role="radiogroup"
             aria-label="Canvas view"
           >
             {(["tank", "text"] as const).map((option) => (
               <button
                 key={option}
                 type="button"
-                aria-pressed={mode === option}
+                role="radio"
+                aria-checked={mode === option}
                 onClick={() => setView(option)}
                 className={cn(
-                  "rounded-full px-3 py-0.5 transition-colors",
+                  "rounded-full px-3 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber)",
                   mode === option
                     ? "bg-(--amber)/15 text-(--amber)"
                     : "text-(--fg-muted) hover:text-(--fg)",

@@ -8,7 +8,7 @@
 import type { QueryClient } from "@tanstack/react-query"
 import type { LayoutLoadResult } from "@/content/loadLayout"
 import { loadBaked } from "@/content/loadLayout"
-import type { Block, Layout } from "@/content/schema"
+import { LayoutSchema, type Block, type Layout } from "@/content/schema"
 import { demoLayoutQueryKey } from "@/hooks/useDemoLayout"
 import { useLayoutStore } from "@/store"
 
@@ -107,12 +107,20 @@ export function applyBlockPatch(
   // Homepage never seeds the cache; fall back to the committed snapshot so
   // a patch always has a base, on any route, at any load stage.
   const base = store.workingLayout ?? cached?.layout ?? loadBaked()
-  const source = cached?.source ?? store.workingSource ?? "snapshot"
+  const inheritedSource = cached?.source ?? store.workingSource ?? "snapshot"
+  // A successful visitor patch is live state even when its base was the baked fallback.
+  const source = inheritedSource === "snapshot" ? "live" : inheritedSource
+  const merged = LayoutSchema.safeParse(mergeBlockPatch(base, patch))
+  if (!merged.success) {
+    console.warn("[applyBlockPatch] rejected invalid merged layout", merged.error.flatten())
+    return false
+  }
 
   const next: LayoutLoadResult = {
-    ...(cached ?? { source }),
+    ...(cached ?? {}),
+    source,
     ...(shortId ? { shortId } : {}),
-    layout: mergeBlockPatch(base, patch),
+    layout: merged.data,
   }
   store.setPatchedLayout(next.layout, next.source)
   queryClient.setQueryData(key, next)

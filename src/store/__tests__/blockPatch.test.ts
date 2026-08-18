@@ -118,7 +118,7 @@ describe("applyBlockPatch", () => {
     expect(useLayoutStore.getState().workingLayout).not.toBeNull()
     expect(setQueryData).toHaveBeenCalledWith(
       ["layout", "default"],
-      expect.objectContaining({ source: "snapshot" }),
+      expect.objectContaining({ source: "live" }),
     )
   })
 

@@ -16,6 +16,11 @@ import type { Layout } from "@/content/schema"
 import { useLayoutStore } from "@/store"
 import { useDemoLayoutQuery, useDemoShortId } from "@/hooks/useDemoLayout"
 
+const SNAPSHOT_PLACEHOLDER: LayoutLoadResult = {
+  layout: loadBaked(),
+  source: "snapshot",
+}
+
 /** Inputs for the pure page-layout resolver (unit-testable, no Query). */
 export interface ResolvePageLayoutInput {
   shortId: string | null
@@ -90,7 +95,7 @@ export function usePageLayout(urlJ: string | undefined): {
     retry: false,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
-    placeholderData: { layout: loadBaked(), source: "snapshot" as const },
+    placeholderData: SNAPSHOT_PLACEHOLDER,
   })
 
   const data = resolvePageLayout({

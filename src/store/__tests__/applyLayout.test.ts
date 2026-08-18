@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { Layout } from "@/content/schema"
+import type { Block, Layout } from "@/content/schema"
 
 // Mock the demo query key helper used by applyLayoutToCache.
 vi.mock("@/hooks/useDemoLayout", () => ({
   demoLayoutQueryKey: (id: string) => ["layout", "demo", id],
 }))
 
-import { applyLayoutToCache } from "../applyLayout"
+import { applyBlockPatch, applyLayoutToCache } from "../applyLayout"
 import { useLayoutStore } from "@/store"
 
 function makeLayout(): Layout {
@@ -80,5 +80,37 @@ describe("applyLayoutToCache", () => {
     })
     expect(useLayoutStore.getState().shortId).toBe("derived_patch_1")
     expect(useLayoutStore.getState().workingLayout).not.toBeNull()
+  })
+})
+
+describe("applyBlockPatch", () => {
+  beforeEach(() => {
+    useLayoutStore.getState().clearDemo()
+  })
+
+  it("marks a patch over the snapshot fallback as live", () => {
+    const setQueryData = vi.fn()
+    const queryClient = { getQueryData: vi.fn(), setQueryData } as any
+
+    expect(applyBlockPatch(queryClient, {
+      blocks: [{ ...makeLayout().blocks[0], props: { name: "Patched", tagline: "test", pitch: "test pitch", links: [] } } as Block],
+    })).toBe(true)
+
+    expect(setQueryData).toHaveBeenCalledWith(
+      ["layout", "default"],
+      expect.objectContaining({ source: "live" }),
+    )
+    expect(useLayoutStore.getState().workingSource).toBe("live")
+  })
+
+  it("rejects a merged layout that fails schema validation", () => {
+    const setQueryData = vi.fn()
+    const queryClient = { getQueryData: vi.fn(), setQueryData } as any
+
+    expect(applyBlockPatch(queryClient, {
+      blocks: [{ ...makeLayout().blocks[0], props: {} } as Block],
+    })).toBe(false)
+    expect(setQueryData).not.toHaveBeenCalled()
+    expect(useLayoutStore.getState().workingLayout).toBeNull()
   })
 })
