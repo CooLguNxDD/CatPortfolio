@@ -22,6 +22,7 @@
 6. **New block type checklist:** Zod member in `schema.ts` → reviewed component in `src/blocks/` → barrel export → registry entry → tests → Python mirror sync (or a `design/pending-mirror/<date>-<type>.md` note). Enforced by `scripts/__tests__/mirror-drift.test.ts` against `design/mirror-manifest.json`.
 7. Generated/agent changes go through a PR on `portfolio-gen/<date>-<slug>`. Never push `main`, never touch `.github/workflows/deploy.yml`.
 8. **State ownership** (see `.claude/skills/react-app-guide`): shareable state → URL search params; server payloads → TanStack Query; device prefs → persisted Zustand; transient UI → non-persisted Zustand. Do not duplicate across layers.
+9. `graphify-out/` and `test-results/` are generated local artifacts; both are gitignored and excluded from Docker build context.
 
 ## Routes & URL State
 

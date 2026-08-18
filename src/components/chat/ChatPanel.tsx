@@ -308,6 +308,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   useEffect(() => {
     if (!discoveryJob?.job_id) return;
     let cancelled = false;
+    const controller = new AbortController();
     let timer: ReturnType<typeof window.setTimeout> | null = null;
     setMessages((prev) => [
       ...prev,
@@ -329,9 +330,11 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
       }
       try {
         const client = await getSharedClient();
-        const res = await client.callTool("get_context_discovery", {
-          job_id: discoveryJob.job_id,
-        });
+        const res = await client.callTool(
+          "get_context_discovery",
+          { job_id: discoveryJob.job_id },
+          { signal: controller.signal },
+        );
         if (cancelled) return;
         const status = (res.data as { status?: string } | undefined)?.status;
         if (!status || status === "pending") {
@@ -358,6 +361,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
 
     return () => {
       cancelled = true;
+      controller.abort();
       if (timer != null) window.clearTimeout(timer);
     };
   }, [discoveryJob]);

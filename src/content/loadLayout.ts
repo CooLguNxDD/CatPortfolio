@@ -5,6 +5,9 @@ import { getOctBaseUrl } from "../config/runtimeConfig";
 /** Parsed once — never re-create on every HomePage render (breaks scroll/DAG hooks). */
 const BAKED_LAYOUT: Layout = LayoutSchema.parse(baked);
 
+/** Public bake ids are slug + an opaque suffix; reject path/control characters. */
+const JOB_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
 /** Loads the statically baked layout.json file (stable reference). */
 export function loadBaked(): Layout {
   return BAKED_LAYOUT;
@@ -149,6 +152,9 @@ export async function loadJobLayout(
   jobId: string,
   opts?: { timeoutMs?: number },
 ): Promise<LayoutLoadResult> {
+  if (!JOB_ID_PATTERN.test(jobId)) {
+    return { layout: loadBaked(), source: "snapshot" };
+  }
   let base: string;
   try {
     base = getOctBaseUrl();
