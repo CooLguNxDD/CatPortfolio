@@ -7,7 +7,7 @@ services:
     container_name: catportfolio
     restart: unless-stopped
     ports:
-      - "11000:80"            # access the site at http://localhost:11000
+      - "11000:8080"          # access the site at http://localhost:11000
     env_file:
       - .env                  # gitignored; see .env.example (OCT_BASE_URL, OCT_API_KEY, OCT_ASK_TIMEOUT_MS)
     environment:

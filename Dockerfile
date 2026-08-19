@@ -30,7 +30,16 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-EXPOSE 80
+# Ensure non-root nginx user has ownership of web roots, caches, logs, and pid
+RUN touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx /etc/nginx/conf.d /var/run/nginx.pid
+
+USER nginx
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget -qO- http://localhost:8080/CatPortfolio/ || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
