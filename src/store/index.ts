@@ -33,6 +33,10 @@ export const usePreferencesStore = create<PreferencesStore>()(
     {
       name: "cat-portfolio-preferences",
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persistedState: unknown, _version: number) => {
+        return persistedState as PreferencesStore
+      },
       partialize: (state) => ({
         theme: state.theme,
         accent: state.accent,

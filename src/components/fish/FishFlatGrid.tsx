@@ -53,7 +53,11 @@ export function FishFlatGrid({
         </p>
       ) : null}
       <div className="ft-flat-tools">
+        <label htmlFor="q" className="sr-only">
+          Filter projects
+        </label>
         <input
+          id="q"
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}

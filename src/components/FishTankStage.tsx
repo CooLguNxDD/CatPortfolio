@@ -18,6 +18,7 @@ import { SonarMiniMap } from "@/components/fish/SonarMiniMap"
 import { DepthScrubber } from "@/components/fish/DepthScrubber"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { useFishTank } from "@/hooks/useFishTank"
+import { useFocusTrap } from "@/hooks/useFocusTrap"
 import { fishBus } from "@/fish/fishBus"
 import { useChatStore } from "@/store"
 import { canDiveOnScroll } from "@/fish/tankMachine"
@@ -40,6 +41,9 @@ export function FishTankStage({
 }: FishTankStageProps) {
   const tank = useFishTank(layout)
   const [askOpen, setAskOpen] = useState(false)
+  const askDockRef = useRef<HTMLElement | null>(null)
+
+  useFocusTrap(askOpen, askDockRef)
 
   useEffect(() => {
     function onAskToggle() {
@@ -216,6 +220,7 @@ export function FishTankStage({
 
       {askOpen ? (
         <aside
+          ref={askDockRef}
           className="ft-ask-dock glass"
           aria-label="Ask Agent"
         >
