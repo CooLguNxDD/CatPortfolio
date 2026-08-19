@@ -18,9 +18,9 @@ const rootRoute = createRootRoute({
  * Absent `v` resolves to tank when capable (see resolveViewMode).
  */
 export const demoSearchSchema = z.object({
-  j: z.string().optional(),
-  v: z.enum(["text", "tank"]).optional(),
-  f: z.string().optional(),
+  j: z.string().optional().catch(undefined),
+  v: z.enum(["text", "tank"]).optional().catch(undefined),
+  f: z.string().optional().catch(undefined),
 })
 
 export type DemoSearch = z.infer<typeof demoSearchSchema>

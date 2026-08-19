@@ -1016,13 +1016,17 @@ export default function FishTankCanvas({
     /** Listener up-vector — the camera never rolls, so this is constant. */
     const WORLD_UP = new THREE.Vector3(0, 1, 0)
 
+    let shaderTime = 0
+
     function animate() {
       if (disposed) return
       raf = requestAnimationFrame(animate)
       const dt = Math.min(0.05, clock.getDelta())
       const t = clock.elapsedTime
-      // Shader clock — frozen at 0 for prefers-reduced-motion, so the tank stays still.
-      const st = t * quality.timeScale
+      // Shader clock — advanced by clamped frame deltas and frozen at 0 for
+      // prefers-reduced-motion, preventing multi-second snaps when returning from a frozen tab.
+      shaderTime += dt * quality.timeScale
+      const st = shaderTime
       const prog = clamp(progRef.current, 0, 1)
 
       // Camera reset on surface return
