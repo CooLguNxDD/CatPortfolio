@@ -27,6 +27,10 @@ describe("runtimeConfig", () => {
     }) as unknown as typeof fetch;
 
     const config = await loadRuntimeConfig();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      `${import.meta.env.BASE_URL}config.json`,
+      expect.anything(),
+    );
     expect(config.octBaseUrl).toBe("https://api.example.com");
     expect(getOctBaseUrl()).toBe("https://api.example.com");
   });

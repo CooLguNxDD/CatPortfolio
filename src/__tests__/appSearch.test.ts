@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { clearDemoSearch, mergeDemoSearch } from "@/lib/demoSearch"
+import { demoSearchSchema } from "@/router"
 
 describe("mergeDemoSearch", () => {
   it("sets j and preserves v/f", () => {
@@ -28,3 +29,16 @@ describe("clearDemoSearch", () => {
     expect(clearDemoSearch({ j: "only" })).toEqual({})
   })
 })
+
+describe("demoSearchSchema", () => {
+  it("safely catches invalid or malformed query parameters as undefined", () => {
+    expect(demoSearchSchema.parse({ v: "bogus" })).toEqual({ v: undefined })
+    expect(demoSearchSchema.parse({ j: 123, v: "invalid", f: [] })).toEqual({
+      j: undefined,
+      v: undefined,
+      f: undefined,
+    })
+  })
+})
+
+
