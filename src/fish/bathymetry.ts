@@ -77,9 +77,16 @@ export function yearLabelForBand(band: DepthBand, referenceYear?: number): strin
   return band.yearOffset <= -2 ? `${year} & earlier` : String(year)
 }
 
+const depthBandsCache = new Map<number, (DepthBand & { year: string })[]>()
+
 /** Bands decorated with their resolved year label — what the scrubber renders. */
 export function depthBands(referenceYear?: number): (DepthBand & { year: string })[] {
-  return DEPTH_BANDS.map((band) => ({ ...band, year: yearLabelForBand(band, referenceYear) }))
+  const base = referenceYear ?? new Date().getFullYear()
+  const cached = depthBandsCache.get(base)
+  if (cached) return cached
+  const result = DEPTH_BANDS.map((band) => ({ ...band, year: yearLabelForBand(band, base) }))
+  depthBandsCache.set(base, result)
+  return result
 }
 
 /** World Y for a depth01 value, inside the usable swim band. */

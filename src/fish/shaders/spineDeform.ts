@@ -65,11 +65,12 @@ export const SPINE_ORBIT_GLSL = /* glsl */ `
   }
 
   float orbitHeading(vec4 orbit, float t) {
-    // Finite difference along the same path — cheaper than an analytic tangent
-    // and immune to the degenerate case where both radii are ~0.
-    vec3 a = orbitPosition(orbit, 0.0, t);
-    vec3 b = orbitPosition(orbit, 0.0, t + 0.05);
-    return atan(b.x - a.x, b.z - a.z);
+    // Analytic derivative of orbitPosition:
+    // dx/dt = cos(t) * orbit.z
+    // dz/dt = -0.7 * sin(t * 0.7) * orbit.w
+    float dx = cos(t) * orbit.z;
+    float dz = -0.7 * sin(t * 0.7) * orbit.w;
+    return atan(dx, dz);
   }
 
   mat3 yawMatrix(float yaw) {

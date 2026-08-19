@@ -130,9 +130,10 @@ export function computeSteeringForce(
     // Separation (applies to any fish nearby)
     if (dSq < sepDistSq) {
       const d = Math.sqrt(dSq)
-      const diffX = (agent.position.x - other.position.x) / d
-      const diffY = (agent.position.y - other.position.y) / d
-      const diffZ = (agent.position.z - other.position.z) / d
+      const weight = 1 - d / cfg.separationDist
+      const diffX = ((agent.position.x - other.position.x) / d) * weight
+      const diffY = ((agent.position.y - other.position.y) / d) * weight
+      const diffZ = ((agent.position.z - other.position.z) / d) * weight
       sepX += diffX
       sepY += diffY
       sepZ += diffZ
@@ -173,9 +174,10 @@ export function computeSteeringForce(
     const targetY = cohY / cohCount - agent.position.y
     const targetZ = cohZ / cohCount - agent.position.z
     const d = Math.hypot(targetX, targetY, targetZ) || 1
-    fx += (targetX / d) * cfg.cohesionWeight
-    fy += (targetY / d) * cfg.cohesionWeight
-    fz += (targetZ / d) * cfg.cohesionWeight
+    const weight = (d / cfg.cohesionDist) * cfg.cohesionWeight
+    fx += (targetX / d) * weight
+    fy += (targetY / d) * weight
+    fz += (targetZ / d) * weight
   }
 
   // Apply alignment (match flock velocity)
