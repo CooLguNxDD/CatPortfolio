@@ -40,7 +40,7 @@ test.describe('Ask Mode E2E', () => {
     await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
-    const textarea = page.locator('textarea[placeholder*="Ask"]');
+    const textarea = page.getByPlaceholder(/Ask/i);
     await textarea.fill('tell me about weltel-ai');
     await textarea.press('Enter');
 
@@ -111,7 +111,7 @@ test.describe('Ask Mode E2E', () => {
     await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
-    const textarea = page.locator('textarea[placeholder*="Ask"]');
+    const textarea = page.getByPlaceholder(/Ask/i);
     await textarea.fill('tell me about unknown topic');
     await textarea.press('Enter');
 
@@ -167,7 +167,7 @@ test.describe('Ask Mode E2E', () => {
     await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
-    const textarea = page.locator('textarea[placeholder*="Ask"]');
+    const textarea = page.getByPlaceholder(/Ask/i);
 
     // First ask
     await textarea.fill('missing topic');
@@ -220,7 +220,7 @@ test.describe('Ask Mode E2E', () => {
     await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
-    const textarea = page.locator('textarea[placeholder*="Ask"]');
+    const textarea = page.getByPlaceholder(/Ask/i);
     await textarea.fill('update layout');
     await textarea.press('Enter');
 
@@ -244,7 +244,7 @@ test.describe('Ask Mode E2E', () => {
     await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
-    const textarea = page.locator('textarea[placeholder*="Ask"]');
+    const textarea = page.getByPlaceholder(/Ask/i);
     await textarea.fill('break db');
     await textarea.press('Enter');
 
@@ -283,7 +283,7 @@ test.describe('Ask Mode E2E', () => {
     await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
-    const textarea = page.locator('textarea[placeholder*="Ask"]');
+    const textarea = page.getByPlaceholder(/Ask/i);
     await textarea.fill('focus test');
     await textarea.press('Enter');
 
@@ -320,7 +320,7 @@ test.describe('Ask Mode E2E', () => {
     await page.goto('./?v=text');
     await expect(page.getByRole('heading', { name: 'Ask Portfolio' })).toBeVisible();
 
-    const textarea = page.locator('textarea[placeholder*="Ask"]');
+    const textarea = page.getByPlaceholder(/Ask/i);
     await textarea.fill('I need a principal DevOps role layout');
     await textarea.press('Enter');
 

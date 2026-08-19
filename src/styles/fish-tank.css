@@ -533,8 +533,9 @@
 
 .ft-sonar-blip:focus-visible {
   stroke: #fff;
-  stroke-width: 1.5;
-  outline: none;
+  stroke-width: 2;
+  outline: 2px solid var(--ft-accent, #22d3ee);
+  outline-offset: 3px;
 }
 
 @media (prefers-reduced-motion: reduce) {
