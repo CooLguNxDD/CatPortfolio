@@ -37,6 +37,14 @@ export interface AudioPoint {
   z: number
 }
 
+/**
+ * Positional/ambient audio for the fish tank: a lazily-created AudioContext
+ * graph (waterline lowpass, HRTF panner for `audio:fx` events, ambient
+ * drone) gated behind the user's sound toggle and a real user gesture
+ * (autoplay policy). Exported as the `fishAudio` singleton below — it
+ * outlives any single tank mount, so `dispose()` only tears down the audio
+ * graph and bus subscriptions, not the instance itself.
+ */
 class FishAudioEngine {
   private ctx: AudioContext | null = null
   private masterGain: GainNode | null = null
@@ -52,6 +60,7 @@ class FishAudioEngine {
   private unsubscribers: (() => void)[] = []
   private ambientOscStarted: boolean = false
   private hasUserGesture: boolean = false
+  private unlockGesture: (() => void) | null = null
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -62,7 +71,9 @@ class FishAudioEngine {
         }
         window.removeEventListener("pointerdown", unlock)
         window.removeEventListener("keydown", unlock)
+        this.unlockGesture = null
       }
+      this.unlockGesture = unlock
       window.addEventListener("pointerdown", unlock, { passive: true })
       window.addEventListener("keydown", unlock, { passive: true })
     }
@@ -386,6 +397,12 @@ class FishAudioEngine {
   public dispose(): void {
     for (const unsub of this.unsubscribers) unsub()
     this.unsubscribers = []
+
+    if (this.unlockGesture && typeof window !== "undefined") {
+      window.removeEventListener("pointerdown", this.unlockGesture)
+      window.removeEventListener("keydown", this.unlockGesture)
+      this.unlockGesture = null
+    }
 
     if (this.ambientOsc) {
       try {
