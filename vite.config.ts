@@ -25,9 +25,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Keep three out of the main index chunk (~600KB+).
+        // Keep three and tanstack out of the main index chunk.
         manualChunks(id: string) {
           if (id.includes("node_modules/three")) return "three"
+          if (id.includes("node_modules/@tanstack")) return "tanstack"
         },
       },
     },

@@ -30,6 +30,29 @@ describe("fishBoids steering engine", () => {
     expect(force.x).toBeLessThan(0)
   })
 
+  it("produces strictly greater separation magnitude for a nearer peer", () => {
+    const nearPeer: BoidAgent = {
+      id: "fish-near",
+      school: -1,
+      position: { x: 0.5, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
+      size: 0.5,
+      speed: 0.5,
+    }
+    const farPeer: BoidAgent = {
+      id: "fish-far",
+      school: -1,
+      position: { x: 2.5, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
+      size: 0.5,
+      speed: 0.5,
+    }
+
+    const nearForce = computeSteeringForce(baseAgent, [baseAgent, nearPeer])
+    const farForce = computeSteeringForce(baseAgent, [baseAgent, farPeer])
+    expect(Math.abs(nearForce.x)).toBeGreaterThan(Math.abs(farForce.x))
+  })
+
   it("calculates cohesion towards school center of mass", () => {
     const distantCohort: BoidAgent = {
       id: "fish-2",

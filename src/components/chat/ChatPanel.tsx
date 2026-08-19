@@ -497,7 +497,10 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
         )}
         {pending && (
           <div className="flex w-full justify-start py-4">
-            <div className="bg-(--bg-sunken) border border-(--hairline) rounded-2xl rounded-tl-none px-4 py-3 shadow-xs text-(--fg) flex items-center gap-2">
+            <span className="sr-only" aria-live="polite">
+              composing fragments…
+            </span>
+            <div className="bg-(--bg-sunken) border border-(--hairline) rounded-2xl rounded-tl-none px-4 py-3 shadow-xs text-(--fg) flex items-center gap-2" aria-hidden="true">
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce [animation-delay:-0.3s]" />
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce [animation-delay:-0.15s]" />
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce" />

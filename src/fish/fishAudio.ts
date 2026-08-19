@@ -37,6 +37,14 @@ export interface AudioPoint {
   z: number
 }
 
+/**
+ * Positional/ambient audio for the fish tank: a lazily-created AudioContext
+ * graph (waterline lowpass, HRTF panner for `audio:fx` events, ambient
+ * drone) gated behind the user's sound toggle and a real user gesture
+ * (autoplay policy). Exported as the `fishAudio` singleton below — it
+ * outlives any single tank mount, so `dispose()` only tears down the audio
+ * graph and bus subscriptions, not the instance itself.
+ */
 class FishAudioEngine {
   private ctx: AudioContext | null = null
   private masterGain: GainNode | null = null
@@ -50,6 +58,26 @@ class FishAudioEngine {
   private enabled: boolean = false
   private immersion: number = 0
   private unsubscribers: (() => void)[] = []
+  private ambientOscStarted: boolean = false
+  private hasUserGesture: boolean = false
+  private unlockGesture: (() => void) | null = null
+
+  constructor() {
+    if (typeof window !== "undefined") {
+      const unlock = () => {
+        this.hasUserGesture = true
+        if (this.ctx && this.ctx.state === "suspended" && this.enabled) {
+          this.ctx.resume().catch((err) => audioWarn("resume", err))
+        }
+        window.removeEventListener("pointerdown", unlock)
+        window.removeEventListener("keydown", unlock)
+        this.unlockGesture = null
+      }
+      this.unlockGesture = unlock
+      window.addEventListener("pointerdown", unlock, { passive: true })
+      window.addEventListener("keydown", unlock, { passive: true })
+    }
+  }
 
   private getAudioContext(): AudioContext | null {
     if (typeof window === "undefined") return null
@@ -68,7 +96,7 @@ class FishAudioEngine {
         return null
       }
     }
-    if (this.ctx.state === "suspended") {
+    if (this.ctx.state === "suspended" && this.hasUserGesture) {
       this.ctx.resume().catch((err) => audioWarn("resume", err))
     }
     return this.ctx
@@ -252,6 +280,7 @@ class FishAudioEngine {
       this.ambientGain.connect(this.waterFilter ?? this.masterGain)
 
       this.ambientOsc.start()
+      this.ambientOscStarted = true
     } catch (err) {
       audioWarn("ambient", err)
     }
@@ -369,29 +398,57 @@ class FishAudioEngine {
     for (const unsub of this.unsubscribers) unsub()
     this.unsubscribers = []
 
-    try {
-      this.ambientOsc?.stop()
-      this.ambientOsc?.disconnect()
-      this.ambientGain?.disconnect()
-      this.convolver?.disconnect()
-      this.wetGain?.disconnect()
-      this.dryGain?.disconnect()
-      this.waterFilter?.disconnect()
-      this.lowShelf?.disconnect()
-      this.masterGain?.disconnect()
-      this.ctx?.close()
-    } catch (err) {
-      audioWarn("dispose", err)
+    if (this.unlockGesture && typeof window !== "undefined") {
+      window.removeEventListener("pointerdown", this.unlockGesture)
+      window.removeEventListener("keydown", this.unlockGesture)
+      this.unlockGesture = null
     }
-    this.ambientOsc = null
+
+    if (this.ambientOsc) {
+      try {
+        if (this.ambientOscStarted) {
+          this.ambientOsc.stop()
+        }
+      } catch (err) {
+        audioWarn("ambientOsc.stop", err)
+      }
+      try {
+        this.ambientOsc.disconnect()
+      } catch (err) {
+        audioWarn("ambientOsc.disconnect", err)
+      }
+      this.ambientOsc = null
+      this.ambientOscStarted = false
+    }
+
+    const disconnectSafe = (name: string, node: AudioNode | null) => {
+      if (!node) return
+      try {
+        node.disconnect()
+      } catch (err) {
+        audioWarn(`${name}.disconnect`, err)
+      }
+    }
+
+    disconnectSafe("ambientGain", this.ambientGain)
     this.ambientGain = null
+    disconnectSafe("convolver", this.convolver)
     this.convolver = null
+    disconnectSafe("wetGain", this.wetGain)
     this.wetGain = null
+    disconnectSafe("dryGain", this.dryGain)
     this.dryGain = null
+    disconnectSafe("waterFilter", this.waterFilter)
     this.waterFilter = null
+    disconnectSafe("lowShelf", this.lowShelf)
     this.lowShelf = null
+    disconnectSafe("masterGain", this.masterGain)
     this.masterGain = null
-    this.ctx = null
+
+    if (this.ctx) {
+      this.ctx.close().catch((err) => audioWarn("close", err))
+      this.ctx = null
+    }
     this.immersion = 0
   }
 }

@@ -107,7 +107,9 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
   if (loadPromise) return loadPromise;
   loadPromise = (async () => {
     try {
-      const res = await fetch("/config.json", { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      const res = await fetch(`${import.meta.env.BASE_URL}config.json`, {
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
       if (!res.ok) throw new Error(String(res.status));
       const json = await res.json();
       const fallback = envFallback();

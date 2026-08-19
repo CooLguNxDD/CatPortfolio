@@ -130,9 +130,10 @@ export function computeSteeringForce(
     // Separation (applies to any fish nearby)
     if (dSq < sepDistSq) {
       const d = Math.sqrt(dSq)
-      const diffX = (agent.position.x - other.position.x) / d
-      const diffY = (agent.position.y - other.position.y) / d
-      const diffZ = (agent.position.z - other.position.z) / d
+      const weight = 1 - d / cfg.separationDist
+      const diffX = ((agent.position.x - other.position.x) / d) * weight
+      const diffY = ((agent.position.y - other.position.y) / d) * weight
+      const diffZ = ((agent.position.z - other.position.z) / d) * weight
       sepX += diffX
       sepY += diffY
       sepZ += diffZ
@@ -172,10 +173,13 @@ export function computeSteeringForce(
     const targetX = cohX / cohCount - agent.position.x
     const targetY = cohY / cohCount - agent.position.y
     const targetZ = cohZ / cohCount - agent.position.z
-    const d = Math.hypot(targetX, targetY, targetZ) || 1
-    fx += (targetX / d) * cfg.cohesionWeight
-    fy += (targetY / d) * cfg.cohesionWeight
-    fz += (targetZ / d) * cfg.cohesionWeight
+    // (target/d) * ((d/cohesionDist) * cohesionWeight) — the `d` cancels,
+    // so this is just target * (cohesionWeight / cohesionDist). No `|| 1`
+    // guard needed: a zero target vector scales to zero either way.
+    const w = cfg.cohesionWeight / cfg.cohesionDist
+    fx += targetX * w
+    fy += targetY * w
+    fz += targetZ * w
   }
 
   // Apply alignment (match flock velocity)
