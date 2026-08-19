@@ -16,6 +16,8 @@ export function useFocusTrap(
     const container = containerRef.current
     if (!container) return
 
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
     const getFocusables = (): HTMLElement[] => {
       const elements = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
       return Array.from(elements).filter(
@@ -64,6 +66,18 @@ export function useFocusTrap(
     }
 
     window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      // Return focus to whatever triggered the trap, but only if the user
+      // hasn't already moved focus elsewhere themselves (e.g. by clicking
+      // away) and the trigger element is still attached to the DOM.
+      if (
+        previouslyFocused &&
+        document.contains(previouslyFocused) &&
+        container.contains(document.activeElement)
+      ) {
+        previouslyFocused.focus()
+      }
+    }
   }, [active, containerRef])
 }

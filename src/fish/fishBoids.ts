@@ -173,11 +173,13 @@ export function computeSteeringForce(
     const targetX = cohX / cohCount - agent.position.x
     const targetY = cohY / cohCount - agent.position.y
     const targetZ = cohZ / cohCount - agent.position.z
-    const d = Math.hypot(targetX, targetY, targetZ) || 1
-    const weight = (d / cfg.cohesionDist) * cfg.cohesionWeight
-    fx += (targetX / d) * weight
-    fy += (targetY / d) * weight
-    fz += (targetZ / d) * weight
+    // (target/d) * ((d/cohesionDist) * cohesionWeight) — the `d` cancels,
+    // so this is just target * (cohesionWeight / cohesionDist). No `|| 1`
+    // guard needed: a zero target vector scales to zero either way.
+    const w = cfg.cohesionWeight / cfg.cohesionDist
+    fx += targetX * w
+    fy += targetY * w
+    fz += targetZ * w
   }
 
   // Apply alignment (match flock velocity)

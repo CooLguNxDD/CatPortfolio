@@ -1691,7 +1691,11 @@ export default function FishTankCanvas({
         }
       })
       // Shared geos/mats may already be gone if a mesh was still in the group;
-      // dispose again is safe, and covers the emptied-group case.
+      // dispose again is safe, and covers the emptied-group case. This also
+      // covers the shockwavePool's cloned materials (shockMat.clone() per
+      // ring, see spawnShockwave above): the pooled rings are added to
+      // `tank` -> `scene` and never removed, so the scene.traverse sweep
+      // above already disposes every clone before we get here.
       shockRingGeo.dispose()
       pelletGeo.dispose()
       shockMat.dispose()
