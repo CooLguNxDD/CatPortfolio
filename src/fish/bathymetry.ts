@@ -77,9 +77,22 @@ export function yearLabelForBand(band: DepthBand, referenceYear?: number): strin
   return band.yearOffset <= -2 ? `${year} & earlier` : String(year)
 }
 
+// Keyed by reference year, so in practice this holds one entry per calendar
+// year the tab stays open — unbounded only if a caller starts passing many
+// distinct `referenceYear` values (e.g. from a fuzzer or a bad call site).
+// Cap it defensively rather than relying on that never happening.
+const DEPTH_BANDS_CACHE_LIMIT = 16
+const depthBandsCache = new Map<number, (DepthBand & { year: string })[]>()
+
 /** Bands decorated with their resolved year label — what the scrubber renders. */
 export function depthBands(referenceYear?: number): (DepthBand & { year: string })[] {
-  return DEPTH_BANDS.map((band) => ({ ...band, year: yearLabelForBand(band, referenceYear) }))
+  const base = referenceYear ?? new Date().getFullYear()
+  const cached = depthBandsCache.get(base)
+  if (cached) return cached
+  const result = DEPTH_BANDS.map((band) => ({ ...band, year: yearLabelForBand(band, base) }))
+  if (depthBandsCache.size >= DEPTH_BANDS_CACHE_LIMIT) depthBandsCache.clear()
+  depthBandsCache.set(base, result)
+  return result
 }
 
 /** World Y for a depth01 value, inside the usable swim band. */

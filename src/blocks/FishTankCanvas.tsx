@@ -85,7 +85,7 @@ import { createArchHologram } from "@/fish/components/ArchHologram"
 import { createMinnowField } from "@/fish/minnowField"
 import { createCursorTracker, isFleeOnset, type CursorIntent } from "@/fish/cursorIntent"
 import { worldYForDepth } from "@/fish/bathymetry"
-import { projectSonarBlips } from "@/fish/sonarProjection"
+import { projectSonarBlips, type SonarSource, type SonarBlip } from "@/fish/sonarProjection"
 import { fishAudio } from "@/fish/fishAudio"
 import { computeSteeringForce, type BoidAgent } from "@/fish/fishBoids"
 import {
@@ -568,7 +568,7 @@ export default function FishTankCanvas({
     const wakePoints = new THREE.Points(wakeGeo, wakeMat)
     tank.add(wakePoints)
 
-    // Interactive Shockwave Ripples
+    // Interactive Shockwave Ripples — pre-allocated 5-slot ring pool
     interface Shockwave {
       mesh: THREE.Mesh
       x: number
@@ -578,7 +578,10 @@ export default function FishTankCanvas({
       opacity: number
       active: boolean
     }
-    const shockwaves: Shockwave[] = []
+    const SHOCKWAVE_POOL_SIZE = 5
+    const shockwavePool: Shockwave[] = []
+    let nextShockwaveIdx = 0
+
     const shockRingGeo = new THREE.RingGeometry(0.5, 0.9, 32)
     shockRingGeo.rotateX(-Math.PI / 2)
     const shockMat = new THREE.MeshBasicMaterial({
@@ -590,26 +593,34 @@ export default function FishTankCanvas({
       depthWrite: false,
     })
 
-    function spawnShockwave(x: number, z: number) {
-      if (shockwaves.length > 5) {
-        const old = shockwaves.shift()
-        if (old) {
-          tank.remove(old.mesh)
-          ;(old.mesh.material as THREE.Material).dispose()
-        }
-      }
+    for (let i = 0; i < SHOCKWAVE_POOL_SIZE; i++) {
       const ring = new THREE.Mesh(shockRingGeo, shockMat.clone())
-      ring.position.set(x, FLOOR_Y + 0.38, z)
+      ring.visible = false
       tank.add(ring)
-      shockwaves.push({
+      shockwavePool.push({
         mesh: ring,
-        x,
-        z,
+        x: 0,
+        z: 0,
         r: 1,
         maxR: 18,
         opacity: 0.75,
-        active: true,
+        active: false,
       })
+    }
+
+    function spawnShockwave(x: number, z: number) {
+      const sw = shockwavePool[nextShockwaveIdx % SHOCKWAVE_POOL_SIZE]!
+      nextShockwaveIdx++
+      sw.x = x
+      sw.z = z
+      sw.r = 1
+      sw.maxR = 18
+      sw.opacity = 0.75
+      sw.active = true
+      sw.mesh.position.set(x, FLOOR_Y + 0.38, z)
+      sw.mesh.scale.set(1, 1, 1)
+      ;(sw.mesh.material as THREE.MeshBasicMaterial).opacity = sw.opacity
+      sw.mesh.visible = true
     }
 
     // Build fish meshes & DOM badge labels
@@ -706,6 +717,10 @@ export default function FishTankCanvas({
       causticSurfaceColor.set(palette.sun)
       bubbleMat.color.set(palette.bubble)
       moteMat.color.set(palette.motes)
+      shockMat.color.set(palette.cyan)
+      for (const sw of shockwavePool) {
+        ;(sw.mesh.material as THREE.MeshBasicMaterial).color.set(palette.cyan)
+      }
     }
     applyPaletteRef.current = applyPalette
     let paletteFrame = requestAnimationFrame(() => applyPalette(circadianRef.current))
@@ -829,6 +844,8 @@ export default function FishTankCanvas({
     let lastAudioAt = -1
     let lastImmersion = -1
     let lastSonarAt = -1
+    const sonarSourcesBuffer: SonarSource[] = []
+    const sonarBlipsBuffer: SonarBlip[] = []
 
     const orbit = {
       yaw: 0,
@@ -1016,13 +1033,17 @@ export default function FishTankCanvas({
     /** Listener up-vector — the camera never rolls, so this is constant. */
     const WORLD_UP = new THREE.Vector3(0, 1, 0)
 
+    let shaderTime = 0
+
     function animate() {
       if (disposed) return
       raf = requestAnimationFrame(animate)
       const dt = Math.min(0.05, clock.getDelta())
       const t = clock.elapsedTime
-      // Shader clock — frozen at 0 for prefers-reduced-motion, so the tank stays still.
-      const st = t * quality.timeScale
+      // Shader clock — advanced by clamped frame deltas and frozen at 0 for
+      // prefers-reduced-motion, preventing multi-second snaps when returning from a frozen tab.
+      shaderTime += dt * quality.timeScale
+      const st = shaderTime
       const prog = clamp(progRef.current, 0, 1)
 
       // Camera reset on surface return
@@ -1522,9 +1543,10 @@ export default function FishTankCanvas({
         }
       }
 
-      // Update shockwaves
-      for (let i = shockwaves.length - 1; i >= 0; i--) {
-        const sw = shockwaves[i]
+      // Update shockwaves from pre-allocated pool
+      for (let i = 0; i < shockwavePool.length; i++) {
+        const sw = shockwavePool[i]!
+        if (!sw.active) continue
         sw.r += dt * 16
         const progress = sw.r / sw.maxR
         sw.opacity = Math.max(0, (1 - progress) * 0.75)
@@ -1532,9 +1554,7 @@ export default function FishTankCanvas({
         ;(sw.mesh.material as THREE.MeshBasicMaterial).opacity = sw.opacity
         if (progress >= 1) {
           sw.active = false
-          tank.remove(sw.mesh)
-          ;(sw.mesh.material as THREE.Material).dispose()
-          shockwaves.splice(i, 1)
+          sw.mesh.visible = false
         }
       }
 
@@ -1562,22 +1582,38 @@ export default function FishTankCanvas({
       // the radar only needs to feel live, so it runs at ~10Hz.
       if (prog > 0.4 && t - lastSonarAt > 0.1) {
         lastSonarAt = t
-        fishBus.emit(
-          "tank:sonar",
-          projectSonarBlips(
-            fishObjs.map((o) => ({
-              slug: o.data.slug,
-              species: o.data.species,
-              school: o.data.school,
-              x: o.mesh.position.x,
-              y: o.mesh.position.y,
-              z: o.mesh.position.z,
-              lit: Math.min(1, fishLitFactor(o.data, filter, focus)),
-            })),
-            orbit.yaw,
-            { x: orbit.target.x, z: orbit.target.z },
-          ),
+        if (sonarSourcesBuffer.length !== fishObjs.length) {
+          sonarSourcesBuffer.length = fishObjs.length
+          for (let i = 0; i < fishObjs.length; i++) {
+            sonarSourcesBuffer[i] = {
+              slug: "",
+              species: "",
+              school: 0,
+              x: 0,
+              y: 0,
+              z: 0,
+              lit: 1,
+            }
+          }
+        }
+        for (let i = 0; i < fishObjs.length; i++) {
+          const o = fishObjs[i]!
+          const item = sonarSourcesBuffer[i]!
+          item.slug = o.data.slug
+          item.species = o.data.species
+          item.school = o.data.school
+          item.x = o.mesh.position.x
+          item.y = o.mesh.position.y
+          item.z = o.mesh.position.z
+          item.lit = Math.min(1, fishLitFactor(o.data, filter, focus))
+        }
+        projectSonarBlips(
+          sonarSourcesBuffer,
+          orbit.yaw,
+          { x: orbit.target.x, z: orbit.target.z },
+          sonarBlipsBuffer,
         )
+        fishBus.emit("tank:sonar", sonarBlipsBuffer)
       }
 
       // Publish dossier anchor
@@ -1641,6 +1677,8 @@ export default function FishTankCanvas({
       hologram.dispose()
       minnows.dispose()
       composer.dispose()
+      shockRingGeo.dispose()
+      shockMat.dispose()
       renderer.dispose()
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement)
       if (labelLayer.parentNode === host) host.removeChild(labelLayer)
@@ -1653,7 +1691,11 @@ export default function FishTankCanvas({
         }
       })
       // Shared geos/mats may already be gone if a mesh was still in the group;
-      // dispose again is safe, and covers the emptied-group case.
+      // dispose again is safe, and covers the emptied-group case. This also
+      // covers the shockwavePool's cloned materials (shockMat.clone() per
+      // ring, see spawnShockwave above): the pooled rings are added to
+      // `tank` -> `scene` and never removed, so the scene.traverse sweep
+      // above already disposes every clone before we get here.
       shockRingGeo.dispose()
       pelletGeo.dispose()
       shockMat.dispose()

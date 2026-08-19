@@ -53,6 +53,7 @@ export function projectSonarBlips(
   sources: SonarSource[],
   cameraYaw: number,
   center: { x: number; z: number } = { x: 0, z: 0 },
+  target?: SonarBlip[],
 ): SonarBlip[] {
   const yaw = Number.isFinite(cameraYaw) ? cameraYaw : 0
   const sin = Math.sin(-yaw)
@@ -64,7 +65,11 @@ export function projectSonarBlips(
   const spanZ = TANK_HALF_D || 1
   const band = Math.max(1e-6, SWIM_Y_MAX - SWIM_Y_MIN)
 
-  return sources.map((s) => {
+  const out = target ?? new Array<SonarBlip>(sources.length)
+  out.length = sources.length
+
+  for (let i = 0; i < sources.length; i++) {
+    const s = sources[i]!
     const dx = (s.x - center.x) / spanX
     const dz = (s.z - center.z) / spanZ
     // Rotate into camera space, then flip Z so "ahead" reads as up on screen.
@@ -72,17 +77,31 @@ export function projectSonarBlips(
     const v = -(dx * sin + dz * cos)
     const len = Math.hypot(u, v)
     const scale = len > 1 ? 1 / len : 1
-    return {
-      slug: s.slug,
-      species: s.species,
-      school: s.school ?? 0,
-      u: u * scale,
-      v: v * scale,
-      radius: Math.min(1, len),
-      depth01: clamp01((SWIM_Y_MAX - s.y) / band),
-      lit: s.lit == null ? 1 : clamp01(s.lit),
+    const existing = out[i]
+    if (existing) {
+      existing.slug = s.slug
+      existing.species = s.species
+      existing.school = s.school ?? 0
+      existing.u = u * scale
+      existing.v = v * scale
+      existing.radius = Math.min(1, len)
+      existing.depth01 = clamp01((SWIM_Y_MAX - s.y) / band)
+      existing.lit = s.lit == null ? 1 : clamp01(s.lit)
+    } else {
+      out[i] = {
+        slug: s.slug,
+        species: s.species,
+        school: s.school ?? 0,
+        u: u * scale,
+        v: v * scale,
+        radius: Math.min(1, len),
+        depth01: clamp01((SWIM_Y_MAX - s.y) / band),
+        lit: s.lit == null ? 1 : clamp01(s.lit),
+      }
     }
-  })
+  }
+
+  return out
 }
 
 /** Convert a blip to pixel coordinates inside a square SVG viewport. */

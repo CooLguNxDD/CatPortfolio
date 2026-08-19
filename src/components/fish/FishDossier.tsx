@@ -18,6 +18,7 @@ import type { DomainIdType } from "@/content/schema"
 import { cn } from "@/lib/utils"
 import { fishBus, type FishAnchor } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
+import { useFocusTrap } from "@/hooks/useFocusTrap"
 
 export interface FishDossierProps {
   fish: FishSpecimenInput | null
@@ -64,6 +65,8 @@ export function FishDossier({
   const rootRef = useRef<HTMLDivElement | null>(null)
   const sheetRef = useRef<HTMLDivElement | null>(null)
   const leadRef = useRef<HTMLSpanElement | null>(null)
+
+  useFocusTrap(open, sheetRef)
 
   useEffect(() => {
     const channel = createFrameChannel(fishBus, "fish:anchor", null)
