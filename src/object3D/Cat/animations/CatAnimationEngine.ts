@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import type { CatRig } from '../rig/CatRig';
+import { CatRig } from '../rig/CatRig';
 import type { AnimationContext, GazeTarget } from '../rig/types';
 import type { IAnimationLayer } from './AnimationLayer';
 import { GazeTrackingLayer } from './GazeTrackingLayer';
@@ -24,8 +24,13 @@ export class CatAnimationEngine {
     isActive: true,
   };
 
-  constructor(rig: CatRig) {
-    this.rig = rig;
+  constructor(rig?: CatRig, layers?: IAnimationLayer[]) {
+    this.rig = rig ?? new CatRig();
+    if (layers) {
+      for (const layer of layers) {
+        this.addLayer(layer);
+      }
+    }
   }
 
   /**
@@ -111,15 +116,26 @@ export class CatAnimationEngine {
   /**
    * Evaluates one frame of animation.
    */
-  public update(dt: number, camera?: THREE.Camera): void {
+  public update(dt: number, cameraOrContext?: THREE.Camera | Partial<AnimationContext>): void {
     this.elapsedTime += dt;
 
-    const context: AnimationContext = {
-      dt,
-      time: this.elapsedTime,
-      gaze: this.gazeTarget,
-      camera,
-    };
+    let context: AnimationContext;
+    if (cameraOrContext && !(cameraOrContext as any).isCamera) {
+      const custom = cameraOrContext as Partial<AnimationContext>;
+      context = {
+        dt,
+        time: custom.time ?? this.elapsedTime,
+        gaze: custom.gaze ?? this.gazeTarget,
+        camera: custom.camera,
+      };
+    } else {
+      context = {
+        dt,
+        time: this.elapsedTime,
+        gaze: this.gazeTarget,
+        camera: cameraOrContext as THREE.Camera | undefined,
+      };
+    }
 
     // 1. Reset all bones to rest pose before accumulating layers
     this.rig.resetPose();
