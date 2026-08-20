@@ -92,6 +92,7 @@ declare module "three" {
     fog: FogExp2 | null
   }
   export class Camera extends Object3D {
+    isCamera?: boolean
     aspect: number
     near: number
     far: number
@@ -250,6 +251,9 @@ declare module "three" {
     constructor(params?: Record<string, unknown>)
   }
   export class Mesh extends Object3D {
+    isMesh?: boolean
+    morphTargetInfluences?: number[]
+    morphTargetDictionary?: Record<string, number>
     geometry: BufferGeometry
     material: Material | Material[]
     constructor(geometry?: BufferGeometry, material?: Material)
@@ -515,4 +519,35 @@ declare module "three/addons/postprocessing/OutputPass.js" {
     enabled: boolean
     constructor()
   }
+}
+
+declare module "three/examples/jsm/loaders/GLTFLoader.js" {
+  import { Group } from "three"
+  export interface GLTF {
+    scene: Group
+    scenes: Group[]
+    animations: unknown[]
+    cameras: unknown[]
+    asset: Record<string, unknown>
+  }
+  export class GLTFLoader {
+    constructor()
+    load(
+      url: string,
+      onLoad: (gltf: GLTF) => void,
+      onProgress?: (event: ProgressEvent) => void,
+      onError?: (event: unknown) => void,
+    ): void
+    loadAsync(url: string, onProgress?: (event: ProgressEvent) => void): Promise<GLTF>
+    parse(
+      data: ArrayBuffer | string,
+      path: string,
+      onLoad: (gltf: GLTF) => void,
+      onError?: (event: unknown) => void,
+    ): void
+  }
+}
+
+declare module "three/addons/loaders/GLTFLoader.js" {
+  export * from "three/examples/jsm/loaders/GLTFLoader.js"
 }

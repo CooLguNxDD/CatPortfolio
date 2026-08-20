@@ -25,5 +25,6 @@ export * from './animations/CatAnimationEngine';
 // 4. Mesh & UI Components
 export * from './mesh/CatMeshBuilder';
 export * from './mesh/catGiantMesh';
+export * from './mesh/CatGLTFLoader';
 export * from './components/Cat3DView';
 export * from './components/CatDOMCompanion';
