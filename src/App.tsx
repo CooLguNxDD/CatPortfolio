@@ -5,7 +5,7 @@
  * sessionStorage/localStorage). URL `?j=` re-seeds identity after reload.
  */
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import {
@@ -17,6 +17,7 @@ import { themeList } from "@/themes/registry"
 import { Button } from "@/components/ui/button"
 import type { DemoSearch } from "@/router"
 import { clearDemoSearch, mergeDemoSearch } from "@/lib/demoSearch"
+import { CatDOMCompanion } from "@/object3D/Cat"
 
 // Stable identity so the router selector doesn't return a fresh object
 // (and re-render the shell) every time `location.search` is undefined.
@@ -46,6 +47,7 @@ function App() {
   const bakeTheme = useLayoutStore((s) => s.bakeTheme)
   const clearDemo = useLayoutStore((s) => s.clearDemo)
   const setThemeOverride = useLayoutStore((s) => s.setThemeOverride)
+  const [showCompanion, setShowCompanion] = useState(false)
 
   const liveSearch = useRouterState({
     select: (s) => (s.location.search as DemoSearch | undefined) ?? EMPTY_SEARCH,
@@ -182,6 +184,16 @@ function App() {
                 {t.label}
               </Button>
             ))}
+            {import.meta.env.DEV ? (
+              <Button
+                size="xs"
+                variant={showCompanion ? "default" : "outline"}
+                onClick={() => setShowCompanion(!showCompanion)}
+                title="Toggle 3D Interactive Cat Companion (Dev only)"
+              >
+                🐾 Companion
+              </Button>
+            ) : null}
           </div>
         </div>
       </header>
@@ -189,6 +201,10 @@ function App() {
       <main className="flex-1">
         <Outlet />
       </main>
+
+      {import.meta.env.DEV && showCompanion && (
+        <CatDOMCompanion initialPosition={{ x: 24, y: 80 }} />
+      )}
 
       <footer className="py-6 text-center text-xs font-mono text-(--fg-muted) border-t border-(--hairline) max-w-6xl mx-auto w-full px-4">
         schema-driven blocks · matrix levels · GenUI layout.json ·{" "}
