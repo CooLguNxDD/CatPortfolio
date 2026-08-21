@@ -33,6 +33,16 @@ describe('LinearTransform', () => {
     expect(Math.abs(anglesAbove.yaw - anglesBelow.yaw)).toBeLessThan(0.01);
     // Difference in pitch across the centerline should be small and continuous
     expect(Math.abs(anglesAbove.pitch - anglesBelow.pitch)).toBeLessThan(0.01);
+
+    // Test continuity across delta.z = 0
+    const targetZPositive = new THREE.Vector3(1, 0, 0.01);
+    const targetZNegative = new THREE.Vector3(1, 0, -0.01);
+
+    const anglesZPositive = LinearTransform.computeLookAtAngles(origin, targetZPositive);
+    const anglesZNegative = LinearTransform.computeLookAtAngles(origin, targetZNegative);
+
+    // Yaw should remain continuous as it sweeps across z = 0
+    expect(Math.abs(anglesZPositive.yaw - anglesZNegative.yaw)).toBeLessThan(0.1);
   });
 
   it('strictly limits rotation angular to max +-90 degrees (+-PI/2 rad)', () => {

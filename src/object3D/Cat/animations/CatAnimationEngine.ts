@@ -24,8 +24,15 @@ export class CatAnimationEngine {
     isActive: true,
   };
 
-  constructor(rig?: CatRig, layers?: IAnimationLayer[]) {
+  public gazePlane?: { x?: number; y?: number; z?: number };
+
+  constructor(
+    rig?: CatRig,
+    layers?: IAnimationLayer[],
+    gazePlane?: { x?: number; y?: number; z?: number }
+  ) {
     this.rig = rig ?? new CatRig();
+    this.gazePlane = gazePlane;
     if (layers) {
       for (const layer of layers) {
         this.addLayer(layer);
@@ -89,7 +96,11 @@ export class CatAnimationEngine {
       this.gazeTarget.worldCoords.copy(worldCoords);
     } else {
       // Default projection plane in front of cat
-      this.gazeTarget.worldCoords.set(screenX * 2.5, screenY * 2.0, 3.5);
+      this.gazeTarget.worldCoords.set(
+        screenX * (this.gazePlane?.x ?? 2.5),
+        screenY * (this.gazePlane?.y ?? 2.0),
+        this.gazePlane?.z ?? 3.5
+      );
     }
   }
 
