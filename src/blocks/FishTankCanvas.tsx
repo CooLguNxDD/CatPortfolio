@@ -73,7 +73,7 @@ import {
   buildGiantCatMesh,
   createCatAnimationState,
   stepCatAnimation,
-} from "@/fish/catMesh"
+} from "@/object3D/Cat"
 import { createCausticMaterial } from "@/fish/shaders/causticShader"
 import { createGodRayMaterial, type GodRayMaterial } from "@/fish/shaders/godRayShader"
 import { createWaterMaterial } from "@/fish/shaders/waterShader"
@@ -736,6 +736,15 @@ export default function FishTankCanvas({
       wobble: quality.wobble,
     })
 
+    const cachedRect = { left: 0, top: 0, width: 1, height: 1 }
+    function updateCachedRect() {
+      const r = renderer.domElement.getBoundingClientRect()
+      cachedRect.left = r.left
+      cachedRect.top = r.top
+      cachedRect.width = r.width
+      cachedRect.height = r.height
+    }
+
     // Resize observer
     const ro =
       typeof ResizeObserver !== "undefined"
@@ -748,6 +757,7 @@ export default function FishTankCanvas({
               renderer.setSize(w, h)
               composer.setSize(w, h)
             }
+            updateCachedRect()
           })
         : null
     ro?.observe(host)
@@ -833,7 +843,36 @@ export default function FishTankCanvas({
     const pointer = new THREE.Vector2(-9999, -9999)
     const raycaster = new THREE.Raycaster()
     const cursor3D = new THREE.Vector3()
+    const vCursor = new THREE.Vector3()
     let hasCursor3D = false
+    let hasPointer = false
+
+    function updateCursorRaycast() {
+      if (!hasPointer) {
+        hasCursor3D = false
+        return
+      }
+      vCursor.set(pointer.x, pointer.y, 0.5).unproject(camera)
+      const dx = vCursor.x - camera.position.x
+      const dy = vCursor.y - camera.position.y
+      const dz = vCursor.z - camera.position.z
+      const len = Math.hypot(dx, dy, dz) || 1
+      const dirZ = dz / len
+      const prog = clamp(progRef.current, 0, 1)
+      if (Math.abs(dirZ) > 0.0001) {
+        const targetPlaneZ = isSubmerged(prog) ? 0 : TANK_HALF_D * 0.4
+        const dist = (targetPlaneZ - camera.position.z) / dirZ
+        cursor3D.set(
+          camera.position.x + (dx / len) * dist,
+          camera.position.y + (dy / len) * dist,
+          camera.position.z + (dz / len) * dist,
+        )
+        hasCursor3D = true
+      } else {
+        cursor3D.set(camera.position.x + dx * 20, camera.position.y + dy * 20, camera.position.z + dz * 20)
+        hasCursor3D = true
+      }
+    }
     const clock = new THREE.Clock()
     let raf = 0
     let disposed = false
@@ -879,7 +918,11 @@ export default function FishTankCanvas({
       orbit.lx = e.clientX
       orbit.ly = e.clientY
       renderer.domElement.style.cursor = "grabbing"
-      renderer.domElement.setPointerCapture?.(e.pointerId)
+      try {
+        renderer.domElement.setPointerCapture?.(e.pointerId)
+      } catch {
+        /* ignore */
+      }
     }
 
     function onPointerUp(e: PointerEvent) {
@@ -893,7 +936,7 @@ export default function FishTankCanvas({
     }
 
     function onPointerMove(e: PointerEvent) {
-      const rect = renderer.domElement.getBoundingClientRect()
+      const rect = cachedRect
       const nextIntent = cursorTracker.sample(e.clientX, e.clientY, performance.now())
       if (isFleeOnset(cursorIntent, nextIntent)) {
         // One startle cue per scatter, not one per frame of fast movement.
@@ -902,6 +945,8 @@ export default function FishTankCanvas({
       cursorIntent = nextIntent
       pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+      hasPointer = true
+
       if (orbit.dragging && !selected) {
         const dx = e.clientX - orbit.lx
         const dy = e.clientY - orbit.ly
@@ -912,25 +957,7 @@ export default function FishTankCanvas({
         orbit.pitchT = clamp(orbit.pitchT + dy * 0.004, MIN_PITCH, MAX_PITCH)
       }
 
-      if (isSubmerged(progRef.current)) {
-        const vCursor = new THREE.Vector3(pointer.x, pointer.y, 0.5).unproject(camera)
-        const dx = vCursor.x - camera.position.x
-        const dy = vCursor.y - camera.position.y
-        const dz = vCursor.z - camera.position.z
-        const len = Math.hypot(dx, dy, dz) || 1
-        const dirZ = dz / len
-        if (Math.abs(dirZ) > 0.0001) {
-          const dist = -camera.position.z / dirZ
-          cursor3D.set(
-            camera.position.x + (dx / len) * dist,
-            camera.position.y + (dy / len) * dist,
-            camera.position.z + (dz / len) * dist,
-          )
-          hasCursor3D = true
-        }
-      } else {
-        hasCursor3D = false
-      }
+      updateCursorRaycast()
 
       // Check hover on giant cat
       if (catParts && !selected && !orbit.dragging) {
@@ -1019,10 +1046,17 @@ export default function FishTankCanvas({
       }
     }
 
+    function onPointerLeave() {
+      hasCursor3D = false
+      hasPointer = false
+    }
+
     renderer.domElement.addEventListener("pointerdown", onPointerDown)
     renderer.domElement.addEventListener("pointerup", onPointerUp)
     renderer.domElement.addEventListener("pointerleave", onPointerUp)
-    renderer.domElement.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("pointerleave", onPointerLeave)
+    window.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("scroll", updateCachedRect, { passive: true })
     renderer.domElement.addEventListener("wheel", onWheel, { passive: false })
     renderer.domElement.addEventListener("click", onClick)
     renderer.domElement.addEventListener("dblclick", onDblClick)
@@ -1119,6 +1153,13 @@ export default function FishTankCanvas({
       )
       camera.lookAt(orbit.target)
 
+      // Emit camera:move and dynamically update 3D cursor unprojection on camera changes
+      fishBus.emit("camera:move", {
+        position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+        target: { x: orbit.target.x, y: orbit.target.y, z: orbit.target.z },
+      })
+      updateCursorRaycast()
+
       // Bind the Web Audio listener to the camera (~15Hz is plenty for HRTF)
       // and sweep the waterline filter with how deep the camera actually is.
       if (t - lastAudioAt > 0.066) {
@@ -1188,7 +1229,15 @@ export default function FishTankCanvas({
       let catTargetPos: Vec3 | null = null
       let catIsHunting = false
 
-      if (selected) {
+      if (hasCursor3D) {
+        catTargetPos = {
+          x: cursor3D.x,
+          y: cursor3D.y,
+          z: cursor3D.z,
+        }
+        const distToCat = Math.hypot(cursor3D.x - CAT_X, cursor3D.y - WATER_Y, cursor3D.z)
+        catIsHunting = cursorIntent === "flee" || cursorIntent === "curious" || distToCat < 28
+      } else if (selected) {
         catTargetPos = {
           x: selected.position.x,
           y: selected.position.y,
@@ -1667,7 +1716,9 @@ export default function FishTankCanvas({
       renderer.domElement.removeEventListener("pointerdown", onPointerDown)
       renderer.domElement.removeEventListener("pointerup", onPointerUp)
       renderer.domElement.removeEventListener("pointerleave", onPointerUp)
-      renderer.domElement.removeEventListener("pointermove", onPointerMove)
+      window.removeEventListener("pointerleave", onPointerLeave)
+      window.removeEventListener("pointermove", onPointerMove)
+      window.removeEventListener("scroll", updateCachedRect)
       renderer.domElement.removeEventListener("wheel", onWheel)
       renderer.domElement.removeEventListener("click", onClick)
       renderer.domElement.removeEventListener("dblclick", onDblClick)
