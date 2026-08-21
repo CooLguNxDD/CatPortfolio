@@ -11,6 +11,12 @@ export interface TransformState {
   scale: THREE.Vector3;
 }
 
+const scratchQuaternion = new THREE.Quaternion();
+const mToPivot = new THREE.Matrix4();
+const mRotScale = new THREE.Matrix4();
+const mFromPivot = new THREE.Matrix4();
+const zeroVector = new THREE.Vector3(0, 0, 0);
+
 export class LinearTransform {
   /**
    * Clamps an angle (in radians) between min and max limits.
@@ -52,14 +58,14 @@ export class LinearTransform {
     const visibility = fovFactor * fovFactor * (3 - 2 * fovFactor);
 
     // Continuous Yaw in [-PI/2, PI/2]
-    const rawYaw = Math.atan2(delta.x, Math.max(0.001, delta.z));
+    const rawYaw = Math.atan2(delta.x, delta.z);
     const maxYaw = Math.min(this.MAX_ANGULAR_LIMIT, limits?.maxYaw ?? this.MAX_ANGULAR_LIMIT);
     const clampedRawYaw = this.clampAngle(rawYaw, -maxYaw, maxYaw);
     const yaw = clampedRawYaw * visibility;
 
     // Continuous Pitch in [-PI/2, PI/2]
     const maxPitch = Math.min(this.MAX_ANGULAR_LIMIT, limits?.maxPitch ?? this.MAX_ANGULAR_LIMIT);
-    const rawPitch = Math.atan2(-delta.y, Math.max(0.001, horizontalDistance));
+    const rawPitch = Math.atan2(-delta.y, horizontalDistance);
     const clampedRawPitch = this.clampAngle(rawPitch, -maxPitch, maxPitch);
     const pitch = clampedRawPitch * visibility;
 
@@ -77,23 +83,24 @@ export class LinearTransform {
     position: THREE.Vector3,
     rotation: THREE.Euler,
     scale: THREE.Vector3,
-    pivot: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
+    pivot: THREE.Vector3 = new THREE.Vector3(0, 0, 0),
+    targetMatrix?: THREE.Matrix4
   ): THREE.Matrix4 {
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion().setFromEuler(rotation);
+    const m = targetMatrix ?? new THREE.Matrix4();
+    scratchQuaternion.setFromEuler(rotation);
 
     // M = T(pos + pivot) * R(q) * S(scale) * T(-pivot)
-    const mToPivot = new THREE.Matrix4().makeTranslation(
+    mToPivot.makeTranslation(
       position.x + pivot.x,
       position.y + pivot.y,
       position.z + pivot.z
     );
-    const mRotScale = new THREE.Matrix4().compose(
-      new THREE.Vector3(0, 0, 0),
-      q,
+    mRotScale.compose(
+      zeroVector,
+      scratchQuaternion,
       scale
     );
-    const mFromPivot = new THREE.Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z);
+    mFromPivot.makeTranslation(-pivot.x, -pivot.y, -pivot.z);
 
     m.multiplyMatrices(mToPivot, mRotScale).multiply(mFromPivot);
     return m;
