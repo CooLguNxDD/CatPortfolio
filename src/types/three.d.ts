@@ -15,6 +15,10 @@ declare module "three" {
     y: number
     constructor(x?: number, y?: number)
     set(x: number, y: number): this
+    clone(): Vector2
+    copy(v: Vector2): this
+    length(): number
+    multiplyScalar(s: number): this
   }
   export class Vector3 {
     x: number
@@ -28,23 +32,50 @@ declare module "three" {
     unproject(camera: Camera): this
     lerp(v: Vector3, alpha: number): this
     sub(v: Vector3): this
+    subVectors(a: Vector3, b: Vector3): this
     add(v: Vector3): this
+    addVectors(a: Vector3, b: Vector3): this
+    multiplyVectors(a: Vector3, b: Vector3): this
     distanceTo(v: Vector3): number
     setScalar(s: number): this
     multiplyScalar(s: number): this
     normalize(): this
   }
+  export class Quaternion {
+    x: number
+    y: number
+    z: number
+    w: number
+    constructor(x?: number, y?: number, z?: number, w?: number)
+    setFromEuler(euler: Euler): this
+  }
   export class Euler {
     x: number
     y: number
     z: number
-    set(x: number, y: number, z: number): this
+    order?: string
+    constructor(x?: number, y?: number, z?: number, order?: string)
+    set(x: number, y: number, z: number, order?: string): this
+    copy(euler: Euler): this
+    clone(): Euler
+  }
+  export class Plane {
+    normal: Vector3
+    constant: number
+    constructor(normal?: Vector3, constant?: number)
+    set(normal: Vector3, constant: number): this
+  }
+  export class Ray {
+    origin: Vector3
+    direction: Vector3
+    intersectPlane(plane: Plane, target: Vector3): Vector3 | null
   }
   export class Object3D {
     position: Vector3
     rotation: Euler
     scale: Vector3
     parent: Object3D | null
+    children: Object3D[]
     userData: Record<string, unknown>
     name: string
     visible: boolean
@@ -53,6 +84,7 @@ declare module "three" {
     getObjectByName(name: string): Object3D | undefined
     traverse(cb: (obj: Object3D) => void): void
     lookAt(v: Vector3): void
+    clone(recursive?: boolean): this
   }
   export class Group extends Object3D {}
   export class Scene extends Object3D {
@@ -60,6 +92,7 @@ declare module "three" {
     fog: FogExp2 | null
   }
   export class Camera extends Object3D {
+    isCamera?: boolean
     aspect: number
     near: number
     far: number
@@ -128,6 +161,7 @@ declare module "three" {
     elapsedTime: number
   }
   export class Raycaster {
+    ray: Ray
     setFromCamera(coords: Vector2, camera: Camera): void
     intersectObjects(objects: Object3D[], recursive?: boolean): { object: Object3D }[]
   }
@@ -217,6 +251,9 @@ declare module "three" {
     constructor(params?: Record<string, unknown>)
   }
   export class Mesh extends Object3D {
+    isMesh?: boolean
+    morphTargetInfluences?: number[]
+    morphTargetDictionary?: Record<string, number>
     geometry: BufferGeometry
     material: Material | Material[]
     constructor(geometry?: BufferGeometry, material?: Material)
@@ -339,10 +376,44 @@ declare module "three" {
   export class EdgesGeometry extends BufferGeometry {
     constructor(geometry?: BufferGeometry)
   }
+  export class TorusGeometry extends BufferGeometry {
+    constructor(
+      radius?: number,
+      tube?: number,
+      radialSegments?: number,
+      tubularSegments?: number,
+      arc?: number
+    )
+    rotateX(angle: number): this
+    rotateY(angle: number): this
+    rotateZ(angle: number): this
+  }
+  export class CapsuleGeometry extends BufferGeometry {
+    constructor(
+      radius?: number,
+      length?: number,
+      capSubdivisions?: number,
+      radialSegments?: number
+    )
+    scale(x: number, y: number, z: number): this
+  }
   export class Matrix4 {
     constructor()
     identity(): this
     makeScale(x: number, y: number, z: number): this
+    makeTranslation(x: number, y: number, z: number): this
+    decompose(translation: Vector3, rotation: Quaternion, scale: Vector3): this
+    compose(translation: Vector3, rotation: Quaternion, scale: Vector3): this
+    multiplyMatrices(a: Matrix4, b: Matrix4): this
+    multiply(m: Matrix4): this
+    copy(m: Matrix4): this
+    clone(): Matrix4
+    set(
+      n11: number, n12: number, n13: number, n14: number,
+      n21: number, n22: number, n23: number, n24: number,
+      n31: number, n32: number, n33: number, n34: number,
+      n41: number, n42: number, n43: number, n44: number
+    ): this
   }
   export class Sphere {
     constructor(center?: Vector3, radius?: number)
@@ -366,6 +437,7 @@ declare module "three" {
   export class DepthTexture extends Texture {
     constructor(width: number, height: number, type?: number)
   }
+  export const SRGBColorSpace: string
   export const UnsignedShortType: number
   export const UnsignedIntType: number
   export const FloatType: number
@@ -447,4 +519,35 @@ declare module "three/addons/postprocessing/OutputPass.js" {
     enabled: boolean
     constructor()
   }
+}
+
+declare module "three/examples/jsm/loaders/GLTFLoader.js" {
+  import { Group } from "three"
+  export interface GLTF {
+    scene: Group
+    scenes: Group[]
+    animations: unknown[]
+    cameras: unknown[]
+    asset: Record<string, unknown>
+  }
+  export class GLTFLoader {
+    constructor()
+    load(
+      url: string,
+      onLoad: (gltf: GLTF) => void,
+      onProgress?: (event: ProgressEvent) => void,
+      onError?: (event: unknown) => void,
+    ): void
+    loadAsync(url: string, onProgress?: (event: ProgressEvent) => void): Promise<GLTF>
+    parse(
+      data: ArrayBuffer | string,
+      path: string,
+      onLoad: (gltf: GLTF) => void,
+      onError?: (event: unknown) => void,
+    ): void
+  }
+}
+
+declare module "three/addons/loaders/GLTFLoader.js" {
+  export * from "three/examples/jsm/loaders/GLTFLoader.js"
 }

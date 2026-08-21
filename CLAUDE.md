@@ -75,6 +75,28 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 - **Depth is the timeline.** `fish/bathymetry.ts` maps the existing `depth` ∈ [0,1] to year bands — no per-fish year field, so the layout schema and its Python mirror are untouched.
 - **Audio.** Positional cues pass `at` on `audio:fx` and route through an HRTF `PannerNode`; the listener tracks the camera at ~15Hz and `setImmersion` sweeps a lowpass 20kHz → 450Hz across the waterline. Still gated behind the user's sound toggle (autoplay policy).
 
+## Modular 3D Cat Subsystem (`src/object3D/Cat/`)
+
+Extensible 2D/3D skeletal rigging and procedural animation framework:
+
+| Concern | Module | Description |
+|---|---|---|
+| Linear Transformations & Math | `math/LinearTransform.ts` | 4x4 Affine matrices, shear matrices, continuous arcsin look-at Euler angles, smoothstep FOV attention attenuation, hard $\pm 90^\circ$ angular limits. |
+| Harmonic Oscillators | `math/SpringDamper.ts` | 1D & 3D spring damper physics for natural biological smoothing and impulse reactions. |
+| Skeletal Tree & Bone Hierarchy | `rig/RigBone.ts`, `rig/CatRig.ts` | Forward kinematics bone nodes with anatomical rotation/translation clamps. |
+| Layered Animation Engine | `animations/CatAnimationEngine.ts` | Extensible orchestrator running frame ticks across enabled weighted layers. |
+| Gaze Tracking Layer | `animations/GazeTrackingLayer.ts` | Pointer/target tracking with spring-damped head yaw/pitch and eye socket translations. |
+| Stochastic Blinking Layer | `animations/BlinkLayer.ts` | Poisson-distributed stochastic eyelid blinks with double-blink probability. |
+| Purr Reaction Layer | `animations/PurrReactionLayer.ts` | Click-reactive 26Hz purr resonance, amplitude decay, and haptic feedback. |
+| Idle Breathing & Tail Wave | `animations/BreathingLayer.ts` | Harmonic chest expansion and 7-segment fluid sinusoidal tail travelling wave. |
+| Stylized Low-Poly Geometry | `mesh/CatMeshBuilder.ts` | Procedural Three.js Cat geometry bound to bones with glowing golden eyes. |
+| Giant Perched Mascot | `mesh/catGiantMesh.ts` | Rim-perched giant cat with glowing/dilating pupils and hunting swat strike. |
+| React & DOM Views | `components/Cat3DView.tsx`, `components/CatDOMCompanion.tsx` | Isolated WebGL canvas view & draggable dev companion widget (`import.meta.env.DEV`). |
+
+- **Zero-Discontinuity Look-At**: Eliminates atan2 branch cuts along negative axes via forward-hemisphere projection and $\arcsin$ vector normalization.
+- **Rear Attention Attenuation**: When targets move behind the cat ($\Delta z < 0$), a cosine-based smoothstep falloff smoothly relaxes the head to neutral forward gaze, preventing singularity jitter when orbiting the camera around to the cat's back.
+- **Continuous Camera Unprojection**: `FishTankCanvas.tsx` continuously recalculates 3D cursor unprojection on camera orbit/pan/dive and emits `"camera:move"` on `fishBus`.
+
 ## Layout Contract
 
 `src/content/schema.ts` is the single Zod source. Block union (19 types, all registered):
@@ -132,11 +154,19 @@ CatPortfolio/
 │   │   ├── Scene2d + Scene2dCanvas + scene2dLayout.ts
 │   │   ├── FishTank + FishTankCanvas + fishTankLayout.ts fishTankTokens.ts fishFromLayout.ts
 │   │   └── primitives/         # Metric Quote Sparkline MarkdownText Divider Progress IconTile BadgeCloud
+│   ├── object3D/               # 3D character avatars & forward kinematics rigs
+│   │   └── Cat/                # Modular 2D/3D Cat Rig & Animation Engine
+│   │       ├── math/           # LinearTransform.ts (affine, continuous arcsin look-at, FOV falloff, ±90° clamp) · SpringDamper.ts
+│   │       ├── rig/            # RigBone.ts · CatRig.ts · types.ts (bone hierarchy, anatomical constraints)
+│   │       ├── animations/     # AnimationLayer.ts · GazeTrackingLayer.ts · BlinkLayer.ts · PurrReactionLayer.ts · BreathingLayer.ts · CatAnimationEngine.ts
+│   │       ├── mesh/           # CatMeshBuilder.ts · catGiantMesh.ts (perched giant mascot)
+│   │       ├── components/     # Cat3DView.tsx · CatDOMCompanion.tsx (dev-only floating companion)
+│   │       └── index.ts        # Module export barrel
 │   ├── fish/                   # Pure models: sceneFromLayout matchFish formFromDomain speciesMeshes
 │   │                           # fishBoids cursorIntent audioMath sonarProjection bathymetry minnowField
 │   │                           # shaders/ (noiseCommon water caustic godRay spineDeform absorption
 │   │                           #   causticProjection underwaterPass) · postprocessing/tankComposer
-│   │                           # components/ (HoloReticle ArchHologram)
+│   │                           # components/ (HoloReticle ArchHologram) · catMesh.ts (re-export from @/object3D/Cat)
 │   ├── routes/                 # HomePage viewMode.ts
 │   ├── components/
 │   │   ├── FishTankStage.tsx FishTankErrorBoundary.tsx
