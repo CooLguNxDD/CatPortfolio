@@ -21,7 +21,8 @@ export const CatDOMCompanion: React.FC<CatDOMCompanionProps> = ({
   const [purrCount, setPurrCount] = useState(0);
   const dragOffset = useRef({ x: 0, y: 0 });
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setIsDragging(true);
     dragOffset.current = {
       x: e.clientX - pos.x,
@@ -30,7 +31,7 @@ export const CatDOMCompanion: React.FC<CatDOMCompanionProps> = ({
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handlePointerMove = (e: PointerEvent) => {
       if (!isDragging) return;
       setPos({
         x: Math.max(10, Math.min(window.innerWidth - 180, e.clientX - dragOffset.current.x)),
@@ -38,15 +39,15 @@ export const CatDOMCompanion: React.FC<CatDOMCompanionProps> = ({
       });
     };
 
-    const handleMouseUp = () => setIsDragging(false);
+    const handlePointerUp = () => setIsDragging(false);
 
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
     }
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
     };
   }, [isDragging]);
 
@@ -59,7 +60,7 @@ export const CatDOMCompanion: React.FC<CatDOMCompanionProps> = ({
     >
       {/* Header bar / Drag handle */}
       <div
-        onMouseDown={handleMouseDown}
+        onPointerDown={handlePointerDown}
         className="flex items-center justify-between px-3 py-1.5 w-44 bg-neutral-900/90 backdrop-blur-md border border-neutral-700/60 rounded-t-2xl cursor-grab active:cursor-grabbing text-neutral-300 text-xs font-mono"
       >
         <span className="flex items-center gap-1.5">
@@ -69,6 +70,8 @@ export const CatDOMCompanion: React.FC<CatDOMCompanionProps> = ({
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="text-neutral-400 hover:text-white transition-colors"
+          aria-label={isOpen ? "Collapse Cat Companion" : "Expand Cat Companion"}
+          aria-expanded={isOpen}
         >
           {isOpen ? '−' : '+'}
         </button>
