@@ -736,6 +736,15 @@ export default function FishTankCanvas({
       wobble: quality.wobble,
     })
 
+    const cachedRect = { left: 0, top: 0, width: 1, height: 1 }
+    function updateCachedRect() {
+      const r = renderer.domElement.getBoundingClientRect()
+      cachedRect.left = r.left
+      cachedRect.top = r.top
+      cachedRect.width = r.width
+      cachedRect.height = r.height
+    }
+
     // Resize observer
     const ro =
       typeof ResizeObserver !== "undefined"
@@ -748,6 +757,7 @@ export default function FishTankCanvas({
               renderer.setSize(w, h)
               composer.setSize(w, h)
             }
+            updateCachedRect()
           })
         : null
     ro?.observe(host)
@@ -833,6 +843,7 @@ export default function FishTankCanvas({
     const pointer = new THREE.Vector2(-9999, -9999)
     const raycaster = new THREE.Raycaster()
     const cursor3D = new THREE.Vector3()
+    const vCursor = new THREE.Vector3()
     let hasCursor3D = false
     let hasPointer = false
 
@@ -841,7 +852,7 @@ export default function FishTankCanvas({
         hasCursor3D = false
         return
       }
-      const vCursor = new THREE.Vector3(pointer.x, pointer.y, 0.5).unproject(camera)
+      vCursor.set(pointer.x, pointer.y, 0.5).unproject(camera)
       const dx = vCursor.x - camera.position.x
       const dy = vCursor.y - camera.position.y
       const dz = vCursor.z - camera.position.z
@@ -925,7 +936,7 @@ export default function FishTankCanvas({
     }
 
     function onPointerMove(e: PointerEvent) {
-      const rect = renderer.domElement.getBoundingClientRect()
+      const rect = cachedRect
       const nextIntent = cursorTracker.sample(e.clientX, e.clientY, performance.now())
       if (isFleeOnset(cursorIntent, nextIntent)) {
         // One startle cue per scatter, not one per frame of fast movement.
@@ -1037,6 +1048,7 @@ export default function FishTankCanvas({
 
     function onPointerLeave() {
       hasCursor3D = false
+      hasPointer = false
     }
 
     renderer.domElement.addEventListener("pointerdown", onPointerDown)
@@ -1044,6 +1056,7 @@ export default function FishTankCanvas({
     renderer.domElement.addEventListener("pointerleave", onPointerUp)
     window.addEventListener("pointerleave", onPointerLeave)
     window.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("scroll", updateCachedRect, { passive: true })
     renderer.domElement.addEventListener("wheel", onWheel, { passive: false })
     renderer.domElement.addEventListener("click", onClick)
     renderer.domElement.addEventListener("dblclick", onDblClick)
@@ -1705,6 +1718,7 @@ export default function FishTankCanvas({
       renderer.domElement.removeEventListener("pointerleave", onPointerUp)
       window.removeEventListener("pointerleave", onPointerLeave)
       window.removeEventListener("pointermove", onPointerMove)
+      window.removeEventListener("scroll", updateCachedRect)
       renderer.domElement.removeEventListener("wheel", onWheel)
       renderer.domElement.removeEventListener("click", onClick)
       renderer.domElement.removeEventListener("dblclick", onDblClick)
