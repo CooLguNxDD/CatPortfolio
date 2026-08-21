@@ -31,6 +31,11 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPurring, setIsPurring] = useState(false);
+  const onPurrRef = useRef(onPurr);
+
+  useEffect(() => {
+    onPurrRef.current = onPurr;
+  }, [onPurr]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -70,7 +75,7 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
     if (purrLayer) {
       (purrLayer as any).config.onPurrStart = () => {
         setIsPurring(true);
-        if (onPurr) onPurr();
+        if (onPurrRef.current) onPurrRef.current();
       };
       (purrLayer as any).config.onPurrEnd = () => {
         setIsPurring(false);
@@ -84,6 +89,7 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
     scene.add(catMesh);
 
     // 5. Pointer Tracking
+    let cachedRect = container.getBoundingClientRect();
     const raycaster = new THREE.Raycaster();
     const mouseNDC = new THREE.Vector2(0, 0);
     const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
@@ -91,7 +97,7 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
 
     const handlePointerMove = (e: PointerEvent) => {
       if (!interactive) return;
-      const rect = container.getBoundingClientRect();
+      const rect = cachedRect;
       // Calculate Normalized Device Coordinates [-1, 1] relative to viewport
       const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
@@ -105,7 +111,7 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
 
     const handlePointerDown = (e: MouseEvent) => {
       if (!interactive) return;
-      const rect = container.getBoundingClientRect();
+      const rect = cachedRect;
       mouseNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouseNDC.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
 
@@ -117,14 +123,24 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
       }
     };
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!interactive) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        engine.pet(1.2);
+      }
+    };
+
     window.addEventListener('pointermove', handlePointerMove);
     container.addEventListener('click', handlePointerDown);
+    container.addEventListener('keydown', handleKeyDown);
 
     // 6. Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width: newW, height: newH } = entry.contentRect;
         if (newW > 0 && newH > 0) {
+          cachedRect = container.getBoundingClientRect();
           camera.aspect = newW / newH;
           camera.updateProjectionMatrix();
           renderer.setSize(newW, newH);
@@ -149,6 +165,7 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('pointermove', handlePointerMove);
       container.removeEventListener('click', handlePointerDown);
+      container.removeEventListener('keydown', handleKeyDown);
       resizeObserver.disconnect();
       engine.dispose();
       renderer.dispose();
@@ -156,13 +173,16 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [scale, sensitivity, interactive, onPurr]);
+  }, [scale, sensitivity, interactive]);
 
   return (
     <div
       ref={containerRef}
       className={`relative select-none overflow-hidden ${className}`}
       style={{ width, height }}
+      tabIndex={interactive ? 0 : -1}
+      role="button"
+      aria-label="Interactive 3D Cat. Click or press Enter to pet."
     >
       {isPurring && (
         <div className="absolute top-2 right-2 pointer-events-none text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">

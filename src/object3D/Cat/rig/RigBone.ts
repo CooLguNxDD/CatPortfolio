@@ -42,7 +42,7 @@ export class RigBone {
     this.localScale = this.initialScale.clone();
 
     this.pivot = config.pivot?.clone() ?? new THREE.Vector3(0, 0, 0);
-    this.constraints = config.constraints ?? {};
+    this.constraints = config.constraints ? { ...config.constraints } : {};
     this.targetObject = config.targetObject ?? null;
   }
 
@@ -113,11 +113,12 @@ export class RigBone {
    */
   updateMatrices(parentWorldMatrix?: THREE.Matrix4): void {
     // 1. Compose local matrix: T * R * S around pivot
-    this.localMatrix = LinearTransform.composeMatrix(
+    LinearTransform.composeMatrix(
       this.localPosition,
       this.localRotation,
       this.localScale,
-      this.pivot
+      this.pivot,
+      this.localMatrix
     );
 
     // 2. Compute World Matrix = ParentWorld * LocalMatrix

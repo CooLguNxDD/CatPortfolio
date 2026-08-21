@@ -26,12 +26,18 @@ export class SpringDamper1D {
   }
 
   update(dt: number): number {
-    const clampedDt = Math.min(dt, 0.1); // Prevent explosion on frame drop
-    const force = -this.stiffness * (this.value - this.target) - this.damping * this.velocity;
-    const acceleration = force / this.mass;
+    const MAX_STEP = 1 / 60;
+    let remaining = Math.min(dt, 0.1); // Prevent explosion on frame drop
 
-    this.velocity += acceleration * clampedDt;
-    this.value += this.velocity * clampedDt;
+    while (remaining > 0) {
+      const step = Math.min(remaining, MAX_STEP);
+      const force = -this.stiffness * (this.value - this.target) - this.damping * this.velocity;
+      const acceleration = force / this.mass;
+
+      this.velocity += acceleration * step;
+      this.value += this.velocity * step;
+      remaining -= step;
+    }
 
     return this.value;
   }

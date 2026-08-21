@@ -28,6 +28,12 @@ export class GazeTrackingLayer extends BaseAnimationLayer {
 
   private config: Required<GazeTrackingConfig>;
 
+  private headWorldPos = new THREE.Vector3();
+  private headWorldQuat = new THREE.Quaternion();
+  private headWorldScale = new THREE.Vector3();
+  private scratchEuler = new THREE.Euler();
+  private scratchVec = new THREE.Vector3();
+
   constructor(config: GazeTrackingConfig = {}) {
     super();
     this.config = {
@@ -65,11 +71,10 @@ export class GazeTrackingLayer extends BaseAnimationLayer {
     if (!headBone) return;
 
     // 1. Calculate LookAt angles for Head
-    const headWorldPos = new THREE.Vector3();
-    headBone.worldMatrix.decompose(headWorldPos, new THREE.Quaternion(), new THREE.Vector3());
+    headBone.worldMatrix.decompose(this.headWorldPos, this.headWorldQuat, this.headWorldScale);
 
     const targetPos = context.gaze.worldCoords;
-    const angles = LinearTransform.computeLookAtAngles(headWorldPos, targetPos, {
+    const angles = LinearTransform.computeLookAtAngles(this.headWorldPos, targetPos, {
       maxYaw: this.config.maxHeadYaw,
       maxPitch: this.config.maxHeadPitch,
     });
@@ -82,12 +87,13 @@ export class GazeTrackingLayer extends BaseAnimationLayer {
     });
     const smoothedHead = this.headSpring.update(context.dt);
 
-    headBone.setOffset(undefined, new THREE.Euler(
+    this.scratchEuler.set(
       smoothedHead.x * this.weight,
       smoothedHead.y * this.weight,
       smoothedHead.z * this.weight,
       'YXZ'
-    ));
+    );
+    headBone.setOffset(undefined, this.scratchEuler);
 
     // 3. Calculate 2D pupil translation within eye sockets
     const normX = context.gaze.screenCoords.x;
@@ -103,28 +109,22 @@ export class GazeTrackingLayer extends BaseAnimationLayer {
     const smoothedPupilR = this.pupilSpringR.update(context.dt);
 
     if (pupilLBone) {
-      pupilLBone.setOffset(
-        new THREE.Vector3(smoothedPupilL.x * this.weight, smoothedPupilL.y * this.weight, 0)
-      );
+      this.scratchVec.set(smoothedPupilL.x * this.weight, smoothedPupilL.y * this.weight, 0);
+      pupilLBone.setOffset(this.scratchVec);
     }
     if (pupilRBone) {
-      pupilRBone.setOffset(
-        new THREE.Vector3(smoothedPupilR.x * this.weight, smoothedPupilR.y * this.weight, 0)
-      );
+      this.scratchVec.set(smoothedPupilR.x * this.weight, smoothedPupilR.y * this.weight, 0);
+      pupilRBone.setOffset(this.scratchVec);
     }
 
     // 4. Subtle Ear reaction aligned with gaze direction
     if (earLBone) {
-      earLBone.setOffset(
-        undefined,
-        new THREE.Euler(0, 0, (0.15 - smoothedHead.y * 0.2) * this.weight, 'YXZ')
-      );
+      this.scratchEuler.set(0, 0, (0.15 - smoothedHead.y * 0.2) * this.weight, 'YXZ');
+      earLBone.setOffset(undefined, this.scratchEuler);
     }
     if (earRBone) {
-      earRBone.setOffset(
-        undefined,
-        new THREE.Euler(0, 0, (-0.15 - smoothedHead.y * 0.2) * this.weight, 'YXZ')
-      );
+      this.scratchEuler.set(0, 0, (-0.15 - smoothedHead.y * 0.2) * this.weight, 'YXZ');
+      earRBone.setOffset(undefined, this.scratchEuler);
     }
   }
 }
