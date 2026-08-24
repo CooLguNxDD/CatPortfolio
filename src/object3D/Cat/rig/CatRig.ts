@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { RigBone } from './RigBone';
 import type { BoneName } from './types';
 
+/** Owns the hierarchical bone structure and drives forward-kinematics updates for the 3D cat model. */
 export class CatRig {
   public root: RigBone;
   public bones: Map<BoneName, RigBone> = new Map();
