@@ -9,6 +9,7 @@ import { BaseAnimationLayer } from './AnimationLayer';
 import type { AnimationContext } from '../rig/types';
 import type { CatRig } from '../rig/CatRig';
 
+/** Frequency, amplitude, decay, and start/end callback configuration for the click-triggered purr reaction. */
 export interface PurrConfig {
   purrFrequency?: number; // In Hz (typical cat purr is ~25 Hz)
   purrAmplitude?: number; // Micro-oscillation amplitude
@@ -18,6 +19,7 @@ export interface PurrConfig {
   onPurrEnd?: () => void;
 }
 
+/** Procedural animation layer handling the decaying purr vibration, eye squint, ear perk, and haptic pulse triggered by a pet/click. */
 export class PurrReactionLayer extends BaseAnimationLayer {
   public readonly name = 'PurrReaction';
 

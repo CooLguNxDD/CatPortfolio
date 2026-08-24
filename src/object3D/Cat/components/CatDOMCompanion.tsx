@@ -6,11 +6,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Cat3DView } from './Cat3DView';
 
+/** Props for configuring the floating CatDOMCompanion widget. */
 export interface CatDOMCompanionProps {
   initialPosition?: { x: number; y: number };
   defaultOpen?: boolean;
 }
 
+/** Floating, draggable, interactive Cat Companion widget for web apps and browser extensions. */
 export const CatDOMCompanion: React.FC<CatDOMCompanionProps> = ({
   initialPosition = { x: 24, y: 24 },
   defaultOpen = true,
@@ -33,6 +35,7 @@ export const CatDOMCompanion: React.FC<CatDOMCompanionProps> = ({
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
       if (!isDragging) return;
+      // Clamp against window bounds minus the widget's fixed footprint (180x220) to keep it fully on-screen.
       setPos({
         x: Math.max(10, Math.min(window.innerWidth - 180, e.clientX - dragOffset.current.x)),
         y: Math.max(10, Math.min(window.innerHeight - 220, e.clientY - dragOffset.current.y)),

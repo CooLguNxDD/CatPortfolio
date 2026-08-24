@@ -12,6 +12,7 @@ import { BlinkLayer } from './BlinkLayer';
 import { PurrReactionLayer } from './PurrReactionLayer';
 import { BreathingLayer } from './BreathingLayer';
 
+/** Orchestrates weighted animation layers over the cat rig and advances forward kinematics once per frame. */
 export class CatAnimationEngine {
   public rig: CatRig;
   private layers: Map<string, IAnimationLayer> = new Map();
