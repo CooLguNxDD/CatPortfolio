@@ -14,7 +14,9 @@
     "gen:layout": "tsx scripts/gen-layout.ts",
     "gen:fragments": "tsx scripts/gen-fragments.ts",
     "compile:layout": "tsx scripts/compile-layout.ts",
-    "check:layout": "tsx scripts/compile-layout.ts --check"
+    "check:layout": "tsx scripts/compile-layout.ts --check",
+    "gen:themes": "tsx scripts/gen-themes.ts",
+    "check:themes": "tsx scripts/gen-themes.ts --check"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",

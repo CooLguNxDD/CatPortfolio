@@ -217,43 +217,6 @@ const WATER_BASE_LIGHT = 0x9fd8e6
 const DEEP_BASE_DARK = 0x02121d
 const DEEP_BASE_LIGHT = 0x4f9fba
 
-/** Catppuccin flavor water — sapphire (dark) / sky (Latte). Cozy/neon/paper keep the bases. */
-const CATPPUCCIN_WATER: Record<
-  string,
-  { waterDark: number; waterLight: number; deepDark: number; deepLight: number }
-> = {
-  mocha: {
-    waterDark: 0x0c3048,
-    waterLight: 0x8ec8de,
-    deepDark: 0x041824,
-    deepLight: 0x4a96b4,
-  },
-  frappe: {
-    waterDark: 0x0d3348,
-    waterLight: 0x8ecad6,
-    deepDark: 0x051a26,
-    deepLight: 0x4c98ae,
-  },
-  macchiato: {
-    waterDark: 0x0c3146,
-    waterLight: 0x8dc9dc,
-    deepDark: 0x041926,
-    deepLight: 0x4a97b2,
-  },
-  latte: {
-    waterDark: 0x0a2e40,
-    waterLight: 0x8fd0dc,
-    deepDark: 0x031820,
-    deepLight: 0x48a0b4,
-  },
-}
-
-/** Active theme id from ThemeProvider's data-theme stamp (empty in SSR/tests). */
-function readActiveThemeId(): string {
-  if (typeof document === "undefined") return ""
-  return document.documentElement.getAttribute("data-theme") ?? ""
-}
-
 /** Sample live CSS theme tokens into a three-safe underwater palette. */
 export function resolveTankThemePalette(): TankThemePalette {
   const bgCss = readCssToken("bg", "oklch(0.243 0.030 284)")
@@ -268,20 +231,16 @@ export function resolveTankThemePalette(): TankThemePalette {
   const cyan = tokenToHex("cyan", light ? 0x0891b2 : 0x22d3ee)
   const neon = tokenToHex("neon", light ? 0x16a34a : 0x4ade80)
 
-  // Tint the water toward the theme's own cool accent so cozy/neon differ,
-  // but never enough to stop reading as water.
-  const flavorWater = CATPPUCCIN_WATER[readActiveThemeId()]
-  const waterBase = flavorWater
-    ? light
-      ? flavorWater.waterLight
-      : flavorWater.waterDark
+  // Optional --water / --water-deep tokens; cozy/neon/paper keep the formula.
+  const waterTok = readCssToken("water", "")
+  const deepTok = readCssToken("water-deep", "")
+  const waterBase = waterTok
+    ? cssColorToHex(waterTok, light ? WATER_BASE_LIGHT : WATER_BASE_DARK)
     : light
       ? WATER_BASE_LIGHT
       : WATER_BASE_DARK
-  const deepBase = flavorWater
-    ? light
-      ? flavorWater.deepLight
-      : flavorWater.deepDark
+  const deepBase = deepTok
+    ? cssColorToHex(deepTok, light ? DEEP_BASE_LIGHT : DEEP_BASE_DARK)
     : light
       ? DEEP_BASE_LIGHT
       : DEEP_BASE_DARK

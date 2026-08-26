@@ -45,6 +45,8 @@
     "accent-mobile": "oklch(0.861 0.083 336)",
     "accent-mobile-soft": "oklch(0.320 0.037 336)",
     "accent-platform": "oklch(0.837 0.072 209)",
-    "accent-platform-soft": "oklch(0.320 0.032 209)"
+    "accent-platform-soft": "oklch(0.320 0.032 209)",
+    "water": "#0c3146",
+    "water-deep": "#041926"
   }
 }
