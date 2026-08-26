@@ -16,6 +16,13 @@ export const HASH_GLSL = /* glsl */ `
   }
 `
 
+/** 3D → 1D hash — used to scatter stars over sky-dome cells. */
+export const HASH3_GLSL = /* glsl */ `
+  float hash3(vec3 p) {
+    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
+  }
+`
+
 /** Quintic-smoothstep value noise in [0,1]. Requires HASH_GLSL. */
 export const VALUE_NOISE_GLSL = /* glsl */ `
   float noise2(vec2 p) {
@@ -64,7 +71,7 @@ export const DOMAIN_WARP_GLSL = /* glsl */ `
 `
 
 /** Everything, in dependency order. Most shaders just want this. */
-export const NOISE_GLSL = `${HASH_GLSL}\n${VALUE_NOISE_GLSL}\n${FBM_GLSL}\n${DOMAIN_WARP_GLSL}`
+export const NOISE_GLSL = `${HASH_GLSL}\n${HASH3_GLSL}\n${VALUE_NOISE_GLSL}\n${FBM_GLSL}\n${DOMAIN_WARP_GLSL}`
 
 /** Prepend compile-time defines (octave count etc.) to a shader source. */
 export function withDefines(source: string, defines: Record<string, number | string>): string {

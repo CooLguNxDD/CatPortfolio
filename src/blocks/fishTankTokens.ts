@@ -181,7 +181,27 @@ export interface TankThemePalette {
   phase: CircadianPhase
   /** Global swim/beat multiplier — night fauna drift instead of darting. */
   faunaTimeScale: number
+  /** Sky-dome zenith colour. */
+  skyTop: number
+  /** Sky-dome colour near the waterline. */
+  skyHorizon: number
+  /** Sun (day) / moon (night) disc colour. */
+  sunColor: number
+  /** Angular size of the sun/moon disc, as a dot-product threshold (bigger = larger disc). */
+  sunSize: number
+  /** Star field density, 0 (day, no stars) .. 1 (full night sky). */
+  starDensity: number
+  /** Cloud-layer opacity, 0 (night, no clouds) .. 1. */
+  cloudStrength: number
 }
+
+/**
+ * World-space direction to the sun/moon, shared by the sky dome, the water
+ * surface's specular highlight, and the key `DirectionalLight` — one light
+ * source, three consumers, so the glint on the water always sits under
+ * whatever is actually in the sky.
+ */
+export const SUN_DIR = { x: 0.25, y: 1.0, z: 0.35 } as const
 
 /** Daylight lagoon vs midnight abyss. */
 export type CircadianPhase = "day" | "night"
@@ -264,9 +284,13 @@ export function resolveTankThemePalette(): TankThemePalette {
     // light  = shallow sunlit lagoon: high key, thin haze, bright sand.
     // dark   = night dive: dim ambient, hard cyan shaft, bioluminescent accents.
     ambientColor: light ? liftHex(water, 0.45) : mixHex(water, cyan, 0.3),
-    ambientIntensity: light ? 1.5 : 0.85,
+    ambientIntensity: light ? 1.2 : 0.85,
     keyColor: sun,
-    keyIntensity: light ? 2.6 : 1.9,
+    // Fish materials carry a floor emissiveIntensity for the night bioluminescent
+    // read (see speciesMeshes.ts::makeMaterials); at the old daylight key
+    // (2.6 * 1.2 = 3.12) that floor plus a hard directional specular blew
+    // scales out to a washed-out shine instead of a sunlit sheen.
+    keyIntensity: light ? 1.7 : 1.9,
     fillColor: light ? liftHex(water, 0.3) : mixHex(deep, cyan, 0.35),
     fillIntensity: light ? 0.9 : 1.35,
     hemiSky: light ? liftHex(sun, 0.35) : liftHex(cyan, 0.25),
@@ -293,6 +317,26 @@ export function resolveTankThemePalette(): TankThemePalette {
     sigma: light ? [0.28, 0.06, 0.015] : [0.35, 0.08, 0.02],
     phase: "day",
     faunaTimeScale: 1,
+    // Sky is keyed by theme mode, not the circadian clock — it's baked per
+    // theme, not animated over a day: light themes get a sunny lagoon sky,
+    // dark themes get a star field. See applyCircadian, which now leaves
+    // these fields alone.
+    //
+    // Light: zenith is the theme's cool accent lifted toward true sky blue;
+    // horizon is the same `sun` glow the water/god-rays already use, so the
+    // dome and the surface highlight read as lit by the same source.
+    //
+    // Dark: zenith/horizon sink into the same abyss tone as the water, and
+    // the sun shrinks + pales into a moon (a smaller disc needs a *higher*
+    // dot-product threshold).
+    skyTop: light ? mixHex(liftHex(cyan, 0.15), 0x4aa8e6, 0.45) : mixHex(deep, 0x040a1a, 0.6),
+    skyHorizon: light ? liftHex(sun, 0.55) : mixHex(deep, 0x040a1a, 0.35),
+    // The theme's own accent color as the sun; the moon leans on the cooler
+    // cyan instead so it doesn't read as a second, dimmer sun.
+    sunColor: light ? liftHex(accent, 0.35) : liftHex(cyan, 0.6),
+    sunSize: light ? 0.9985 : 0.9995,
+    starDensity: light ? 0 : 1,
+    cloudStrength: light ? 0.6 : 0,
   }
 }
 

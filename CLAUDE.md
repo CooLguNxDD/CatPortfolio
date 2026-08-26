@@ -51,6 +51,7 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Boids steering + cursor intent (pure) | `fish/fishBoids.ts`, `fish/cursorIntent.ts` |
 | Per-fish behaviour states + integrated swim body (pure) | `fish/fishBehavior.ts`, `fish/fishLocomotion.ts` |
 | Theme tokens, quality tiers, circadian cycle | `blocks/fishTankTokens.ts` (`resolveCircadianPhase` / `applyCircadian`) |
+| Numeric tuning: camera feel, geometry placement, particles, interaction/highlight formulas | `blocks/fishTankConfig.ts` (`resolveFishTankTuning(light)` for the day/night-varying subset — opacities, fish emissive floors, accent/bed light intensity) |
 | GPU shoal — InstancedMesh, vertex-shader path + spine | `fish/minnowField.ts`, `fish/shaders/spineDeform.ts` |
 | Post chain (bokeh → bloom → wobble → output) | `fish/postprocessing/tankComposer.ts` |
 | Optics: Beer-Lambert fog chunk, world-space caustics | `fish/shaders/absorption.ts`, `fish/shaders/causticProjection.ts` |
@@ -152,7 +153,7 @@ CatPortfolio/
 │   │   ├── Chart (+ charts/) FlowAnim ArchDiagram MermaidDiagram (lazy) Prose CodeSnippet
 │   │   ├── QuickActions Composite McpSandbox CostSimulator
 │   │   ├── Scene2d + Scene2dCanvas + scene2dLayout.ts
-│   │   ├── FishTank + FishTankCanvas + fishTankLayout.ts fishTankTokens.ts fishFromLayout.ts
+│   │   ├── FishTank + FishTankCanvas + fishTankLayout.ts fishTankTokens.ts fishTankConfig.ts fishFromLayout.ts
 │   │   └── primitives/         # Metric Quote Sparkline MarkdownText Divider Progress IconTile BadgeCloud
 │   ├── object3D/               # 3D character avatars & forward kinematics rigs
 │   │   └── Cat/                # Modular 2D/3D Cat Rig & Animation Engine
