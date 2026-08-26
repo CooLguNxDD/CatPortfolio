@@ -13,6 +13,7 @@ import * as THREE from "three"
 import type { Vec3 } from "@/blocks/fishTankLayout"
 import { makeXorshift32 } from "@/fish/audioMath"
 
+/** Direct references to the primary Three.js Object3D nodes of the rim-perched giant cat mesh. */
 export interface CatParts {
   group: THREE.Group
   rig: THREE.Group
@@ -48,6 +49,7 @@ export interface CatParts {
   }
 }
 
+/** Runtime procedural animation state for the giant cat mesh (gaze, hunt, swat, tail/breathing phase). */
 export interface CatAnimationState {
   huntCommit: number // 0 (calm) -> 1 (intense hunt)
   pupilDilation: number // 0.18 (thin slit) -> 0.85 (huge round pupil)
@@ -69,6 +71,7 @@ export interface CatAnimationState {
 /**
  * Builds the complete Giant Teddy Cat model with glowing yellow eyes.
  */
+/** Constructs the monolithic, rim-perched giant cat mesh used in the FishTank scene. */
 export function buildGiantCatMesh(waterY: number): { group: THREE.Group; parts: CatParts } {
   const root = new THREE.Group()
   root.name = "giant_teddy_cat_root"
@@ -555,6 +558,7 @@ export function buildGiantCatMesh(waterY: number): { group: THREE.Group; parts: 
 /**
  * Creates the runtime animation controller state for the giant teddy cat.
  */
+/** Initializes a zeroed CatAnimationState for the giant cat mesh. */
 export function createCatAnimationState(): CatAnimationState {
   return {
     huntCommit: 0,
@@ -578,6 +582,7 @@ export function createCatAnimationState(): CatAnimationState {
  * Updates the giant teddy cat's posture, gaze-tracking, pupil dilation growth,
  * hunting swat, and breathing animations.
  */
+/** Advances the giant cat's procedural gaze, hunt/swat, and idle animation by one timestep. */
 export function stepCatAnimation(
   parts: CatParts,
   state: CatAnimationState,
