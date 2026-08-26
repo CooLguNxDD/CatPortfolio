@@ -57,10 +57,40 @@ import {
   SPECIES_FALLBACK_HEX,
   SPECIES_TOKEN,
   resolveTankQuality,
+  SUN_DIR,
   type CircadianMode,
   type TankThemePalette,
 } from "./fishTankTokens"
 import { applyCircadian } from "./fishTankCircadian"
+import {
+  CAMERA_CONFIG,
+  RAYCAST_CONFIG,
+  LIGHT_CONFIG,
+  BACKDROP_CONFIG,
+  GLASS_CONFIG,
+  FLOOR_CONFIG,
+  CAUSTIC_CONFIG,
+  GODRAY_CONFIG,
+  ROCK_CONFIG,
+  CRYSTAL_PLACEMENT_CONFIG,
+  SEAWEED_PLACEMENT_CONFIG,
+  CORAL_PLACEMENT_CONFIG,
+  PARTICLE_CONFIG,
+  MINNOW_CONFIG,
+  BUBBLE_CONFIG,
+  MOTE_CONFIG,
+  WAKE_CONFIG,
+  SHOCKWAVE_CONFIG,
+  PELLET_CONFIG,
+  INTERACTION_CONFIG,
+  LABEL_CONFIG,
+  CAT_CONFIG,
+  POST_CONFIG,
+  ANCHOR_CONFIG,
+  SONAR_CONFIG,
+  resolveFishTankTuning,
+} from "./fishTankConfig"
+import { createSkyMaterial, type SkyMaterial } from "@/fish/shaders/skyShader"
 import {
   buildCoral,
   buildCyberCrystal,
@@ -198,6 +228,7 @@ export default function FishTankCanvas({
     const phase = resolveCircadianPhase(new Date(), circadian)
     let palette: TankThemePalette = applyCircadian(resolveTankThemePalette(), phase)
     const light = palette.light
+    let tuning = resolveFishTankTuning(light)
     const quality = resolveTankQuality()
     // Night fauna drift instead of darting (Pillar 5) — folded into the same
     // multiplier the reduced-motion tier already uses to freeze the tank.
@@ -207,7 +238,7 @@ export default function FishTankCanvas({
     // surface samples the same field, so ripples stay continuous across the
     // seabed, the rocks and the fish (Pillar 1.2).
     const causticClock = { value: 0 }
-    const causticSurfaceStrength = { value: palette.causticStrength * 0.55 }
+    const causticSurfaceStrength = { value: palette.causticStrength * CAUSTIC_CONFIG.surfaceStrengthMul }
     const causticSurfaceColor = new THREE.Color(palette.sun)
     /** Patch one standard material with world-space caustics. */
     function withCaustics<T extends THREE.Material>(material: T): T {
@@ -228,15 +259,15 @@ export default function FishTankCanvas({
     scene.background = new THREE.Color(palette.bg)
     scene.fog = new THREE.FogExp2(palette.fogColor, palette.fogDensity)
 
-    const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 400)
+    const camera = new THREE.PerspectiveCamera(CAMERA_CONFIG.fov, 1, CAMERA_CONFIG.near, CAMERA_CONFIG.far)
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
     })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CAMERA_CONFIG.maxPixelRatio))
     host.appendChild(renderer.domElement)
     renderer.domElement.style.width = "100%"
-    renderer.domElement.style.height = immersive ? "100%" : "320px"
+    renderer.domElement.style.height = immersive ? "100%" : `${CAMERA_CONFIG.nonImmersiveHeightPx}px`
     renderer.domElement.style.display = "block"
     renderer.domElement.style.borderRadius = immersive ? "0" : "var(--radius)"
     renderer.domElement.style.cursor = "grab"
@@ -254,40 +285,67 @@ export default function FishTankCanvas({
     const ambient = new THREE.AmbientLight(palette.ambientColor, palette.ambientIntensity)
     scene.add(ambient)
     const hemi = new THREE.HemisphereLight(palette.hemiSky, palette.hemiGround, palette.hemiIntensity)
-    hemi.position.set(0, WATER_Y + 10, 0)
+    hemi.position.set(0, WATER_Y + LIGHT_CONFIG.hemiHeightOffset, 0)
     scene.add(hemi)
-    
-    const top = new THREE.DirectionalLight(palette.keyColor, palette.keyIntensity * 1.2)
-    top.position.set(6, WATER_Y + 40, 8)
+
+    // Shared with the sky dome's sun/moon disc and the water surface's
+    // specular highlight — one light source, three consumers.
+    const top = new THREE.DirectionalLight(palette.keyColor, palette.keyIntensity * LIGHT_CONFIG.keyIntensityMul)
+    top.position.set(
+      SUN_DIR.x * LIGHT_CONFIG.sunLightDistance,
+      WATER_Y + SUN_DIR.y * LIGHT_CONFIG.sunLightDistance,
+      SUN_DIR.z * LIGHT_CONFIG.sunLightDistance,
+    )
     scene.add(top)
 
     const fill = new THREE.PointLight(palette.fillColor, palette.fillIntensity, 120)
-    fill.position.set(-10, TANK_CENTER_Y + 6, 20)
+    fill.position.set(
+      LIGHT_CONFIG.fillPosition.x,
+      TANK_CENTER_Y + LIGHT_CONFIG.fillPosition.yAboveCenter,
+      LIGHT_CONFIG.fillPosition.z,
+    )
     scene.add(fill)
 
-    const accentFill = new THREE.PointLight(palette.accent, light ? 0.65 : 1.8, 80)
-    accentFill.position.set(14, WATER_Y - 6, -10)
+    const accentFill = new THREE.PointLight(palette.accent, tuning.accentFillIntensity, 80)
+    accentFill.position.set(
+      LIGHT_CONFIG.accentFillPosition.x,
+      WATER_Y - LIGHT_CONFIG.accentFillPosition.yBelowWater,
+      LIGHT_CONFIG.accentFillPosition.z,
+    )
     scene.add(accentFill)
 
-    const bedBounce = new THREE.PointLight(palette.cyan, light ? 0.45 : 0.85, TANK_HEIGHT)
-    bedBounce.position.set(0, FLOOR_Y + 4, 0)
+    const bedBounce = new THREE.PointLight(palette.cyan, tuning.bedBounceIntensity, TANK_HEIGHT)
+    bedBounce.position.set(0, FLOOR_Y + LIGHT_CONFIG.bedBounceHeightOffset, 0)
     scene.add(bedBounce)
 
-    // Depth backdrop
-    const backdropMat = new THREE.MeshBasicMaterial({
-      color: palette.deep,
-      side: THREE.BackSide,
-      fog: false,
+    // Sky dome — keyed by theme mode (light -> sunlit lagoon, dark -> star
+    // field + moon), not the circadian clock, since a baked layout's sky
+    // should stay whatever the theme says. Dive fade is still driven by a
+    // uniform so this mesh is never rebuilt (see the frame loop below).
+    const skyMat: SkyMaterial = createSkyMaterial({
+      skyTop: new THREE.Color(palette.skyTop),
+      skyHorizon: new THREE.Color(palette.skyHorizon),
+      deep: new THREE.Color(palette.deep),
+      sunDir: new THREE.Vector3(SUN_DIR.x, SUN_DIR.y, SUN_DIR.z).normalize(),
+      sunColor: new THREE.Color(palette.sunColor),
+      sunSize: palette.sunSize,
+      starDensity: palette.starDensity,
+      cloudStrength: palette.cloudStrength,
+      octaves: quality.octaves,
     })
     const backdrop = new THREE.Mesh(
-      new THREE.SphereGeometry(TANK_HALF_W * 3.2, 16, 12),
-      backdropMat,
+      new THREE.SphereGeometry(
+        TANK_HALF_W * BACKDROP_CONFIG.radiusMul,
+        BACKDROP_CONFIG.widthSegments,
+        BACKDROP_CONFIG.heightSegments,
+      ),
+      skyMat,
     )
     backdrop.position.y = TANK_CENTER_Y
     scene.add(backdrop)
 
     // Glass box outline
-    const glassH = TANK_HEIGHT + 0.5
+    const glassH = TANK_HEIGHT + GLASS_CONFIG.heightPad
     const glassW = TANK_HALF_W * 2
     const glassD = TANK_HALF_D * 2
     const box = new THREE.BoxGeometry(glassW, glassH, glassD)
@@ -295,7 +353,7 @@ export default function FishTankCanvas({
     const glassMat = new THREE.LineBasicMaterial({
       color: palette.glass,
       transparent: true,
-      opacity: light ? 0.22 : 0.32,
+      opacity: tuning.glassOpacity,
     })
     const glass = new THREE.LineSegments(edges, glassMat)
     glass.position.y = TANK_CENTER_Y
@@ -312,7 +370,7 @@ export default function FishTankCanvas({
     const waterMat = createWaterMaterial({
       color: new THREE.Color(palette.water),
       sun: new THREE.Color(palette.sun),
-      opacity: light ? 0.32 : 0.42,
+      opacity: tuning.waterOpacity,
       light,
       octaves: quality.octaves,
     })
@@ -321,14 +379,20 @@ export default function FishTankCanvas({
     tank.add(water)
 
     // Undulating Seabed Floor
-    const floorGeo = new THREE.PlaneGeometry(glassW - 0.4, glassD - 0.4, 32, 24)
+    const floorGeo = new THREE.PlaneGeometry(
+      glassW - FLOOR_CONFIG.insetX,
+      glassD - FLOOR_CONFIG.insetZ,
+      FLOOR_CONFIG.segmentsW,
+      FLOOR_CONFIG.segmentsD,
+    )
     floorGeo.rotateX(-Math.PI / 2)
     const floorPos = floorGeo.attributes.position.array as Float32Array
     for (let i = 0; i < floorGeo.attributes.position.count; i++) {
       const fx = floorPos[i * 3]
       const fz = floorPos[i * 3 + 2]
       // Rolling sand dunes & ridges
-      const dy = Math.sin(fx * 0.18) * Math.cos(fz * 0.15) * 0.65 + Math.sin((fx + fz) * 0.3) * 0.25
+      const { freqX, freqZ, ampPrimary, freqSum, ampSecondary } = FLOOR_CONFIG.dune
+      const dy = Math.sin(fx * freqX) * Math.cos(fz * freqZ) * ampPrimary + Math.sin((fx + fz) * freqSum) * ampSecondary
       floorPos[i * 3 + 1] = dy
     }
     floorGeo.computeVertexNormals()
@@ -336,8 +400,8 @@ export default function FishTankCanvas({
     const floorMat = withCaustics(
       new THREE.MeshStandardMaterial({
         color: palette.floor,
-        roughness: 0.88,
-        metalness: 0.05,
+        roughness: FLOOR_CONFIG.roughness,
+        metalness: FLOOR_CONFIG.metalness,
         flatShading: true,
       }),
     )
@@ -348,78 +412,92 @@ export default function FishTankCanvas({
     // Procedural Voronoi Caustics Shader Plane
     const causticMat = createCausticMaterial(
       new THREE.Color(palette.sun),
-      palette.causticStrength * 1.3,
+      palette.causticStrength * CAUSTIC_CONFIG.strengthMul,
       palette.causticStrength,
       quality.octaves,
     )
     const causticPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(glassW - 0.6, glassD - 0.6),
+      new THREE.PlaneGeometry(glassW - CAUSTIC_CONFIG.insetX, glassD - CAUSTIC_CONFIG.insetZ),
       causticMat,
     )
     causticPlane.rotation.x = -Math.PI / 2
-    causticPlane.position.y = FLOOR_Y + 0.35
+    causticPlane.position.y = FLOOR_Y + CAUSTIC_CONFIG.yAboveFloor
     causticPlane.name = "caustics"
     tank.add(causticPlane)
 
     // Volumetric God Rays — one shader material per shaft so they never pulse in sync
     const rayCount = quality.rayCount
     const rayCenter = (rayCount - 1) / 2
-    const raySpread = (TANK_HALF_W * 0.26 * 8) / Math.max(1, rayCount - 1)
+    const raySpread =
+      (TANK_HALF_W * GODRAY_CONFIG.spreadBaseFrac * GODRAY_CONFIG.spreadMul) / Math.max(1, rayCount - 1)
     const rayMats: GodRayMaterial[] = []
     const rays = new THREE.Group()
     rays.name = "rays"
     for (let i = 0; i < rayCount; i++) {
-      const h = TANK_HEIGHT * (1.18 + (i % 3) * 0.15)
+      const h = TANK_HEIGHT * (GODRAY_CONFIG.heightBaseFactor + (i % GODRAY_CONFIG.heightModIndex) * GODRAY_CONFIG.heightModStep)
       const mat = createGodRayMaterial(
         new THREE.Color(palette.sun),
-        palette.rayStrength * 2.4,
+        palette.rayStrength * GODRAY_CONFIG.strengthMul,
         i / rayCount,
         quality.octaves,
       )
       rayMats.push(mat)
-      const ray = new THREE.Mesh(new THREE.ConeGeometry(1.8 + (i % 4) * 0.6, h, 14, 1, true), mat)
+      const ray = new THREE.Mesh(
+        new THREE.ConeGeometry(
+          GODRAY_CONFIG.radiusBase + (i % GODRAY_CONFIG.radiusModIndex) * GODRAY_CONFIG.radiusModStep,
+          h,
+          GODRAY_CONFIG.radialSegments,
+          1,
+          true,
+        ),
+        mat,
+      )
       ray.position.set(
         (i - rayCenter) * raySpread,
-        WATER_Y - h / 2 + 3,
-        ((i % 4) - 1.5) * 8.5,
+        WATER_Y - h / 2 + GODRAY_CONFIG.yOffsetAboveMid,
+        ((i % GODRAY_CONFIG.zModIndex) + GODRAY_CONFIG.zOffset) * GODRAY_CONFIG.zSpread,
       )
-      ray.rotation.z = (i - rayCenter) * 0.032
+      ray.rotation.z = (i - rayCenter) * GODRAY_CONFIG.tiltStep
       rays.add(ray)
     }
     tank.add(rays)
 
     // Seabed Rocks & Glowing Cyber-Crystals
-    const rockGeo = new THREE.DodecahedronGeometry(1, 0)
+    const rockGeo = new THREE.DodecahedronGeometry(1, ROCK_CONFIG.detail)
     const rockMat = withCaustics(
       new THREE.MeshStandardMaterial({
         color: palette.rock,
-        roughness: 0.9,
+        roughness: ROCK_CONFIG.roughness,
         flatShading: true,
       }),
     )
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < ROCK_CONFIG.count; i++) {
       const rock = new THREE.Mesh(rockGeo, rockMat)
       rock.position.set(
-        (i / 13 - 0.5) * (glassW - 6),
-        FLOOR_Y + 0.7 + (i % 3) * 0.2,
-        ((i % 5) - 2) * (TANK_HALF_D * 0.35),
+        (i / (ROCK_CONFIG.count - 1) - 0.5) * (glassW - ROCK_CONFIG.xSpreadInset),
+        FLOOR_Y + ROCK_CONFIG.yBase + (i % ROCK_CONFIG.yModIndex) * ROCK_CONFIG.yModStep,
+        ((i % ROCK_CONFIG.zModIndex) + ROCK_CONFIG.zOffset) * (TANK_HALF_D * ROCK_CONFIG.zSpreadFrac),
       )
-      rock.scale.setScalar(0.9 + (i % 4) * 0.55)
-      rock.rotation.set(i * 0.7, i * 1.3, i * 0.4)
+      rock.scale.setScalar(ROCK_CONFIG.scaleBase + (i % ROCK_CONFIG.scaleModIndex) * ROCK_CONFIG.scaleModStep)
+      rock.rotation.set(i * ROCK_CONFIG.rotXStep, i * ROCK_CONFIG.rotYStep, i * ROCK_CONFIG.rotZStep)
       tank.add(rock)
     }
 
     // Glowing cyber-crystals
     const crystalColors = [palette.accent, palette.neon, palette.cyan]
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < CRYSTAL_PLACEMENT_CONFIG.count; i++) {
       const col = new THREE.Color(crystalColors[i % crystalColors.length])
-      const crystal = buildCyberCrystal(col, 0.8 + (i % 3) * 0.35)
-      crystal.position.set(
-        (i / 5 - 0.5) * (glassW - 8) + (i % 2 ? 1.5 : -1.5),
-        FLOOR_Y + 0.1,
-        ((i % 3) - 1) * (TANK_HALF_D * 0.4),
+      const crystal = buildCyberCrystal(
+        col,
+        CRYSTAL_PLACEMENT_CONFIG.scaleBase + (i % CRYSTAL_PLACEMENT_CONFIG.scaleModIndex) * CRYSTAL_PLACEMENT_CONFIG.scaleModStep,
       )
-      crystal.rotation.y = i * 1.1
+      crystal.position.set(
+        (i / (CRYSTAL_PLACEMENT_CONFIG.count - 1) - 0.5) * (glassW - CRYSTAL_PLACEMENT_CONFIG.xInset) +
+          (i % CRYSTAL_PLACEMENT_CONFIG.xModIndex ? CRYSTAL_PLACEMENT_CONFIG.xOffsetOdd : CRYSTAL_PLACEMENT_CONFIG.xOffsetEven),
+        FLOOR_Y + CRYSTAL_PLACEMENT_CONFIG.yAboveFloor,
+        ((i % CRYSTAL_PLACEMENT_CONFIG.zModIndex) + CRYSTAL_PLACEMENT_CONFIG.zOffset) * (TANK_HALF_D * CRYSTAL_PLACEMENT_CONFIG.zSpreadFrac),
+      )
+      crystal.rotation.y = i * CRYSTAL_PLACEMENT_CONFIG.rotYStep
       tank.add(crystal)
     }
 
@@ -433,12 +511,16 @@ export default function FishTankCanvas({
       segs: (THREE.Object3D | null)[]
       seed: number
     }[] = []
-    for (let i = 0; i < 20; i++) {
-      const stalk = buildSeaweed(5.5 + (i % 4) * 2.8, weedColor, i)
+    for (let i = 0; i < SEAWEED_PLACEMENT_CONFIG.count; i++) {
+      const stalk = buildSeaweed(
+        SEAWEED_PLACEMENT_CONFIG.heightBase + (i % SEAWEED_PLACEMENT_CONFIG.heightModIndex) * SEAWEED_PLACEMENT_CONFIG.heightModStep,
+        weedColor,
+        i,
+      )
       stalk.position.set(
-        (i / 19 - 0.5) * (glassW - 4),
-        FLOOR_Y + 0.2,
-        ((i % 6) - 2.5) * (TANK_HALF_D * 0.32),
+        (i / (SEAWEED_PLACEMENT_CONFIG.count - 1) - 0.5) * (glassW - SEAWEED_PLACEMENT_CONFIG.xInset),
+        FLOOR_Y + SEAWEED_PLACEMENT_CONFIG.yAboveFloor,
+        ((i % SEAWEED_PLACEMENT_CONFIG.zModIndex) + SEAWEED_PLACEMENT_CONFIG.zOffset) * (TANK_HALF_D * SEAWEED_PLACEMENT_CONFIG.zSpreadFrac),
       )
       tank.add(stalk)
       const { segs, seed } = stalk.userData as { segs: number; seed: number }
@@ -449,15 +531,15 @@ export default function FishTankCanvas({
       weedRigs.push({ segs: segRefs, seed })
     }
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < CORAL_PLACEMENT_CONFIG.count; i++) {
       const coral = buildCoral(
         new THREE.Color(i % 2 ? palette.accent : palette.neon),
-        1.0 + (i % 3) * 0.4,
+        CORAL_PLACEMENT_CONFIG.scaleBase + (i % CORAL_PLACEMENT_CONFIG.scaleModIndex) * CORAL_PLACEMENT_CONFIG.scaleModStep,
       )
       coral.position.set(
-        (i - 2.5) * (TANK_HALF_W * 0.36),
-        FLOOR_Y + 0.3,
-        ((i % 4) - 1.5) * (TANK_HALF_D * 0.28),
+        (i + CORAL_PLACEMENT_CONFIG.xOffset) * (TANK_HALF_W * CORAL_PLACEMENT_CONFIG.xSpreadFrac),
+        FLOOR_Y + CORAL_PLACEMENT_CONFIG.yAboveFloor,
+        ((i % CORAL_PLACEMENT_CONFIG.zModIndex) + CORAL_PLACEMENT_CONFIG.zOffset) * (TANK_HALF_D * CORAL_PLACEMENT_CONFIG.zSpreadFrac),
       )
       tank.add(coral)
     }
@@ -465,10 +547,10 @@ export default function FishTankCanvas({
     // Ambient commit-minnows — one InstancedMesh, placed and deformed entirely
     // in the vertex shader (fish/minnowField.ts), so population is free on CPU.
     const minnows = createMinnowField({
-      count: quality.tier === "high" ? 240 : 80,
+      count: quality.tier === "high" ? MINNOW_CONFIG.countHigh : MINNOW_CONFIG.countLow,
       colors: [palette.accent, palette.cyan, palette.neon].map((c) => new THREE.Color(c)),
       octaves: quality.octaves,
-      emissiveIntensity: light ? 0.2 : 0.45,
+      emissiveIntensity: tuning.minnowEmissive,
       emissiveTint: palette.deep,
     })
     withCaustics(minnows.mesh.material as THREE.MeshStandardMaterial)
@@ -489,53 +571,53 @@ export default function FishTankCanvas({
     // Interactive Giant Predator Cat Mascot perched on the rim
     const { group: cat, parts: catParts } = buildGiantCatMesh(WATER_Y)
     cat.position.set(CAT_X, WATER_Y, 0)
-    cat.rotation.y = -Math.PI / 4
+    cat.rotation.y = CAT_CONFIG.rotationYOffset
     scene.add(cat)
 
     const catAnimState = createCatAnimationState()
     let catTriggerSwat = false
 
     // Particle Systems: Rising Bubbles & Marine Snow
-    const sprite = buildPointSprite(64)
-    const bubbleCount = 70
+    const sprite = buildPointSprite(PARTICLE_CONFIG.spriteSize)
+    const bubbleCount = BUBBLE_CONFIG.count
     const bubbleGeo = new THREE.BufferGeometry()
     const bPos = new Float32Array(bubbleCount * 3)
     const bSizes = new Float32Array(bubbleCount)
     for (let i = 0; i < bubbleCount; i++) {
-      bPos[i * 3] = (Math.random() - 0.5) * (glassW - 2)
+      bPos[i * 3] = (Math.random() - 0.5) * (glassW - BUBBLE_CONFIG.spawnInsetXZ)
       bPos[i * 3 + 1] = FLOOR_Y + Math.random() * TANK_HEIGHT
-      bPos[i * 3 + 2] = (Math.random() - 0.5) * (glassD - 2)
-      bSizes[i] = 1.2 + Math.random() * 1.8
+      bPos[i * 3 + 2] = (Math.random() - 0.5) * (glassD - BUBBLE_CONFIG.spawnInsetXZ)
+      bSizes[i] = BUBBLE_CONFIG.sizeBase + Math.random() * BUBBLE_CONFIG.sizeRand
     }
     bubbleGeo.setAttribute("position", new THREE.BufferAttribute(bPos, 3))
     bubbleGeo.setAttribute("size", new THREE.BufferAttribute(bSizes, 1))
     const bubbleMat = new THREE.PointsMaterial({
       color: palette.bubble,
-      size: 1.8,
+      size: BUBBLE_CONFIG.pointSize,
       map: sprite || undefined,
       transparent: true,
-      opacity: light ? 0.38 : 0.65,
+      opacity: tuning.bubbleOpacity,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     })
     const bubbles = new THREE.Points(bubbleGeo, bubbleMat)
     tank.add(bubbles)
 
-    const moteCount = 100
+    const moteCount = MOTE_CONFIG.count
     const moteGeo = new THREE.BufferGeometry()
     const mPos = new Float32Array(moteCount * 3)
     for (let i = 0; i < moteCount; i++) {
-      mPos[i * 3] = (Math.random() - 0.5) * (glassW - 1)
+      mPos[i * 3] = (Math.random() - 0.5) * (glassW - MOTE_CONFIG.spawnInsetXZ)
       mPos[i * 3 + 1] = FLOOR_Y + Math.random() * TANK_HEIGHT
-      mPos[i * 3 + 2] = (Math.random() - 0.5) * (glassD - 1)
+      mPos[i * 3 + 2] = (Math.random() - 0.5) * (glassD - MOTE_CONFIG.spawnInsetXZ)
     }
     moteGeo.setAttribute("position", new THREE.BufferAttribute(mPos, 3))
     const moteMat = new THREE.PointsMaterial({
       color: palette.motes,
-      size: 0.9,
+      size: MOTE_CONFIG.size,
       map: sprite || undefined,
       transparent: true,
-      opacity: light ? 0.25 : 0.45,
+      opacity: tuning.moteOpacity,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     })
@@ -543,27 +625,27 @@ export default function FishTankCanvas({
     tank.add(motes)
 
     // Bioluminescent fish wake trails — same quality-tier split as the minnow field.
-    const wakeCount = quality.tier === "high" ? 280 : 100
+    const wakeCount = quality.tier === "high" ? WAKE_CONFIG.countHigh : WAKE_CONFIG.countLow
     const wakePool = new WakeTrailPool(wakeCount)
     const wakeGeo = new THREE.BufferGeometry()
     const wakePos = new Float32Array(wakeCount * 3)
     const wakeColors = new Float32Array(wakeCount * 3)
     for (let i = 0; i < wakeCount; i++) {
-      wakePos[i * 3 + 1] = -9999
-      wakeColors[i * 3] = 0.2
-      wakeColors[i * 3 + 1] = 0.8
-      wakeColors[i * 3 + 2] = 1.0
+      wakePos[i * 3 + 1] = WAKE_CONFIG.initY
+      wakeColors[i * 3] = WAKE_CONFIG.initColor.r
+      wakeColors[i * 3 + 1] = WAKE_CONFIG.initColor.g
+      wakeColors[i * 3 + 2] = WAKE_CONFIG.initColor.b
     }
     wakeGeo.setAttribute("position", new THREE.BufferAttribute(wakePos, 3))
     wakeGeo.setAttribute("color", new THREE.BufferAttribute(wakeColors, 3))
     const wakeMat = new THREE.PointsMaterial({
-      size: 2.4,
+      size: WAKE_CONFIG.pointSize,
       map: sprite || undefined,
       transparent: true,
       vertexColors: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      opacity: light ? 0.5 : 0.88,
+      opacity: tuning.wakeOpacity,
     })
     const wakePoints = new THREE.Points(wakeGeo, wakeMat)
     tank.add(wakePoints)
@@ -578,16 +660,20 @@ export default function FishTankCanvas({
       opacity: number
       active: boolean
     }
-    const SHOCKWAVE_POOL_SIZE = 5
+    const SHOCKWAVE_POOL_SIZE = SHOCKWAVE_CONFIG.poolSize
     const shockwavePool: Shockwave[] = []
     let nextShockwaveIdx = 0
 
-    const shockRingGeo = new THREE.RingGeometry(0.5, 0.9, 32)
+    const shockRingGeo = new THREE.RingGeometry(
+      SHOCKWAVE_CONFIG.ringInnerRadius,
+      SHOCKWAVE_CONFIG.ringOuterRadius,
+      SHOCKWAVE_CONFIG.ringSegments,
+    )
     shockRingGeo.rotateX(-Math.PI / 2)
     const shockMat = new THREE.MeshBasicMaterial({
       color: palette.cyan,
       transparent: true,
-      opacity: 0.6,
+      opacity: SHOCKWAVE_CONFIG.baseOpacity,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -601,9 +687,9 @@ export default function FishTankCanvas({
         mesh: ring,
         x: 0,
         z: 0,
-        r: 1,
-        maxR: 18,
-        opacity: 0.75,
+        r: SHOCKWAVE_CONFIG.initR,
+        maxR: SHOCKWAVE_CONFIG.maxR,
+        opacity: SHOCKWAVE_CONFIG.spawnOpacity,
         active: false,
       })
     }
@@ -613,11 +699,11 @@ export default function FishTankCanvas({
       nextShockwaveIdx++
       sw.x = x
       sw.z = z
-      sw.r = 1
-      sw.maxR = 18
-      sw.opacity = 0.75
+      sw.r = SHOCKWAVE_CONFIG.initR
+      sw.maxR = SHOCKWAVE_CONFIG.maxR
+      sw.opacity = SHOCKWAVE_CONFIG.spawnOpacity
       sw.active = true
-      sw.mesh.position.set(x, FLOOR_Y + 0.38, z)
+      sw.mesh.position.set(x, FLOOR_Y + SHOCKWAVE_CONFIG.floorOffset, z)
       sw.mesh.scale.set(1, 1, 1)
       ;(sw.mesh.material as THREE.MeshBasicMaterial).opacity = sw.opacity
       sw.mesh.visible = true
@@ -650,13 +736,13 @@ export default function FishTankCanvas({
 
       const pill = document.createElement("div")
       pill.className = "rounded px-1.5 py-0.5 border flex items-center gap-1 backdrop-blur-xs font-semibold whitespace-nowrap"
-      pill.style.background = "rgba(10, 16, 26, 0.78)"
-      pill.style.borderColor = `${col.getHexString()}88`
+      pill.style.background = LABEL_CONFIG.pillBackground
+      pill.style.borderColor = `${col.getHexString()}${LABEL_CONFIG.pillBorderAlpha}`
       pill.style.color = `#${col.getHexString()}`
-      pill.style.boxShadow = `0 0 10px rgba(0,0,0,0.5)`
+      pill.style.boxShadow = LABEL_CONFIG.pillShadow
 
       const tick = document.createElement("span")
-      tick.textContent = specimen.species.slice(0, 3).toUpperCase()
+      tick.textContent = specimen.species.slice(0, LABEL_CONFIG.tickerLength).toUpperCase()
       tick.className = "text-[8px] opacity-75 font-bold uppercase"
       pill.appendChild(tick)
 
@@ -686,6 +772,7 @@ export default function FishTankCanvas({
       palette = applyCircadian(resolveTankThemePalette(), nextPhase)
       faunaScale = palette.faunaTimeScale
       const nextLight = palette.light
+      tuning = resolveFishTankTuning(nextLight)
       scene.background?.set(palette.bg)
       if (scene.fog instanceof THREE.FogExp2) {
         scene.fog.color.set(palette.fogColor)
@@ -697,30 +784,46 @@ export default function FishTankCanvas({
       hemi.groundColor.set(palette.hemiGround)
       hemi.intensity = palette.hemiIntensity
       top.color.set(palette.keyColor)
-      top.intensity = palette.keyIntensity * 1.2
+      top.intensity = palette.keyIntensity * LIGHT_CONFIG.keyIntensityMul
       fill.color.set(palette.fillColor)
       fill.intensity = palette.fillIntensity
       accentFill.color.set(palette.accent)
-      accentFill.intensity = nextLight ? 0.65 : 1.8
+      accentFill.intensity = tuning.accentFillIntensity
       bedBounce.color.set(palette.cyan)
-      bedBounce.intensity = nextLight ? 0.45 : 0.85
+      bedBounce.intensity = tuning.bedBounceIntensity
       glassMat.color.set(palette.glass)
+      glassMat.opacity = tuning.glassOpacity
       waterMat.uniforms.uColor.value.set(palette.water)
       waterMat.uniforms.uSun.value.set(palette.sun)
+      waterMat.uniforms.uOpacity.value = tuning.waterOpacity
       floorMat.color.set(palette.floor)
       for (const m of rayMats) {
         m.uniforms.uColor.value.set(palette.sun)
-        m.uniforms.uStrength.value = palette.rayStrength * 2.4
+        m.uniforms.uStrength.value = palette.rayStrength * GODRAY_CONFIG.strengthMul
       }
       causticMat.uniforms.uColor.value.set(palette.sun)
-      causticSurfaceStrength.value = palette.causticStrength * 0.55
+      causticSurfaceStrength.value = palette.causticStrength * CAUSTIC_CONFIG.surfaceStrengthMul
       causticSurfaceColor.set(palette.sun)
+      ;(minnows.mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = tuning.minnowEmissive
       bubbleMat.color.set(palette.bubble)
+      bubbleMat.opacity = tuning.bubbleOpacity
       moteMat.color.set(palette.motes)
+      moteMat.opacity = tuning.moteOpacity
+      wakeMat.opacity = tuning.wakeOpacity
       shockMat.color.set(palette.cyan)
       for (const sw of shockwavePool) {
         ;(sw.mesh.material as THREE.MeshBasicMaterial).color.set(palette.cyan)
       }
+      // Sky fields are theme-derived, not circadian, so these are no-ops when
+      // only the ☀️/🌙/🕓 chip changes — kept here for the rare case a theme
+      // swap resamples this same palette in place.
+      skyMat.uniforms.uSkyTop.value.set(palette.skyTop)
+      skyMat.uniforms.uSkyHorizon.value.set(palette.skyHorizon)
+      skyMat.uniforms.uDeep.value.set(palette.deep)
+      skyMat.uniforms.uSunColor.value.set(palette.sunColor)
+      skyMat.uniforms.uSunSize.value = palette.sunSize
+      skyMat.uniforms.uStarDensity.value = palette.starDensity
+      skyMat.uniforms.uCloud.value = palette.cloudStrength
     }
     applyPaletteRef.current = applyPalette
     let paletteFrame = requestAnimationFrame(() => applyPalette(circadianRef.current))
@@ -729,8 +832,8 @@ export default function FishTankCanvas({
     // collapses it to scene + output, which is what mobile used to get from the
     // old direct render (see fish/postprocessing/tankComposer.ts).
     const composer = createTankComposer(renderer, scene, camera, {
-      width: host.clientWidth || 640,
-      height: host.clientHeight || 320,
+      width: host.clientWidth || CAMERA_CONFIG.immersiveFallbackWidth,
+      height: host.clientHeight || CAMERA_CONFIG.nonImmersiveHeightPx,
       octaves: quality.octaves,
       effects: quality.tier === "high",
       wobble: quality.wobble,
@@ -750,8 +853,10 @@ export default function FishTankCanvas({
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver((entries) => {
             for (const entry of entries) {
-              const w = entry.contentRect.width || 640
-              const h = immersive ? entry.contentRect.height || 480 : 320
+              const w = entry.contentRect.width || CAMERA_CONFIG.immersiveFallbackWidth
+              const h = immersive
+                ? entry.contentRect.height || CAMERA_CONFIG.immersiveFallbackHeight
+                : CAMERA_CONFIG.nonImmersiveHeightPx
               camera.aspect = w / h
               camera.updateProjectionMatrix()
               renderer.setSize(w, h)
@@ -768,12 +873,16 @@ export default function FishTankCanvas({
     // Food pellets system
     const foodGroup = new THREE.Group()
     tank.add(foodGroup)
-    const pelletGeo = new THREE.SphereGeometry(0.5, 8, 8)
+    const pelletGeo = new THREE.SphereGeometry(
+      PELLET_CONFIG.geoRadius,
+      PELLET_CONFIG.geoWidthSegments,
+      PELLET_CONFIG.geoHeightSegments,
+    )
     const pelletMat = new THREE.MeshStandardMaterial({
       color: palette.accent,
       emissive: palette.accent,
-      emissiveIntensity: 0.9,
-      roughness: 0.3,
+      emissiveIntensity: PELLET_CONFIG.emissiveIntensity,
+      roughness: PELLET_CONFIG.roughness,
     })
 
     interface LivePellet {
@@ -806,16 +915,16 @@ export default function FishTankCanvas({
     const SWIM_MAX = { x: TANK_HALF_W - 1, y: SWIM_Y_MAX, z: TANK_HALF_D - 1 }
 
     function spawnFood(pos?: { x?: number; y?: number; z?: number }) {
-      if (livePellets.length > 25) {
+      if (livePellets.length > PELLET_CONFIG.maxLive) {
         const old = livePellets.shift()
         if (old) {
           foodGroup.remove(old.mesh)
         }
       }
       const pellet = new THREE.Mesh(pelletGeo, pelletMat)
-      const px = pos?.x ?? (Math.random() - 0.5) * (TANK_HALF_W * 1.3)
-      const py = pos?.y ?? (WATER_Y - 0.5)
-      const pz = pos?.z ?? (Math.random() - 0.5) * (TANK_HALF_D * 1.3)
+      const px = pos?.x ?? (Math.random() - 0.5) * (TANK_HALF_W * PELLET_CONFIG.spawnSpreadXFrac)
+      const py = pos?.y ?? (WATER_Y - PELLET_CONFIG.spawnYOffset)
+      const pz = pos?.z ?? (Math.random() - 0.5) * (TANK_HALF_D * PELLET_CONFIG.spawnSpreadZFrac)
       pellet.position.set(px, py, pz)
       foodGroup.add(pellet)
 
@@ -825,7 +934,7 @@ export default function FishTankCanvas({
         x: px,
         y: py,
         z: pz,
-        vy: -1.4 - Math.random() * 0.8,
+        vy: -PELLET_CONFIG.fallSpeedBase - Math.random() * PELLET_CONFIG.fallSpeedRand,
         active: true,
         age: 0,
       })
@@ -840,7 +949,7 @@ export default function FishTankCanvas({
     // Pointer intent drives the curious/flee boids term (fish/cursorIntent.ts).
     const cursorTracker = createCursorTracker(performance.now())
     let cursorIntent: CursorIntent = "idle"
-    const pointer = new THREE.Vector2(-9999, -9999)
+    const pointer = new THREE.Vector2(RAYCAST_CONFIG.pointerSentinel, RAYCAST_CONFIG.pointerSentinel)
     const raycaster = new THREE.Raycaster()
     const cursor3D = new THREE.Vector3()
     const vCursor = new THREE.Vector3()
@@ -852,15 +961,15 @@ export default function FishTankCanvas({
         hasCursor3D = false
         return
       }
-      vCursor.set(pointer.x, pointer.y, 0.5).unproject(camera)
+      vCursor.set(pointer.x, pointer.y, RAYCAST_CONFIG.unprojectZ).unproject(camera)
       const dx = vCursor.x - camera.position.x
       const dy = vCursor.y - camera.position.y
       const dz = vCursor.z - camera.position.z
       const len = Math.hypot(dx, dy, dz) || 1
       const dirZ = dz / len
       const prog = clamp(progRef.current, 0, 1)
-      if (Math.abs(dirZ) > 0.0001) {
-        const targetPlaneZ = isSubmerged(prog) ? 0 : TANK_HALF_D * 0.4
+      if (Math.abs(dirZ) > RAYCAST_CONFIG.dirZEpsilon) {
+        const targetPlaneZ = isSubmerged(prog) ? 0 : TANK_HALF_D * RAYCAST_CONFIG.surfacePickPlaneFrac
         const dist = (targetPlaneZ - camera.position.z) / dirZ
         cursor3D.set(
           camera.position.x + (dx / len) * dist,
@@ -869,7 +978,11 @@ export default function FishTankCanvas({
         )
         hasCursor3D = true
       } else {
-        cursor3D.set(camera.position.x + dx * 20, camera.position.y + dy * 20, camera.position.z + dz * 20)
+        cursor3D.set(
+          camera.position.x + dx * RAYCAST_CONFIG.fallbackRayLength,
+          camera.position.y + dy * RAYCAST_CONFIG.fallbackRayLength,
+          camera.position.z + dz * RAYCAST_CONFIG.fallbackRayLength,
+        )
         hasCursor3D = true
       }
     }
@@ -878,7 +991,11 @@ export default function FishTankCanvas({
     let disposed = false
     let selected: THREE.Group | null = null
     let hologramSlug: string | null = null
-    const lastAnchor = { x: -9999, y: -9999, r: -9999 }
+    const lastAnchor: { x: number; y: number; r: number } = {
+      x: ANCHOR_CONFIG.sentinel,
+      y: ANCHOR_CONFIG.sentinel,
+      r: ANCHOR_CONFIG.sentinel,
+    }
     let lastProg = -1
     let lastAudioAt = -1
     let lastImmersion = -1
@@ -953,8 +1070,8 @@ export default function FishTankCanvas({
         orbit.lx = e.clientX
         orbit.ly = e.clientY
         orbit.moved += Math.abs(dx) + Math.abs(dy)
-        orbit.yawT -= dx * 0.005
-        orbit.pitchT = clamp(orbit.pitchT + dy * 0.004, MIN_PITCH, MAX_PITCH)
+        orbit.yawT -= dx * CAMERA_CONFIG.dragYawSensitivity
+        orbit.pitchT = clamp(orbit.pitchT + dy * CAMERA_CONFIG.dragPitchSensitivity, MIN_PITCH, MAX_PITCH)
       }
 
       updateCursorRaycast()
@@ -974,14 +1091,14 @@ export default function FishTankCanvas({
       e.preventDefault()
       if (selected) return
       orbit.radiusT = clamp(
-        orbit.radiusT + e.deltaY * 0.02,
+        orbit.radiusT + e.deltaY * CAMERA_CONFIG.wheelZoomSensitivity,
         MIN_ORBIT_RADIUS,
         MAX_ORBIT_RADIUS,
       )
     }
 
     function onClick() {
-      if (orbit.moved > 6) return
+      if (orbit.moved > CAMERA_CONFIG.clickDragTolerancePx) return
       raycaster.setFromCamera(pointer, camera)
 
       // Interactive Click on Giant Cat Mascot
@@ -1030,7 +1147,11 @@ export default function FishTankCanvas({
     function onDblClick() {
       if (!isSubmerged(progRef.current)) return
       if (hasCursor3D) {
-        spawnFood({ x: cursor3D.x, y: Math.min(WATER_Y - 0.5, cursor3D.y + 4), z: cursor3D.z })
+        spawnFood({
+          x: cursor3D.x,
+          y: Math.min(WATER_Y - PELLET_CONFIG.spawnYOffset, cursor3D.y + PELLET_CONFIG.dropHeightAboveCursor),
+          z: cursor3D.z,
+        })
       } else {
         spawnFood()
       }
@@ -1072,7 +1193,7 @@ export default function FishTankCanvas({
     function animate() {
       if (disposed) return
       raf = requestAnimationFrame(animate)
-      const dt = Math.min(0.05, clock.getDelta())
+      const dt = Math.min(POST_CONFIG.dtClampSec, clock.getDelta())
       const t = clock.elapsedTime
       // Shader clock — advanced by clamped frame deltas and frozen at 0 for
       // prefers-reduced-motion, preventing multi-second snaps when returning from a frozen tab.
@@ -1081,7 +1202,11 @@ export default function FishTankCanvas({
       const prog = clamp(progRef.current, 0, 1)
 
       // Camera reset on surface return
-      if (orbit.prevProg > 0.05 && prog <= 0.05 && !selected) {
+      if (
+        orbit.prevProg > CAMERA_CONFIG.surfaceReturnThreshold &&
+        prog <= CAMERA_CONFIG.surfaceReturnThreshold &&
+        !selected
+      ) {
         orbit.yawT = 0
         orbit.pitchT = DEFAULT_PITCH
         orbit.radiusT = SURFACE_RADIUS
@@ -1094,18 +1219,18 @@ export default function FishTankCanvas({
         if (match && selected !== match.mesh) selected = match.mesh
       } else if (selected && !want) {
         selected = null
-        if (prog >= 0.95) {
+        if (prog >= CAMERA_CONFIG.submergedThreshold) {
           orbit.radiusT = SUBMERGED_RADIUS
         }
       }
 
-      const w = host.clientWidth || 640
-      const h = immersive ? host.clientHeight || 480 : 320
+      const w = host.clientWidth || CAMERA_CONFIG.immersiveFallbackWidth
+      const h = immersive ? host.clientHeight || CAMERA_CONFIG.immersiveFallbackHeight : CAMERA_CONFIG.nonImmersiveHeightPx
 
       if (selected) {
         const sel = selected.userData.data as FishSpecimenInput
         orbit.radiusT = FOCUS_STANDOFF_BASE + clamp01(sel?.size ?? 0.5) * FOCUS_STANDOFF_SCALE
-        const sideOffset = w > 820 ? 4.8 : 0
+        const sideOffset = w > CAMERA_CONFIG.dossierSideOffsetBreakpointPx ? CAMERA_CONFIG.dossierSideOffset : 0
         orbit.targetT.set(
           selected.position.x + Math.cos(orbit.yaw) * sideOffset,
           selected.position.y,
@@ -1122,7 +1247,7 @@ export default function FishTankCanvas({
           st.z,
         )
         const stageRadius = SUBMERGED_RADIUS + (1 - prog) * (SURFACE_RADIUS - SUBMERGED_RADIUS)
-        if (prog < 0.95) {
+        if (prog < CAMERA_CONFIG.submergedThreshold) {
           orbit.radiusT = stageRadius
         } else {
           orbit.radiusT = clamp(orbit.radiusT, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS)
@@ -1130,7 +1255,7 @@ export default function FishTankCanvas({
       }
 
       const distToTarget = orbit.target.distanceTo(orbit.targetT)
-      if (selected || distToTarget > 0.08) {
+      if (selected || distToTarget > CAMERA_CONFIG.targetSnapDistance) {
         orbit.target.lerp(orbit.targetT, TARGET_LERP_SPEED)
       } else {
         orbit.target.copy(orbit.targetT)
@@ -1139,10 +1264,11 @@ export default function FishTankCanvas({
       orbit.pitch += (orbit.pitchT - orbit.pitch) * ORBIT_LERP_SPEED
       orbit.radius += (orbit.radiusT - orbit.radius) * RADIUS_LERP_SPEED
 
-      const drift = orbit.dragging || selected ? 0 : Math.sin(t * 0.12) * 0.06
+      const drift =
+        orbit.dragging || selected ? 0 : Math.sin(t * CAMERA_CONFIG.idleDriftFreq) * CAMERA_CONFIG.idleDriftAmp
       const yaw = orbit.yaw + drift
       const divePitchArc =
-        !selected && prog > 0.01 && prog < 0.99
+        !selected && prog > CAMERA_CONFIG.diveArcStart && prog < CAMERA_CONFIG.diveArcEnd
           ? Math.sin(prog * Math.PI) * DIVE_PITCH_ARC
           : 0
       const pitch = clamp(orbit.pitch + divePitchArc, MIN_PITCH, MAX_PITCH)
@@ -1162,30 +1288,31 @@ export default function FishTankCanvas({
 
       // Bind the Web Audio listener to the camera (~15Hz is plenty for HRTF)
       // and sweep the waterline filter with how deep the camera actually is.
-      if (t - lastAudioAt > 0.066) {
+      if (t - lastAudioAt > CAMERA_CONFIG.audioUpdateIntervalSec) {
         lastAudioAt = t
         _v.copy(orbit.target).sub(camera.position).normalize()
         fishAudio.setListenerPose(camera.position, _v, WORLD_UP)
-        const immersion = clamp((WATER_Y - camera.position.y) / 6, 0, 1)
-        if (Math.abs(immersion - lastImmersion) > 0.02) {
+        const immersion = clamp((WATER_Y - camera.position.y) / CAMERA_CONFIG.immersionDepthDivisor, 0, 1)
+        if (Math.abs(immersion - lastImmersion) > CAMERA_CONFIG.immersionEpsilon) {
           lastImmersion = immersion
           fishAudio.setImmersion(immersion)
         }
       }
 
       if (scene.fog instanceof THREE.FogExp2) {
-        const base = palette.fogDensity * (0.18 + 0.82 * prog)
-        const targetDensity = selected ? base * 1.35 : base
-        scene.fog.density += (targetDensity - scene.fog.density) * 0.05
+        const base = palette.fogDensity * (POST_CONFIG.fogBaseMin + POST_CONFIG.fogBaseProgMul * prog)
+        const targetDensity = selected ? base * POST_CONFIG.fogFocusedMul : base
+        scene.fog.density += (targetDensity - scene.fog.density) * POST_CONFIG.fogLerpSpeed
         scene.fog.color.set(mixHex(palette.bg, palette.fogColor, prog))
       }
-      if (Math.abs(prog - lastProg) > 0.004) {
+      if (Math.abs(prog - lastProg) > POST_CONFIG.diveEpsilon) {
         lastProg = prog
-        backdropMat.color.set(mixHex(palette.bg, palette.deep, prog))
+        skyMat.uniforms.uDive.value = prog
       }
 
       // Water surface waves are displaced in the vertex shader — just advance its clock.
       waterMat.uniforms.uTime.value = st
+      skyMat.uniforms.uTime.value = st
       causticClock.value = st
       minnows.update(st * faunaScale)
       // Pointer speed decays between move events so one flick does not pin flee.
@@ -1194,18 +1321,18 @@ export default function FishTankCanvas({
       // Bubbles & Marine snow animation
       const bp = bubbles.geometry.attributes.position.array as Float32Array
       for (let i = 1; i < bp.length; i += 3) {
-        bp[i] += dt * 1.8
+        bp[i] += dt * BUBBLE_CONFIG.riseSpeed
         // subtle wobble
-        bp[i - 1] += Math.sin(t * 3 + bp[i] * 2) * dt * 0.4
-        if (bp[i] > WATER_Y - 0.2) bp[i] = FLOOR_Y + 0.4
+        bp[i - 1] += Math.sin(t * BUBBLE_CONFIG.wobbleFreqT + bp[i] * BUBBLE_CONFIG.wobbleFreqY) * dt * BUBBLE_CONFIG.wobbleAmp
+        if (bp[i] > WATER_Y - BUBBLE_CONFIG.recycleTopOffset) bp[i] = FLOOR_Y + BUBBLE_CONFIG.recycleBottomOffset
       }
       bubbles.geometry.attributes.position.needsUpdate = true
 
       const mp = motes.geometry.attributes.position.array as Float32Array
       for (let i = 0; i < mp.length; i += 3) {
-        mp[i] += Math.sin(t * 0.2 + mp[i + 1] * 0.1) * dt * 0.25
-        mp[i + 1] -= dt * 0.35
-        if (mp[i + 1] < FLOOR_Y) mp[i + 1] = WATER_Y - 0.5
+        mp[i] += Math.sin(t * MOTE_CONFIG.driftFreq + mp[i + 1] * MOTE_CONFIG.driftPhaseMul) * dt * MOTE_CONFIG.driftAmp
+        mp[i + 1] -= dt * MOTE_CONFIG.sinkSpeed
+        if (mp[i + 1] < FLOOR_Y) mp[i + 1] = WATER_Y - MOTE_CONFIG.recycleTopOffset
       }
       motes.geometry.attributes.position.needsUpdate = true
 
@@ -1236,7 +1363,7 @@ export default function FishTankCanvas({
           z: cursor3D.z,
         }
         const distToCat = Math.hypot(cursor3D.x - CAT_X, cursor3D.y - WATER_Y, cursor3D.z)
-        catIsHunting = cursorIntent === "flee" || cursorIntent === "curious" || distToCat < 28
+        catIsHunting = cursorIntent === "flee" || cursorIntent === "curious" || distToCat < CAT_CONFIG.huntCursorDistance
       } else if (selected) {
         catTargetPos = {
           x: selected.position.x,
@@ -1265,12 +1392,18 @@ export default function FishTankCanvas({
           }
         }
 
-        if (closestFishPos && closestDistSq < 35 * 35) {
+        if (closestFishPos && closestDistSq < CAT_CONFIG.trackDistance * CAT_CONFIG.trackDistance) {
           catTargetPos = closestFishPos
-          if (closestDistSq < 24 * 24 && closestFishPos.y > WATER_Y - 14) {
+          if (
+            closestDistSq < CAT_CONFIG.huntDistance * CAT_CONFIG.huntDistance &&
+            closestFishPos.y > WATER_Y - CAT_CONFIG.huntYOffset
+          ) {
             catIsHunting = true
             // If swimming right under the perched cat, trigger a swat strike!
-            if (closestDistSq < 13 * 13 && closestFishPos.y > WATER_Y - 6) {
+            if (
+              closestDistSq < CAT_CONFIG.swatDistance * CAT_CONFIG.swatDistance &&
+              closestFishPos.y > WATER_Y - CAT_CONFIG.swatYOffset
+            ) {
               catTriggerSwat = true
             }
           }
@@ -1318,18 +1451,18 @@ export default function FishTankCanvas({
         const p = livePellets[i]
         p.age += dt
         if (!p.active) {
-          p.mesh.scale.multiplyScalar(0.85)
-          if (p.mesh.scale.x < 0.05) {
+          p.mesh.scale.multiplyScalar(PELLET_CONFIG.shrinkRate)
+          if (p.mesh.scale.x < PELLET_CONFIG.removalScaleThreshold) {
             foodGroup.remove(p.mesh)
             livePellets.splice(i, 1)
           }
           continue
         }
         p.y += p.vy * dt
-        p.x += Math.sin(t * 2.5 + i) * dt * 0.35
+        p.x += Math.sin(t * PELLET_CONFIG.swayFreq + i) * dt * PELLET_CONFIG.swayAmp
         p.mesh.position.set(p.x, p.y, p.z)
 
-        if (p.y <= FLOOR_Y + 0.4 || p.age > 16) {
+        if (p.y <= FLOOR_Y + PELLET_CONFIG.restFloorOffset || p.age > PELLET_CONFIG.maxAge) {
           p.active = false
         }
       }
@@ -1371,7 +1504,7 @@ export default function FishTankCanvas({
             const dy = o.mesh.position.y - p.y
             const dz = o.mesh.position.z - p.z
             const mouthDistSq = dx * dx + dy * dy + dz * dz
-            if (!ate && mouthDistSq < 4.5 * pose.scale) {
+            if (!ate && mouthDistSq < PELLET_CONFIG.mouthEatRadiusMul * pose.scale) {
               p.active = false
               ate = true
               fishBus.emit("feed:eaten", { pelletId: p.id, slug: o.data.slug })
@@ -1379,7 +1512,7 @@ export default function FishTankCanvas({
                 type: "eat",
                 at: { x: p.x, y: p.y, z: p.z },
               })
-              o.mesh.userData.boostGlow = 1.0
+              o.mesh.userData.boostGlow = PELLET_CONFIG.boostGlowOnEat
               continue
             }
             if (mouthDistSq < bestSq) {
@@ -1521,32 +1654,56 @@ export default function FishTankCanvas({
         // Glow boost decay after eating
         const boost = (o.mesh.userData.boostGlow as number | undefined) || 0
         if (boost > 0) {
-          o.mesh.userData.boostGlow = Math.max(0, boost - dt * 0.8)
+          o.mesh.userData.boostGlow = Math.max(0, boost - dt * INTERACTION_CONFIG.boostDecayRate)
         }
 
         const lit = fishLitFactor(o.data, filter, focus)
-        const scaleMul = (lit > 1 ? 1.15 : lit < 0.5 ? 0.72 : 1) * (1 + boost * 0.15)
+        const scaleMul =
+          (lit > 1
+            ? INTERACTION_CONFIG.scaleMulHot
+            : lit < INTERACTION_CONFIG.scaleMulDimThreshold
+              ? INTERACTION_CONFIG.scaleMulDim
+              : 1) * (1 + boost * INTERACTION_CONFIG.boostScaleMul)
         o.mesh.scale.setScalar(pose.scale * scaleMul)
 
-        const opacityBase = lit < 0.3 ? 0.35 : 0.75 + Math.min(1, lit) * 0.25
+        const opacityBase =
+          lit < INTERACTION_CONFIG.opacityDimThreshold
+            ? INTERACTION_CONFIG.opacityDimValue
+            : INTERACTION_CONFIG.opacityBaseFloor + Math.min(1, lit) * INTERACTION_CONFIG.opacityLitMul
         o.built.body.opacity = opacityBase
-        o.built.fin.opacity = 0.5 + Math.min(1, lit) * 0.45
-        o.built.body.emissiveIntensity =
-          Math.max(0.25, (o.data.glow + boost * 0.8) * 0.85 * Math.min(1, lit) * (light ? 0.6 : 1.1))
-        o.built.fin.emissiveIntensity =
-          Math.max(0.35, (o.data.glow + boost * 1.0) * 1.2 * Math.min(1, lit) * (light ? 0.6 : 1.25))
+        o.built.fin.opacity = INTERACTION_CONFIG.finOpacityBase + Math.min(1, lit) * INTERACTION_CONFIG.finOpacityLitMul
+        // Floor is theme-aware, not just the multiplier: sunlit daylight
+        // already lights the fish for free, so it doesn't need the same
+        // emissive crutch night's bioluminescent read relies on — otherwise a
+        // focused/highlighted fish (scaleMul above grows it up to 1.15x) just
+        // presents more *area* of the same fixed-floor glow, and shines
+        // harder in daylight the bigger it gets.
+        o.built.body.emissiveIntensity = Math.max(
+          tuning.fishBodyEmissiveFloor,
+          (o.data.glow + boost * INTERACTION_CONFIG.bodyEmissiveBoostMul) *
+            INTERACTION_CONFIG.bodyEmissiveGlowMul *
+            Math.min(1, lit) *
+            tuning.fishBodyEmissiveMul,
+        )
+        o.built.fin.emissiveIntensity = Math.max(
+          tuning.fishFinEmissiveFloor,
+          (o.data.glow + boost * INTERACTION_CONFIG.finEmissiveBoostMul) *
+            INTERACTION_CONFIG.finEmissiveGlowMul *
+            Math.min(1, lit) *
+            tuning.fishFinEmissiveMul,
+        )
         o.built.glow.intensity =
-          (o.data.glow + boost * 1.2) *
-          2.4 *
+          (o.data.glow + boost * INTERACTION_CONFIG.glowBoostMul) *
+          INTERACTION_CONFIG.glowIntensityMul *
           Math.min(1, lit) *
-          (focused ? 2.8 : 1) *
-          (light ? 0.75 : 1.25)
+          (focused ? INTERACTION_CONFIG.glowFocusedMul : 1) *
+          tuning.fishGlowMul
 
         _v.copy(o.mesh.position)
-        _v.y -= 1.6 * pose.scale
+        _v.y -= LABEL_CONFIG.yOffsetMul * pose.scale
         _v.project(camera)
         const behind = _v.z > 1
-        const inTank = prog > 0.55
+        const inTank = prog > LABEL_CONFIG.diveGateProg
         // Any lock hides every name pill, the focused fish included: the
         // dossier names it, so a pill on top is just text over the specimen.
         const hiddenByLock = selected != null
@@ -1554,9 +1711,9 @@ export default function FishTankCanvas({
           inTank &&
           !hiddenByLock &&
           !behind &&
-          Math.abs(_v.x) < 1.1 &&
-          Math.abs(_v.y) < 1.1 &&
-          lit > 0.35
+          Math.abs(_v.x) < LABEL_CONFIG.ndcCullX &&
+          Math.abs(_v.y) < LABEL_CONFIG.ndcCullY &&
+          lit > LABEL_CONFIG.litVisibilityThreshold
         o.label.style.display = vis ? "flex" : "none"
         if (vis) {
           o.label.style.left = `${(_v.x * 0.5 + 0.5) * w}px`
@@ -1567,27 +1724,32 @@ export default function FishTankCanvas({
             _hex: string
           }
           if (typedLabel._pill) {
-            const isHot = focused || lit > 1
+            const isHot = focused || lit > LABEL_CONFIG.hotLitThreshold
             const hex = typedLabel._hex
-            typedLabel._pill.style.boxShadow = isHot
-              ? `0 0 16px ${hex}aa,0 0 6px ${hex}77,0 2px 12px rgba(0,0,0,.6)`
-              : `0 2px 10px rgba(0,0,0,.4)`
+            typedLabel._pill.style.boxShadow = isHot ? LABEL_CONFIG.hotShadow(hex) : LABEL_CONFIG.coldShadow
             typedLabel._pill.style.borderColor = isHot
-              ? `${hex}ee`
-              : `${hex}99`
+              ? `${hex}${LABEL_CONFIG.hotBorderAlpha}`
+              : `${hex}${LABEL_CONFIG.coldBorderAlpha}`
           }
         }
 
         // Emit bioluminescent wake particles behind fish tail
         const col = domainColor(o.data.species)
-        const isEmitting = Math.random() < (0.35 + (o.data.speed || 0.5) * 0.45 + boost * 0.3)
-        if (isEmitting && prog > 0.4) {
+        const isEmitting =
+          Math.random() <
+          WAKE_CONFIG.emissionBase + (o.data.speed || 0.5) * WAKE_CONFIG.emissionSpeedMul + boost * WAKE_CONFIG.emissionBoostMul
+        if (isEmitting && prog > WAKE_CONFIG.emissionDiveGate) {
           wakePool.emit(
             o.mesh.position.x,
             o.mesh.position.y,
             o.mesh.position.z,
             { r: col.r ?? 0.5, g: col.g ?? 0.8, b: col.b ?? 1.0 },
-            { size: (o.data.glow * 1.6 + 0.9) * (boost ? 1.6 : 1), maxLife: 1.3 + boost * 0.6 },
+            {
+              size:
+                (o.data.glow * WAKE_CONFIG.particleSizeGlowMul + WAKE_CONFIG.particleSizeBase) *
+                (boost ? WAKE_CONFIG.particleSizeBoostMul : 1),
+              maxLife: WAKE_CONFIG.maxLifeBase + boost * WAKE_CONFIG.maxLifeBoostMul,
+            },
           )
         }
       }
@@ -1596,9 +1758,9 @@ export default function FishTankCanvas({
       for (let i = 0; i < shockwavePool.length; i++) {
         const sw = shockwavePool[i]!
         if (!sw.active) continue
-        sw.r += dt * 16
+        sw.r += dt * SHOCKWAVE_CONFIG.growthRate
         const progress = sw.r / sw.maxR
-        sw.opacity = Math.max(0, (1 - progress) * 0.75)
+        sw.opacity = Math.max(0, (1 - progress) * SHOCKWAVE_CONFIG.fadeMul)
         sw.mesh.scale.set(sw.r, 1, sw.r)
         ;(sw.mesh.material as THREE.MeshBasicMaterial).opacity = sw.opacity
         if (progress >= 1) {
@@ -1629,7 +1791,7 @@ export default function FishTankCanvas({
 
       // Publish sonar contacts. 40 specimens at 60fps would be pure waste —
       // the radar only needs to feel live, so it runs at ~10Hz.
-      if (prog > 0.4 && t - lastSonarAt > 0.1) {
+      if (prog > SONAR_CONFIG.diveGate && t - lastSonarAt > SONAR_CONFIG.updateIntervalSec) {
         lastSonarAt = t
         if (sonarSourcesBuffer.length !== fishObjs.length) {
           sonarSourcesBuffer.length = fishObjs.length
@@ -1671,34 +1833,34 @@ export default function FishTankCanvas({
         _v.project(camera)
         const ax = (_v.x * 0.5 + 0.5) * w
         const ay = (-_v.y * 0.5 + 0.5) * h
-        const worldR = 2.4 * selected.scale.x
+        const worldR = ANCHOR_CONFIG.worldRadiusMul * selected.scale.x
         _v2.copy(selected.position)
         _v2.y += worldR
         _v2.project(camera)
         const topY = (-_v2.y * 0.5 + 0.5) * h
-        const ar = Math.max(24, Math.abs(ay - topY))
+        const ar = Math.max(ANCHOR_CONFIG.minRadius, Math.abs(ay - topY))
         if (
-          Math.abs(ax - lastAnchor.x) > 2 ||
-          Math.abs(ay - lastAnchor.y) > 2 ||
-          Math.abs(ar - lastAnchor.r) > 4
+          Math.abs(ax - lastAnchor.x) > ANCHOR_CONFIG.xEpsilon ||
+          Math.abs(ay - lastAnchor.y) > ANCHOR_CONFIG.yEpsilon ||
+          Math.abs(ar - lastAnchor.r) > ANCHOR_CONFIG.rEpsilon
         ) {
           lastAnchor.x = ax
           lastAnchor.y = ay
           lastAnchor.r = ar
           fishBus.emit("fish:anchor", { x: ax, y: ay, r: ar, w, h })
         }
-      } else if (lastAnchor.x !== -9999) {
-        lastAnchor.x = -9999
-        lastAnchor.y = -9999
+      } else if (lastAnchor.x !== ANCHOR_CONFIG.sentinel) {
+        lastAnchor.x = ANCHOR_CONFIG.sentinel
+        lastAnchor.y = ANCHOR_CONFIG.sentinel
         fishBus.emit("fish:anchor", null)
       }
 
       // Wobble ramps in as the camera sinks below the waterline and deepens
       // with dive progress. Absorption rides scene.fog.density instead.
-      const submerged = clamp((WATER_Y - camera.position.y) / 6, 0, 1)
+      const submerged = clamp((WATER_Y - camera.position.y) / CAMERA_CONFIG.immersionDepthDivisor, 0, 1)
       composer.render({
         time: st,
-        wobble: submerged * (0.35 + 0.65 * prog),
+        wobble: submerged * (POST_CONFIG.wobbleBase + POST_CONFIG.wobbleProgMul * prog),
         focusDistance: selected ? camera.position.distanceTo(selected.position) : 0,
       })
     }

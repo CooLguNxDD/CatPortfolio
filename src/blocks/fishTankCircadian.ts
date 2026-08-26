@@ -14,6 +14,11 @@ import { mixHex, type CircadianPhase, type TankThemePalette } from "./fishTankTo
  * schooling. Night is a bioluminescent abyss: the key light all but goes out,
  * the medium darkens toward indigo, and the fauna slow to a drift — the glow
  * has to come from the meshes themselves.
+ *
+ * The sky dome is deliberately NOT part of this cycle — it's keyed by theme
+ * mode (light/dark) in `resolveTankThemePalette`, not the visitor's clock, so
+ * a baked layout's sky stays whatever the theme says regardless of the
+ * ☀️/🌙/🕓 circadian chip.
  */
 export function applyCircadian(
   palette: TankThemePalette,
