@@ -178,7 +178,7 @@ CatPortfolio/
 │   ├── hooks/                  # useFishTank useDemoLayout usePageLayout useLayoutDag useLayoutTheme
 │   │                           # useThemeRegistry useThemeTokens useLayoutSessionHydrated
 │   ├── api/                    # octClient harness instructions agentStatus
-│   ├── themes/                 # cozy / neon / paper theme JSONs + registry + context
+│   ├── themes/                 # cozy / neon / paper + Catppuccin (mocha default, macchiato, frappe, latte) + registry + context
 │   ├── styles/                 # matrix.css (level bands, lighting) · fish-tank.css
 │   ├── lib/                    # utils.ts (cn) · demoSearch.ts
 │   └── types/three.d.ts

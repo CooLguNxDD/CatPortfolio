@@ -291,6 +291,6 @@
       "audience": "default"
     }
   ],
-  "themes": ["cozy", "neon", "paper"],
+  "themes": ["cozy", "neon", "paper", "latte", "frappe", "macchiato", "mocha"],
   "presets": ["showcase", "minimal", "deep-dive"]
 }

@@ -45,7 +45,7 @@ async function main() {
     source: url,
     fragments: data.fragments ?? [],
     quick_actions: data.quick_actions ?? [],
-    themes: data.themes ?? ["cozy", "neon", "paper"],
+    themes: data.themes ?? ["cozy", "neon", "paper", "latte", "frappe", "macchiato", "mocha"],
     presets: data.presets ?? [],
   };
 
