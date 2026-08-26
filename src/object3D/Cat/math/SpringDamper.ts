@@ -3,12 +3,14 @@
  * Second-order spring-damper system for organic, lifelike animation and tactile feedback.
  */
 
+/** Tuning parameters (stiffness, damping, mass) for a spring-damper system; damping is caller-supplied, not fixed to critical. */
 export interface SpringConfig {
   stiffness: number; // Spring stiffness constant (k)
   damping: number;   // Damping coefficient (c)
   mass?: number;     // Mass (m)
 }
 
+/** A 1D spring-damper for smooth scalar interpolation, integrated with sub-stepped semi-implicit Euler for frame-rate-independent stability. */
 export class SpringDamper1D {
   public value: number;
   public velocity = 0;
@@ -26,6 +28,8 @@ export class SpringDamper1D {
   }
 
   update(dt: number): number {
+    // Sub-step at a fixed 1/60s cadence so the semi-implicit Euler integration
+    // stays stable even when dt spikes after a dropped frame.
     const MAX_STEP = 1 / 60;
     let remaining = Math.min(dt, 0.1); // Prevent explosion on frame drop
 
@@ -53,10 +57,13 @@ export class SpringDamper1D {
   }
 }
 
+/** A 3D spring-damper (three independent 1D springs) for smooth Vector3-shaped interpolation. */
 export class SpringDamper3D {
   public x: SpringDamper1D;
   public y: SpringDamper1D;
   public z: SpringDamper1D;
+
+  private result = { x: 0, y: 0, z: 0 };
 
   constructor(
     initial = { x: 0, y: 0, z: 0 },
@@ -74,11 +81,10 @@ export class SpringDamper3D {
   }
 
   update(dt: number): { x: number; y: number; z: number } {
-    return {
-      x: this.x.update(dt),
-      y: this.y.update(dt),
-      z: this.z.update(dt),
-    };
+    this.result.x = this.x.update(dt);
+    this.result.y = this.y.update(dt);
+    this.result.z = this.z.update(dt);
+    return this.result;
   }
 
   impulse(force: { x: number; y: number; z: number }): void {
