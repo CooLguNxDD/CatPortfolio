@@ -6,6 +6,7 @@
 import type { AnimationContext } from '../rig/types';
 import type { CatRig } from '../rig/CatRig';
 
+/** Standard contract for a weighted, blendable animation layer applied to the cat rig each frame. */
 export interface IAnimationLayer {
   name: string;
   enabled: boolean;
@@ -15,6 +16,7 @@ export interface IAnimationLayer {
   dispose?(): void;
 }
 
+/** Common boilerplate (enabled/weight state, no-op init/dispose) for concrete cat rig animation layers. */
 export abstract class BaseAnimationLayer implements IAnimationLayer {
   public abstract name: string;
   public enabled = true;

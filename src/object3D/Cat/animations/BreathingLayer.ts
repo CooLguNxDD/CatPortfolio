@@ -8,6 +8,7 @@ import { BaseAnimationLayer } from './AnimationLayer';
 import type { AnimationContext } from '../rig/types';
 import type { CatRig } from '../rig/CatRig';
 
+/** Amplitude/frequency configuration for the idle breathing and tail-wave animation. */
 export interface BreathingConfig {
   bpm?: number;            // Breaths per minute (default: 16)
   chestAmplitude?: number; // Expansion amplitude
@@ -15,6 +16,7 @@ export interface BreathingConfig {
   tailWaveAmplitude?: number;
 }
 
+/** Procedural animation layer driving harmonic chest expansion and a 7-segment sinusoidal tail travelling wave. */
 export class BreathingLayer extends BaseAnimationLayer {
   public readonly name = 'Breathing';
 

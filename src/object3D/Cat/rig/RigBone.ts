@@ -7,6 +7,10 @@ import * as THREE from 'three';
 import { LinearTransform } from '../math/LinearTransform';
 import type { BoneConfig, BoneConstraints, BoneName } from './types';
 
+const scratchOffset2D = new THREE.Vector2();
+const scratchClamped2D = new THREE.Vector2();
+
+/** A single node in the cat's skeletal rig: local transform state, hierarchical parenting, and forward-kinematics matrix composition. */
 export class RigBone {
   public readonly name: BoneName;
   public parent: RigBone | null = null;
@@ -71,8 +75,13 @@ export class RigBone {
     if (positionDelta) {
       this.localPosition.addVectors(this.initialPosition, positionDelta);
       if (this.constraints.maxRadialOffset !== undefined) {
-        const offset2D = new THREE.Vector2(positionDelta.x, positionDelta.y);
-        const clamped = LinearTransform.clampRadialVector(offset2D, this.constraints.maxRadialOffset);
+        // Clamp pupil/socket displacement strictly within the 2D radius to prevent mesh clipping.
+        scratchOffset2D.set(positionDelta.x, positionDelta.y);
+        const clamped = LinearTransform.clampRadialVector(
+          scratchOffset2D,
+          this.constraints.maxRadialOffset,
+          scratchClamped2D
+        );
         this.localPosition.x = this.initialPosition.x + clamped.x;
         this.localPosition.y = this.initialPosition.y + clamped.y;
       }

@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 
+/** Valid bone identifiers in the modular cat rig's fixed skeletal hierarchy. */
 export type BoneName =
   | 'root'
   | 'spine'
@@ -29,6 +30,7 @@ export type BoneName =
   | 'tail5'
   | 'tail6';
 
+/** Angular and translational limits applied to a RigBone's forward-kinematics offsets. */
 export interface BoneConstraints {
   minRotation?: THREE.Euler;
   maxRotation?: THREE.Euler;
@@ -39,6 +41,7 @@ export interface BoneConstraints {
   translationMultiplier?: number;
 }
 
+/** Initialization parameters for constructing a RigBone: rest pose, pivot, and constraints. */
 export interface BoneConfig {
   name: BoneName;
   parent?: BoneName;
@@ -50,6 +53,7 @@ export interface BoneConfig {
   targetObject?: THREE.Object3D;
 }
 
+/** The spatial target the cat's head and eye tracking systems steer toward. */
 export interface GazeTarget {
   screenCoords: { x: number; y: number }; // [-1, 1] NDC or [0, width/height]
   worldCoords: THREE.Vector3;
@@ -57,6 +61,7 @@ export interface GazeTarget {
   isActive: boolean;
 }
 
+/** Per-frame payload passed to animation layers: delta time, elapsed time, and active gaze state. */
 export interface AnimationContext {
   dt: number;
   time: number;
