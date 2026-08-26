@@ -1,6 +1,7 @@
 import { useEffect, useState, useId } from "react";
 import mermaid from "mermaid";
 import { usePreferencesStore } from "@/store";
+import { LIGHT_THEME_IDS } from "@/themes/registry";
 
 let mermaidInitialized = false;
 let mermaidTheme: string | null = null;
@@ -12,8 +13,7 @@ export default function MermaidDiagram({ source }: { source: string }) {
   // Sanitizing the ID to be a valid HTML ID without colons
   const elementId = `mmd-${rawId.replace(/:/g, "-")}`;
   const themeId = usePreferencesStore((s) => s.theme);
-  // paper is light; others are dark-ish
-  const mermaidThemeName = themeId === "paper" ? "neutral" : "dark";
+  const mermaidThemeName = LIGHT_THEME_IDS.has(themeId) ? "neutral" : "dark";
 
   useEffect(() => {
     let active = true;

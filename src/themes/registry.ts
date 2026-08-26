@@ -154,4 +154,20 @@ const rawModules = import.meta.glob<unknown>("./*.theme.json", {
 
 export const themeRegistry: Record<string, ThemeDef> = buildRegistry(rawModules)
 export const themeList: ThemeDef[] = Object.values(themeRegistry)
-export const DEFAULT_THEME_ID = "cozy"
+export const DEFAULT_THEME_ID = "mocha"
+export const DEFAULT_LIGHT_THEME_ID = "latte"
+
+/** Theme ids whose surfaces are light (Mermaid, mermaid-neutral, etc.). */
+export const LIGHT_THEME_IDS = new Set(["paper", "latte"])
+
+export type ThemeMode = "dark" | "light"
+
+/** Dark vs light from a registered theme id (unknown ids count as dark). */
+export function themeModeOf(themeId: string): ThemeMode {
+  return LIGHT_THEME_IDS.has(themeId) ? "light" : "dark"
+}
+
+/** Themes available in a light or dark mode. */
+export function themesForMode(mode: ThemeMode): ThemeDef[] {
+  return themeList.filter((t) => themeModeOf(t.id) === mode)
+}

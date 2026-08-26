@@ -217,10 +217,47 @@ const WATER_BASE_LIGHT = 0x9fd8e6
 const DEEP_BASE_DARK = 0x02121d
 const DEEP_BASE_LIGHT = 0x4f9fba
 
+/** Catppuccin flavor water — sapphire (dark) / sky (Latte). Cozy/neon/paper keep the bases. */
+const CATPPUCCIN_WATER: Record<
+  string,
+  { waterDark: number; waterLight: number; deepDark: number; deepLight: number }
+> = {
+  mocha: {
+    waterDark: 0x0c3048,
+    waterLight: 0x8ec8de,
+    deepDark: 0x041824,
+    deepLight: 0x4a96b4,
+  },
+  frappe: {
+    waterDark: 0x0d3348,
+    waterLight: 0x8ecad6,
+    deepDark: 0x051a26,
+    deepLight: 0x4c98ae,
+  },
+  macchiato: {
+    waterDark: 0x0c3146,
+    waterLight: 0x8dc9dc,
+    deepDark: 0x041926,
+    deepLight: 0x4a97b2,
+  },
+  latte: {
+    waterDark: 0x0a2e40,
+    waterLight: 0x8fd0dc,
+    deepDark: 0x031820,
+    deepLight: 0x48a0b4,
+  },
+}
+
+/** Active theme id from ThemeProvider's data-theme stamp (empty in SSR/tests). */
+function readActiveThemeId(): string {
+  if (typeof document === "undefined") return ""
+  return document.documentElement.getAttribute("data-theme") ?? ""
+}
+
 /** Sample live CSS theme tokens into a three-safe underwater palette. */
 export function resolveTankThemePalette(): TankThemePalette {
-  const bgCss = readCssToken("bg", "oklch(0.18 0.018 45)")
-  // Only `paper` is a light theme; cozy + neon stay night-dive.
+  const bgCss = readCssToken("bg", "oklch(0.243 0.030 284)")
+  // Latte / paper parse as light from --bg OKLCH; garbage → dark-safe.
   const light = isLightSurface(bgCss)
   const bg = tokenToHex("bg", light ? 0xe8e4dc : 0x2a241c)
   const bgSunken = tokenToHex("bg-sunken", light ? 0xd4cfc4 : 0x1c1814)
@@ -233,9 +270,23 @@ export function resolveTankThemePalette(): TankThemePalette {
 
   // Tint the water toward the theme's own cool accent so cozy/neon differ,
   // but never enough to stop reading as water.
-  const waterBase = light ? WATER_BASE_LIGHT : WATER_BASE_DARK
+  const flavorWater = CATPPUCCIN_WATER[readActiveThemeId()]
+  const waterBase = flavorWater
+    ? light
+      ? flavorWater.waterLight
+      : flavorWater.waterDark
+    : light
+      ? WATER_BASE_LIGHT
+      : WATER_BASE_DARK
+  const deepBase = flavorWater
+    ? light
+      ? flavorWater.deepLight
+      : flavorWater.deepDark
+    : light
+      ? DEEP_BASE_LIGHT
+      : DEEP_BASE_DARK
   const water = mixHex(waterBase, cyan, light ? 0.18 : 0.26)
-  const deep = mixHex(light ? DEEP_BASE_LIGHT : DEEP_BASE_DARK, cyan, 0.14)
+  const deep = mixHex(deepBase, cyan, 0.14)
   const sun = light ? liftHex(cyan, 0.72) : liftHex(cyan, 0.5)
 
   return {

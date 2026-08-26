@@ -12,6 +12,8 @@ describe("fishTankTokens colour helpers", () => {
     expect(oklchLightness("oklch(0.18 0.018 45)")).toBeCloseTo(0.18)
     expect(isLightSurface("oklch(0.97 0.012 80)")).toBe(true)
     expect(isLightSurface("oklch(0.18 0.018 45)")).toBe(false)
+    expect(isLightSurface("oklch(0.958 0.006 265)")).toBe(true)
+    expect(isLightSurface("oklch(0.243 0.030 284)")).toBe(false)
   })
 
   it("lifts hex toward white", () => {
