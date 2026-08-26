@@ -10,6 +10,7 @@ import { SpringDamper3D } from '../math/SpringDamper';
 import type { AnimationContext } from '../rig/types';
 import type { CatRig } from '../rig/CatRig';
 
+/** Sensitivity, spring, and angular-limit configuration for head and pupil gaze tracking. */
 export interface GazeTrackingConfig {
   sensitivity?: number; // Cursor tracking responsiveness
   stiffness?: number;   // Spring stiffness
@@ -19,6 +20,7 @@ export interface GazeTrackingConfig {
   pupilSensitivity?: number;
 }
 
+/** Procedural animation layer that spring-damps the cat's head yaw/pitch/roll and pupils toward the active gaze target. */
 export class GazeTrackingLayer extends BaseAnimationLayer {
   public readonly name = 'GazeTracking';
 
@@ -80,6 +82,8 @@ export class GazeTrackingLayer extends BaseAnimationLayer {
     });
 
     // 2. Smoothly update head spring
+    // Yaw and pitch come straight from computeLookAtAngles; roll is added deliberately
+    // here as a small fraction of yaw so the head banks naturally when turning.
     this.headSpring.setTarget({
       x: angles.pitch * this.config.sensitivity,
       y: angles.yaw * this.config.sensitivity,

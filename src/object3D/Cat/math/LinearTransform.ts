@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 
+/** A discrete snapshot of a 3D transform: position, rotation, and scale. */
 export interface TransformState {
   position: THREE.Vector3;
   rotation: THREE.Euler;
@@ -16,7 +17,9 @@ const mToPivot = new THREE.Matrix4();
 const mRotScale = new THREE.Matrix4();
 const mFromPivot = new THREE.Matrix4();
 const zeroVector = new THREE.Vector3(0, 0, 0);
+const scratchDelta = new THREE.Vector3();
 
+/** Static utility methods for forward-kinematics matrix composition, look-at angle solving, and vector clamping/interpolation. */
 export class LinearTransform {
   /**
    * Clamps an angle (in radians) between min and max limits.
@@ -43,7 +46,7 @@ export class LinearTransform {
     target: THREE.Vector3,
     limits?: { maxPitch?: number; maxYaw?: number; maxRoll?: number }
   ): { yaw: number; pitch: number; roll: number } {
-    const delta = new THREE.Vector3().subVectors(target, origin);
+    const delta = scratchDelta.subVectors(target, origin);
     const horizontalDistance = Math.hypot(delta.x, delta.z);
 
     if (horizontalDistance < 0.0001) {
@@ -83,7 +86,7 @@ export class LinearTransform {
     position: THREE.Vector3,
     rotation: THREE.Euler,
     scale: THREE.Vector3,
-    pivot: THREE.Vector3 = new THREE.Vector3(0, 0, 0),
+    pivot: THREE.Vector3 = zeroVector,
     targetMatrix?: THREE.Matrix4
   ): THREE.Matrix4 {
     const m = targetMatrix ?? new THREE.Matrix4();
@@ -132,12 +135,15 @@ export class LinearTransform {
    */
   static clampRadialVector(
     vector: THREE.Vector2,
-    maxRadius: number
+    maxRadius: number,
+    target?: THREE.Vector2
   ): THREE.Vector2 {
+    const out = target ?? vector.clone();
+    if (target) out.copy(vector);
     const len = vector.length();
     if (len <= maxRadius || len === 0) {
-      return vector.clone();
+      return out;
     }
-    return vector.clone().multiplyScalar(maxRadius / len);
+    return out.multiplyScalar(maxRadius / len);
   }
 }

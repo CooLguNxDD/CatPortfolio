@@ -10,6 +10,7 @@ import { CatAnimationEngine } from '../animations/CatAnimationEngine';
 import { buildCat3DMesh } from '../mesh/CatMeshBuilder';
 import { PurrReactionLayer } from '../animations/PurrReactionLayer';
 
+/** Props for configuring the Cat3DView canvas component. */
 export interface Cat3DViewProps {
   className?: string;
   width?: number | string;
@@ -20,6 +21,7 @@ export interface Cat3DViewProps {
   interactive?: boolean;
 }
 
+/** React Three.js Canvas component hosting the interactive Modular Cat Rig. */
 export const Cat3DView: React.FC<Cat3DViewProps> = ({
   className = '',
   width = '100%',
@@ -136,11 +138,14 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
     container.addEventListener('keydown', handleKeyDown);
 
     // 6. Resize Observer
+    const refreshRect = () => {
+      cachedRect = container.getBoundingClientRect();
+    };
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width: newW, height: newH } = entry.contentRect;
         if (newW > 0 && newH > 0) {
-          cachedRect = container.getBoundingClientRect();
+          refreshRect();
           camera.aspect = newW / newH;
           camera.updateProjectionMatrix();
           renderer.setSize(newW, newH);
@@ -148,6 +153,7 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
       }
     });
     resizeObserver.observe(container);
+    window.addEventListener('scroll', refreshRect, { passive: true, capture: true });
 
     // 7. Animation Tick Loop
     const clock = new THREE.Clock();
@@ -166,6 +172,7 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
       window.removeEventListener('pointermove', handlePointerMove);
       container.removeEventListener('click', handlePointerDown);
       container.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', refreshRect, { capture: true });
       resizeObserver.disconnect();
       engine.dispose();
       renderer.dispose();
@@ -178,7 +185,7 @@ export const Cat3DView: React.FC<Cat3DViewProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative select-none overflow-hidden ${className}`}
+      className={`relative select-none overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${className}`}
       style={{ width, height }}
       tabIndex={interactive ? 0 : -1}
       role="button"

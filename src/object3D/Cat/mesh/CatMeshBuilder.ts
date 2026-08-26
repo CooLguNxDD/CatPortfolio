@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import type { CatRig } from '../rig/CatRig';
 
+/** Standard material set used to render the parts of the stylized cat mesh. */
 export interface CatMeshMaterials {
   fur: THREE.MeshStandardMaterial;
   furCream: THREE.MeshStandardMaterial;
@@ -17,6 +18,7 @@ export interface CatMeshMaterials {
   whisker: THREE.MeshBasicMaterial;
 }
 
+/** Instantiates the default StandardMaterials used by buildCat3DMesh. */
 export function createCatDefaultMaterials(): CatMeshMaterials {
   return {
     fur: new THREE.MeshStandardMaterial({
@@ -61,6 +63,7 @@ export function createCatDefaultMaterials(): CatMeshMaterials {
   };
 }
 
+/** Constructs the hierarchical Three.js mesh geometry and binds each part to its RigBone via targetObject. */
 export function buildCat3DMesh(rig: CatRig, customMaterials?: Partial<CatMeshMaterials>): THREE.Group {
   const materials = { ...createCatDefaultMaterials(), ...customMaterials };
   const rootGroup = new THREE.Group();

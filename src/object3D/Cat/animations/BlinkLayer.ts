@@ -8,6 +8,7 @@ import { BaseAnimationLayer } from './AnimationLayer';
 import type { AnimationContext } from '../rig/types';
 import type { CatRig } from '../rig/CatRig';
 
+/** Timing and probability configuration for the Poisson-distributed procedural blinking animation. */
 export interface BlinkConfig {
   minInterval?: number;       // In seconds (default: 2.5)
   maxInterval?: number;       // In seconds (default: 6.0)
@@ -15,6 +16,7 @@ export interface BlinkConfig {
   doubleBlinkChance?: number; // Probability [0..1] (default: 0.15)
 }
 
+/** Procedural animation layer driving stochastic eyelid blinks, with a chance of a follow-up double blink. */
 export class BlinkLayer extends BaseAnimationLayer {
   public readonly name = 'Blink';
 
