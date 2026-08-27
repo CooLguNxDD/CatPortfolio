@@ -116,4 +116,17 @@ describe("buildMessageActions", () => {
       { kind: "focus", target: "weltel-devops", label: "weltel-devops" },
     ])
   })
+
+  it("deduplicates patched ids in view actions", () => {
+    const patch: BlockPatchResult = {
+      blocks: [],
+      patchedIds: ["a", "a", "b"],
+      dropped: 0,
+    }
+    const actions = buildMessageActions(null, [], patch)
+    expect(actions).toEqual([
+      { kind: "view", target: "a", label: "a" },
+      { kind: "view", target: "b", label: "b" },
+    ])
+  })
 })

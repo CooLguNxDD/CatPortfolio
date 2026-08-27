@@ -66,7 +66,7 @@ function ChartFishHits({ series }: { series: Series[] }) {
   const hits = useMemo(() => {
     const seen = new Set<string>();
     const resolved: { slug: string; label: string }[] = [];
-    for (const name of namesFromSeries(series)) {
+    for (const name of new Set(namesFromSeries(series))) {
       const match = matchFishByName(fish, name);
       if (!match || seen.has(match.slug)) continue;
       seen.add(match.slug);

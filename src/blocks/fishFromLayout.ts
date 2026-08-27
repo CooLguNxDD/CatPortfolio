@@ -27,7 +27,8 @@ function clampTags(tags: unknown): string[] {
 
 /** Drop HTML comments before the 600-char slice so leftover `<!--` cannot render as `<!`. */
 export function stripHtmlComments(s: string): string {
-  const stripped = s.replace(/<!--[\s\S]*?-->/g, "")
+  const bounded = s.slice(0, 4000)
+  const stripped = bounded.replace(/<!--[\s\S]*?-->/g, "")
   const cut = stripped.indexOf("<!--")
   return (cut >= 0 ? stripped.slice(0, cut) : stripped).trim()
 }

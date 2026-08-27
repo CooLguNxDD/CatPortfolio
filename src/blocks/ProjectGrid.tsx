@@ -8,7 +8,7 @@ import type { Layout } from "@/content/schema"
 import { Card } from "./Card"
 import { useLayoutStore } from "@/store"
 import { sceneFromLayout } from "@/fish/sceneFromLayout"
-import { compareRecruiterOrder, yearRangeLabel } from "@/fish/matchFish"
+import { compareRecruiterOrder, highlightSet, yearRangeLabel } from "@/fish/matchFish"
 import { useRenderedLayout } from "@/render/layoutContext"
 
 type ProjectGridProps = Extract<
@@ -24,23 +24,29 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
   const rendered = useRenderedLayout()
   const working = useLayoutStore((s) => s.workingLayout)
   const layout = rendered ?? working
-  const scene = sceneFromLayout(layout)
-  const highlightSlugs =
-    layout?.meta?.highlightSlugs ?? scene.highlightSlugs ?? []
+  const scene = useMemo(() => sceneFromLayout(layout), [layout])
+  const highlights = useMemo(
+    () => layout?.meta?.highlightSlugs ?? scene.highlightSlugs ?? [],
+    [layout, scene],
+  )
+  const bySlug = useMemo(
+    () => new Map(scene.fish.map((f) => [f.slug.toLowerCase(), f])),
+    [scene.fish],
+  )
+  const hl = useMemo(() => highlightSet(highlights), [highlights])
 
   const ordered = useMemo(() => {
     if (!projects || projects.length === 0) return []
-    const bySlug = new Map(scene.fish.map((f) => [f.slug.toLowerCase(), f]))
     return [...projects].sort((a, b) => {
       const fa = bySlug.get(String(a.id || "").toLowerCase())
       const fb = bySlug.get(String(b.id || "").toLowerCase())
       return compareRecruiterOrder(
         { slug: String(a.id || ""), startYear: fa?.startYear, endYear: fa?.endYear },
         { slug: String(b.id || ""), startYear: fb?.startYear, endYear: fb?.endYear },
-        highlightSlugs,
+        hl,
       )
     })
-  }, [projects, scene.fish, highlightSlugs])
+  }, [projects, bySlug, hl])
 
   if (ordered.length === 0) return null
 
@@ -48,9 +54,7 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
     <div className="w-full py-2">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {ordered.map((project) => {
-          const fish = scene.fish.find(
-            (f) => f.slug.toLowerCase() === String(project.id || "").toLowerCase(),
-          )
+          const fish = bySlug.get(String(project.id || "").toLowerCase())
           const range = fish ? yearRangeLabel(fish) : null
           const domain =
             (fish?.species as "ai" | "devops" | "mobile" | "platform" | undefined) ||

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
   bestFishForQuestion,
+  compareRecruiterOrder,
   domainsInSchool,
   filterFish,
   fishLitFactor,
+  highlightSet,
   matchesFish,
   matchFishByName,
   normalizeQuery,
@@ -38,6 +40,20 @@ const sample: FishSpecimenInput[] = [
     tags: ["Terraform", "AWS"],
   },
 ]
+
+describe("highlightSet", () => {
+  it("normalizes and filters empty/whitespace highlight slugs", () => {
+    const set = highlightSet([" Weltel-AI ", "WELTEL-DEVOPS", "   ", ""])
+    expect(set.has("weltel-ai")).toBe(true)
+    expect(set.has("weltel-devops")).toBe(true)
+    expect(set.size).toBe(2)
+  })
+
+  it("handles null and undefined input", () => {
+    expect(highlightSet(null).size).toBe(0)
+    expect(highlightSet(undefined).size).toBe(0)
+  })
+})
 
 describe("matchFish", () => {
   it("normalizes query", () => {
@@ -130,6 +146,33 @@ describe("orderFishForRecruiter", () => {
     expect(orderFishForRecruiter(dated, []).map((f) => f.slug)).toEqual([
       "weltel-devops",
       "weltel-ai",
+    ])
+  })
+
+  it("returns 0 (never NaN) for two undated specimens", () => {
+    const res = compareRecruiterOrder(
+      { slug: "undated-a" },
+      { slug: "undated-b" },
+      [],
+    )
+    expect(res).toBe(0)
+    expect(Number.isNaN(res)).toBe(false)
+  })
+
+  it("returns a stable complete permutation over mixed dated and undated list", () => {
+    const mixed = [
+      { ...sample[0], slug: "undated-1" },
+      { ...sample[1], slug: "dated-2025", startYear: 2025 },
+      { ...sample[0], slug: "undated-2" },
+      { ...sample[1], slug: "dated-2022", startYear: 2022 },
+    ]
+    const result = orderFishForRecruiter(mixed, [])
+    expect(result).toHaveLength(mixed.length)
+    expect(result.map((f) => f.slug)).toEqual([
+      "dated-2025",
+      "dated-2022",
+      "undated-1",
+      "undated-2",
     ])
   })
 

@@ -135,9 +135,11 @@ export function buildMessageActions(
       .filter((b) => b.type === "fishTank")
       .map((b) => b.id),
   );
+  const seenView = new Set<string>();
   for (const id of patch?.patchedIds ?? []) {
     if (actions.length >= 4) break;
-    if (fishTankIds.has(id)) continue;
+    if (fishTankIds.has(id) || seenView.has(id)) continue;
+    seenView.add(id);
     actions.push({ kind: "view", target: id, label: id });
   }
   return actions;
