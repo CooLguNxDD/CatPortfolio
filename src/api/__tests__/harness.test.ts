@@ -9,6 +9,7 @@ import {
 } from "../harness";
 import { getSharedClient, resetSharedClient } from "../octClient";
 import { getAskTimeoutMs } from "../../config/runtimeConfig";
+import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 vi.mock("../octClient", () => {
   const mockClient = {
@@ -23,6 +24,10 @@ vi.mock("../octClient", () => {
     getSharedClient: vi.fn().mockResolvedValue(mockClient),
     resetSharedClient: vi.fn(),
     octBaseUrl: vi.fn().mockReturnValue("http://localhost:10000"),
+    // Real classification logic (not string-matched) — mirrors octClient.ts's
+    // actual implementation so this mock stays behaviorally accurate.
+    isOctTimeoutError: (err: unknown) =>
+      err instanceof McpError && err.code === ErrorCode.RequestTimeout,
   };
 });
 
@@ -369,12 +374,27 @@ describe("Harness tests", () => {
 
     it("timeout error gets mapped correctly", async () => {
       const mockClient = await getSharedClient();
-      vi.mocked(mockClient.callTool).mockRejectedValue(new Error("request timeout"));
+      // Real McpError(RequestTimeout) — not a plain Error with "timeout" in the
+      // message — since classification is by SDK error code, not string match.
+      vi.mocked(mockClient.callTool).mockRejectedValue(
+        new McpError(ErrorCode.RequestTimeout, "Request timed out"),
+      );
 
       const res = await askOct("question", "session-123");
       expect(res.ok).toBe(false);
       if (!res.ok) {
         expect(res.kind).toBe("timeout");
+      }
+    });
+
+    it("does not misclassify an unrelated error mentioning 'timeout' in its message", async () => {
+      const mockClient = await getSharedClient();
+      vi.mocked(mockClient.callTool).mockRejectedValue(new Error("connect ECONNREFUSED, timeout"));
+
+      const res = await askOct("question", "session-123");
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.kind).not.toBe("timeout");
       }
     });
 

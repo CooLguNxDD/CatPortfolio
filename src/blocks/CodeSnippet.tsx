@@ -2,6 +2,7 @@ import type { Layout } from "@/content/schema";
 
 type CodeSnippetProps = Extract<Layout["blocks"][number], { type: "codeSnippet" }>["props"];
 
+/** `codeSnippet` block: a terminal-styled card with a language/caption header bar over a plain `<pre><code>` body (no syntax highlighting). */
 export function CodeSnippet({ lang, code, caption }: CodeSnippetProps) {
   return (
     <div className="w-full py-6">

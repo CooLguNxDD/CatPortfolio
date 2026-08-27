@@ -53,12 +53,29 @@ export default function Scene2dCanvas({
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d") ?? null;
 
-    if (canvas && ctx) {
+    // Re-applied on DPI change below (moving the window to a different-DPI
+    // display) — setting canvas.width/height resets the transform matrix
+    // per spec, so re-scaling after is safe and doesn't compound.
+    function applyDpr() {
+      if (!canvas || !ctx) return;
       const dpr = window.devicePixelRatio || 1;
       canvas.width = W * dpr;
       canvas.height = H * dpr;
       ctx.scale(dpr, dpr);
     }
+    applyDpr();
+
+    let dprMediaQuery: MediaQueryList | null = null;
+    const onDprChange = () => {
+      applyDpr();
+      subscribeDprChange();
+    };
+    function subscribeDprChange() {
+      dprMediaQuery?.removeEventListener("change", onDprChange);
+      dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+      dprMediaQuery.addEventListener("change", onDprChange);
+    }
+    if (canvas && ctx) subscribeDprChange();
 
     const accentKey = palette ?? "amber";
     const accent = tokens[accentKey] || "#e8a33d";
@@ -115,6 +132,7 @@ export default function Scene2dCanvas({
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
+      dprMediaQuery?.removeEventListener("change", onDprChange);
     };
   }, [preset, nodes, edges, palette, motion, reduced, tokens]);
 

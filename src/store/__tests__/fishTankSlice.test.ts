@@ -37,22 +37,52 @@ describe("fishTankSlice", () => {
     expect(useStore.getState().curationDismissed).toBe(true)
   })
 
-  it("setFocus is unconditional but flips discrete state only when the machine allows it", () => {
-    useStore.getState().surface()
-    useStore.getState().setFocus("weltel-ai")
-    // Router authority: focus value always applies...
-    expect(useStore.getState().focus).toBe("weltel-ai")
-    // ...but the machine leaves state alone since "focus" isn't legal from "surface".
-    expect(useStore.getState().state).toBe("surface")
-
+  it("setFocus from tank focuses directly (no dive)", () => {
     useStore.getState().dive()
     useStore.getState().setFocus("weltel-devops")
     expect(useStore.getState().focus).toBe("weltel-devops")
     expect(useStore.getState().state).toBe("focused")
+    expect(useStore.getState().pendingFocus).toBeNull()
 
     useStore.getState().setFocus(null)
     expect(useStore.getState().focus).toBeNull()
     expect(useStore.getState().state).toBe("tank")
+  })
+
+  it("setFocus from the surface dives first, then focuses on arrival (no rAF in test env → settles instantly)", () => {
+    useStore.getState().surface()
+    useStore.getState().setFocus("weltel-ai")
+    // Router authority: focus value always applies immediately...
+    expect(useStore.getState().focus).toBe("weltel-ai")
+    // ...and the dive it triggers settles synchronously in the test env, so
+    // the queued focus drains right away instead of leaving you at the rim.
+    expect(useStore.getState().state).toBe("focused")
+    expect(useStore.getState().pendingFocus).toBeNull()
+  })
+
+  it("releasing mid-dive drops the queued surface-pick focus", () => {
+    useStore.getState().surface()
+    useStore.getState().setFocus("weltel-ai")
+    expect(useStore.getState().state).toBe("focused")
+
+    useStore.getState().setFocus(null)
+    expect(useStore.getState().focus).toBeNull()
+    expect(useStore.getState().pendingFocus).toBeNull()
+    expect(useStore.getState().state).toBe("tank")
+  })
+
+  it("surface() clears any queued pendingFocus", () => {
+    useStore.getState().setFocus("weltel-ai")
+    useStore.getState().surface()
+    expect(useStore.getState().pendingFocus).toBeNull()
+    expect(useStore.getState().focus).toBeNull()
+  })
+
+  it("getProgress reflects the settled dive/surface target", () => {
+    useStore.getState().dive()
+    expect(useStore.getState().getProgress()).toBe(1)
+    useStore.getState().surface()
+    expect(useStore.getState().getProgress()).toBe(0)
   })
 
   it("dive() from tank is legal (re-dive quirk) and settles back to tank with no rAF in test env", () => {

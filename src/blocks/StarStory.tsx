@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 
 type StarStoryProps = Extract<Layout["blocks"][number], { type: "starStory" }>["props"];
 
+/** `starStory` block: Situation/Task/Action/Result quadrant card with an optional tag footer. */
 export function StarStory({ situation, task, action, result, tags }: StarStoryProps) {
   const sections = [
     { label: "Situation", content: situation },

@@ -191,14 +191,13 @@ export function useLayoutDag(layout: Layout | null | undefined) {
       settleCleanupRef.current?.();
       settleCleanupRef.current = null;
 
-      const el = document.querySelector(
-        `[data-dag-level="${level}"]`,
-      ) as HTMLElement | null;
+      const found = document.querySelector(`[data-dag-level="${level}"]`);
+      const el = found instanceof HTMLElement ? found : null;
       if (!el) return;
       // Offset for app header + sticky matrix chrome so the band lands on the
       // same focus line used by measureActiveIndex (not under sticky UI).
-      const chrome =
-        document.querySelector(".matrix-sticky-chrome") as HTMLElement | null;
+      const chromeEl = document.querySelector(".matrix-sticky-chrome");
+      const chrome = chromeEl instanceof HTMLElement ? chromeEl : null;
       const header = 56;
       const chromeH = chrome?.offsetHeight ?? 0;
       const top =

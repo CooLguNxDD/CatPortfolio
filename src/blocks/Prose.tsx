@@ -102,6 +102,7 @@ const components = {
   },
 };
 
+/** `prose` block: renders GFM markdown via `react-markdown`, restyling every element through the `components` table above. */
 export function Prose({ markdown }: ProseProps) {
   return (
     <div className="w-full py-6 text-(--fg) space-y-4 rounded-xl border border-(--hairline)/60 bg-(--card)/40 px-4 shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-0.5">

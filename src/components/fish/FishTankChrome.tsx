@@ -56,7 +56,11 @@ export function FishTankChrome({
   const tankSectionRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    const channel = createFrameChannel(fishBus, "tank:progress", 0)
+    const channel = createFrameChannel(
+      fishBus,
+      "tank:progress",
+      useFishTankStore.getState().getProgress(),
+    )
     return channel.subscribe((t) => {
       rootRef.current?.style.setProperty("--t", String(t))
       surfaceSectionRef.current?.setAttribute("data-off", t > 0.95 ? "true" : "false")

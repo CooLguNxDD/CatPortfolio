@@ -90,10 +90,12 @@ export interface OrbitState {
   target: Vec3
 }
 
+/** Clamps `v` into `[a, b]`. */
 export function clamp(v: number, a: number, b: number): number {
   return Math.max(a, Math.min(b, v))
 }
 
+/** Clamps `v` into `[0, 1]`; a non-finite input (NaN/Infinity) falls back to the midpoint 0.5 rather than propagating. */
 export function clamp01(v: number): number {
   if (!Number.isFinite(v)) return 0.5
   return clamp(v, 0, 1)

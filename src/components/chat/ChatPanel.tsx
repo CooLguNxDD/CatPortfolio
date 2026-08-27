@@ -256,7 +256,11 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
             applyLayoutToCache(queryClient, baked);
           }
 
-          if (focusSlug) {
+          // Skip when the pre-flight guess (line ~186) already landed on this
+          // slug — re-firing setFocus/fish:pick on an already-focused fish is
+          // a redundant chime and a redundant router round trip, and it was
+          // masking the real double-zoom bug caused by the scene remount.
+          if (focusSlug && useFishTankStore.getState().focus !== focusSlug) {
             useFishTankStore.getState().setFocus(focusSlug);
             fishBus.emit("fish:pick", { slug: focusSlug });
           }
