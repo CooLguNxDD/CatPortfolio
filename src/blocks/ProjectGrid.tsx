@@ -1,5 +1,6 @@
 import type { Layout } from "@/content/schema";
 import { Card } from "./Card";
+import { useLayoutStore } from "@/store";
 
 type ProjectGridProps = Extract<
   Layout["blocks"][number],
@@ -11,12 +12,19 @@ type ProjectGridProps = Extract<
  * so agent-authored cards and project tiles stay visually identical.
  */
 export function ProjectGrid({ projects }: ProjectGridProps) {
+  const highlightSlugs = useLayoutStore((s) => s.workingLayout?.meta?.highlightSlugs) ?? [];
   if (!projects || projects.length === 0) return null;
+  const hl = new Set(highlightSlugs.map((s) => s.toLowerCase()));
+  const ordered = [...projects].sort((a, b) => {
+    const ah = hl.has(String(a.id || "").toLowerCase()) ? 0 : 1;
+    const bh = hl.has(String(b.id || "").toLowerCase()) ? 0 : 1;
+    return ah - bh;
+  });
 
   return (
     <div className="w-full py-2">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {projects.map((project) => (
+        {ordered.map((project) => (
           <Card
             key={project.id}
             title={project.name}

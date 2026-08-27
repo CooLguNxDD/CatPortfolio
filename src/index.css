@@ -216,3 +216,22 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  canvas,
+  .ft-canvas-host,
+  [data-fishtank-flat] ~ * {
+    display: none !important;
+  }
+  .ft-canvas-host,
+  canvas {
+    display: none !important;
+  }
+  body::before {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
