@@ -1,11 +1,29 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { McpError, ErrorCode, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import { getOctBaseUrl, getMcpApiKey } from "../config/runtimeConfig";
+
+/**
+ * True when `err` is the MCP SDK's own request-timeout error (an idle window
+ * that elapsed without a keepalive), as opposed to a caller-initiated abort or
+ * a generic connection failure. Callers should classify by this instead of
+ * substring-matching `error.message` for "timeout".
+ */
+export function isOctTimeoutError(err: unknown): boolean {
+  return err instanceof McpError && err.code === ErrorCode.RequestTimeout;
+}
 
 export interface ContentBlock {
   type: string;
   text?: string;
-  [key: string]: any;
+  [key: string]: unknown;
+}
+
+/** Shape of `Client.getServerCapabilities/getServerVersion/getInstructions`, cached post-connect. */
+interface OctInitializeResult {
+  serverCapabilities: ReturnType<Client["getServerCapabilities"]>;
+  serverVersion: ReturnType<Client["getServerVersion"]>;
+  instructions: ReturnType<Client["getInstructions"]>;
 }
 
 export interface OctToolResult {
@@ -14,10 +32,15 @@ export interface OctToolResult {
   isError: boolean;
 }
 
+/**
+ * Thin wrapper around the MCP SDK's `Client` over `StreamableHTTPClientTransport`:
+ * connect/close lifecycle (concurrency-safe via `connectPromise`), `listTools`,
+ * and `callTool` (auto-parses a JSON text content block into `.data`).
+ */
 export class OctClient {
   private url: string;
   private client: Client | null = null;
-  private _initializeResult: any = null;
+  private _initializeResult: OctInitializeResult | null = null;
   /** Serializes concurrent connect() calls; only set while a connect is in flight. */
   private connectPromise: Promise<void> | null = null;
 
@@ -131,7 +154,7 @@ export class OctClient {
     await this.client.ping();
   }
 
-  async listTools(): Promise<{ name: string; description?: string; inputSchema: any }[]> {
+  async listTools(): Promise<Pick<Tool, "name" | "description" | "inputSchema">[]> {
     if (!this.client) {
       throw new Error("client_not_connected");
     }
@@ -192,12 +215,19 @@ export class OctClient {
         isError,
       };
     } catch (err) {
-      resetSharedClient();
+      // A caller-initiated abort (e.g. an unmounted component cancelling its
+      // own poll) is not a transport failure — resetting here would tear
+      // down the MCP client shared by every other in-flight caller.
+      const callerAborted = !!opts?.signal?.aborted;
+      if (!callerAborted) {
+        resetSharedClient();
+      }
       throw err;
     }
   }
 }
 
+/** Resolved OCT base URL: runtime `config.json` first, then the build-time `VITE_OCT_URL` fallback. */
 export function octBaseUrl(): string | undefined {
   try {
     const runtime = getOctBaseUrl();
@@ -211,6 +241,7 @@ export function octBaseUrl(): string | undefined {
 
 let sharedClient: OctClient | null = null;
 
+/** Returns the module-level shared `OctClient`, connecting (or reconnecting) it first if needed. Throws `oct_unconfigured` when no base URL is resolvable. */
 export async function getSharedClient(): Promise<OctClient> {
   const base = octBaseUrl();
   if (!base) {
@@ -231,6 +262,7 @@ export async function getSharedClient(): Promise<OctClient> {
   return sharedClient;
 }
 
+/** Tears down the shared client (best-effort close) and clears it so the next `getSharedClient()` call reconnects from scratch. */
 export function resetSharedClient(): void {
   if (sharedClient) {
     sharedClient.close().catch(() => {});

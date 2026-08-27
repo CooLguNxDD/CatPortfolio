@@ -44,6 +44,7 @@ const askRoute = createRoute({
   component: () => null,
 })
 
+/** The app's single TanStack Router instance — `/` (home) plus the `/ask` → `/` redirect. See file header. */
 export const router = createRouter({
   routeTree: rootRoute.addChildren([homeRoute, askRoute]),
   basepath: import.meta.env.BASE_URL,

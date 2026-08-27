@@ -47,6 +47,7 @@ export function holoLabelsFor(fish: FishSpecimenInput | null): string[] {
   return [...fromMetrics, ...fromTags].slice(0, MAX_HOLO_NODES)
 }
 
+/** Builds the wireframe-cage + callout-node hologram (hidden until `update()` targets a specimen). See file header. */
 export function createArchHologram(accent = 0x38bdf8): ArchHologramBundle {
   const group = new THREE.Group()
   group.visible = false

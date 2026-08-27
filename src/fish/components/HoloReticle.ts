@@ -12,6 +12,7 @@ export interface HoloReticleBundle {
   dispose: () => void
 }
 
+/** Builds the animated targeting-reticle group (rings, corner brackets, scanline) that tracks a focused specimen in world space via `update()`. */
 export function createHoloReticle(): HoloReticleBundle {
   const group = new THREE.Group()
   group.visible = false

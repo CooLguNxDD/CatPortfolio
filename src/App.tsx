@@ -36,6 +36,7 @@ const ACCENTS: { id: Accent; label: string }[] = [
   { id: "violet", label: "Violet" },
 ]
 
+/** Nav shell + theme/accent/mode switchers, demo-session chip, and dev-only Cat companion toggle. Wraps `<Outlet/>`. See file header. */
 function App() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()

@@ -141,6 +141,7 @@ export async function composeLayoutLive(
   }
 }
 
+/** Thin wrapper over `loadLiveWithStatus` that drops the `source` status for callers that only need the resolved `Layout`. */
 export async function loadLive(audience: string): Promise<Layout> {
   return (await loadLiveWithStatus(audience)).layout;
 }

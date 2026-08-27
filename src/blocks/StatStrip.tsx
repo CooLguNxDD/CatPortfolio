@@ -2,6 +2,7 @@ import type { Layout } from "@/content/schema";
 
 type StatStripProps = Extract<Layout["blocks"][number], { type: "statStrip" }>["props"];
 
+/** `statStrip` block: a wrapping row of value/label stat cards; renders nothing when `stats` is empty. */
 export function StatStrip({ stats }: StatStripProps) {
   if (!stats || stats.length === 0) return null;
 

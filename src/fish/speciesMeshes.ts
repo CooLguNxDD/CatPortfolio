@@ -325,6 +325,7 @@ function buildForm(
   return { group, spineSegments, pecL, pecR, tentacles }
 }
 
+/** Builds one specimen's three.js group (body + fins/pecs/tentacles per species form, glow light, hit sphere) plus its material/rig handles for the per-frame animator. */
 export function buildFishMesh(
   data: FishSpecimenInput,
   color: THREE.Color,

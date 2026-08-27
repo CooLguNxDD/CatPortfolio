@@ -286,6 +286,23 @@ export default function FishTankCanvas({
       alpha: false,
     })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CAMERA_CONFIG.maxPixelRatio))
+    // devicePixelRatio only changes when the window moves to a different-DPI
+    // display (e.g. dragging between a laptop panel and an external monitor).
+    // matchMedia's `resolution` query re-fires on that transition, so watch
+    // it and re-apply pixel ratio instead of staying blurry/oversampled —
+    // each firing re-subscribes at the new dppx since the query is a fixed
+    // point, not a range.
+    let dprMediaQuery: MediaQueryList | null = null
+    const onDprChange = () => {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CAMERA_CONFIG.maxPixelRatio))
+      subscribeDprChange()
+    }
+    function subscribeDprChange() {
+      dprMediaQuery?.removeEventListener("change", onDprChange)
+      dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`)
+      dprMediaQuery.addEventListener("change", onDprChange)
+    }
+    subscribeDprChange()
     host.appendChild(renderer.domElement)
     renderer.domElement.style.width = "100%"
     renderer.domElement.style.height = immersive ? "100%" : `${CAMERA_CONFIG.nonImmersiveHeightPx}px`
@@ -1936,6 +1953,7 @@ export default function FishTankCanvas({
       unsubProgress()
       fishBus.emit("fish:anchor", null)
       ro?.disconnect()
+      dprMediaQuery?.removeEventListener("change", onDprChange)
       renderer.domElement.removeEventListener("pointerdown", onPointerDown)
       renderer.domElement.removeEventListener("pointerup", onPointerUp)
       renderer.domElement.removeEventListener("pointerleave", onPointerUp)

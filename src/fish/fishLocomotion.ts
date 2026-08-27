@@ -97,6 +97,7 @@ export function maxSpeedFor(speed01: number): number {
   return 4.5 + s * 12
 }
 
+/** Initial `SwimBody` at rest (zero velocity) at the given position/yaw — a fresh copy of `position`, not a shared reference. */
 export function createSwimBody(position: Vec3, yaw = 0): SwimBody {
   return {
     position: { x: position.x, y: position.y, z: position.z },

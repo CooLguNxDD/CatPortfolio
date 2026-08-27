@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getSharedClient, resetSharedClient, type OctToolResult } from "./octClient.ts";
+import { getSharedClient, resetSharedClient, isOctTimeoutError, type OctToolResult } from "./octClient.ts";
 import { getAskTimeoutMs } from "../config/runtimeConfig.ts";
 import { wrapMessage } from "./instructions.ts";
 import { BlockSchema, LayoutSchema, type Block, type Layout } from "../content/schema.ts";
@@ -503,7 +503,7 @@ export async function askOct(
       };
     }
 
-    if (msg.includes("timeout")) {
+    if (isOctTimeoutError(err)) {
       return { ok: false, error: "Request timed-out.", kind: "timeout" };
     }
 
@@ -523,8 +523,6 @@ export async function askOct(
         cli: extractCliMeta(result.data),
       };
     } catch (retryErr: any) {
-      const retryMsg = String(retryErr?.message || retryErr);
-
       const rateLimitCheckRetry = parseRateLimit(retryErr);
       if (rateLimitCheckRetry.isRateLimit) {
         return {
@@ -535,7 +533,7 @@ export async function askOct(
         };
       }
 
-      if (retryMsg.includes("timeout")) {
+      if (isOctTimeoutError(retryErr)) {
         return { ok: false, error: "Request timed-out.", kind: "timeout" };
       }
 

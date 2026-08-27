@@ -3,6 +3,7 @@
 export type Point = { x: string | number; y: number };
 export type Series = { name: string; points: Point[] };
 
+/** Flattens every series' y values into one array, coercing non-numeric points to 0 rather than NaN. */
 export function flatYs(series: Series[]): number[] {
   return series.flatMap((s) => s.points.map((p) => Number(p.y) || 0));
 }
