@@ -33,10 +33,11 @@
 | `j`   | Job bake short id (`{slug}_{≥10 alnum}`), minted by the OCT "bake & send" pipeline. Fetches `GET /api/portfolio/public/layout/{j}`; falls back to baked snapshot on any failure. |
 | `v`   | `tank` \| `text` view mode. Absent → tank when capable. |
 | `f`   | Focused fish slug (deep-linkable specimen). |
+| `scrollTo` | One-shot block id for text/matrix `scrollIntoView` (cleared after the target is in the DOM). |
 
 - `/` → `routes/HomePage.tsx` — `usePageLayout` resolves demo (`?j=`), live default, or a patched working copy. Tank mode renders `FishTankStage` (Ask dock + chrome); text mode is the two-column ask + matrix.
 - `/ask` → `beforeLoad` redirect onto `/` with the same search params. No page component.
-- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`).
+- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`).
 
 ## Fish Tank
 

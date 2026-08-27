@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useMemo } from "react"
+import { useShallow } from "zustand/react/shallow"
 import type { Layout } from "@/content/schema"
 import { domainsInSchool, matchesFish } from "@/fish/matchFish"
 import { findFishBySlug, fishIndexOf, sceneFromLayout, type FishSceneConfig } from "@/fish/sceneFromLayout"
@@ -40,13 +41,17 @@ export interface FishTankController {
 export function useFishTank(layout: Layout | null | undefined): FishTankController {
   const scene = useMemo(() => sceneFromLayout(layout), [layout])
 
-  const tankState = useFishTankStore((s) => s.state)
-  const chrome = useFishTankStore((s) => s.chrome)
-  const query = useFishTankStore((s) => s.query)
-  const domain = useFishTankStore((s) => s.domain)
-  const focusedSlug = useFishTankStore((s) => s.focus)
-  const bakeActive = useFishTankStore((s) => s.bakeActive)
-  const curationDismissed = useFishTankStore((s) => s.curationDismissed)
+  const { tankState, chrome, query, domain, focusedSlug, bakeActive, curationDismissed } = useFishTankStore(
+    useShallow((s) => ({
+      tankState: s.state,
+      chrome: s.chrome,
+      query: s.query,
+      domain: s.domain,
+      focusedSlug: s.focus,
+      bakeActive: s.bakeActive,
+      curationDismissed: s.curationDismissed,
+    })),
+  )
 
   // Command handler: every chrome/canvas control emits intent onto the bus
   // (never calls a setter directly) — this is the one place that applies it.
