@@ -172,21 +172,28 @@ export function matchFishByName(
   return hits.length === 1 ? hits[0] : null
 }
 
+/** Normalized highlight lookup for the recruiter sort. */
+export function highlightSet(highlightSlugs?: string[] | null): Set<string> {
+  return new Set((highlightSlugs ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean))
+}
+
 /** Recruiter sort: bake highlights first, then newest startYear/endYear. */
 export function compareRecruiterOrder(
   a: { slug: string; startYear?: number; endYear?: number },
   b: { slug: string; startYear?: number; endYear?: number },
-  highlightSlugs?: string[] | null,
+  highlightSlugs?: string[] | Set<string> | null,
 ): number {
-  const hl = new Set(
-    (highlightSlugs ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean),
-  )
+  const hl = highlightSlugs instanceof Set ? highlightSlugs : highlightSet(highlightSlugs)
   const ah = hl.has(a.slug.toLowerCase()) ? 0 : 1
   const bh = hl.has(b.slug.toLowerCase()) ? 0 : 1
   if (ah !== bh) return ah - bh
   const year = (f: { startYear?: number; endYear?: number }) =>
     f.startYear ?? f.endYear ?? Number.NEGATIVE_INFINITY
-  return year(b) - year(a)
+  const ya = year(a)
+  const yb = year(b)
+  // Subtraction would yield NaN for two undated entries (-Inf - -Inf).
+  if (ya === yb) return 0
+  return yb > ya ? 1 : -1
 }
 
 /** Recruiter index: bake highlights first, then newest `startYear`/`endYear`. */
@@ -194,7 +201,8 @@ export function orderFishForRecruiter(
   fish: FishSpecimenInput[],
   highlightSlugs?: string[] | null,
 ): FishSpecimenInput[] {
-  return [...fish].sort((a, b) => compareRecruiterOrder(a, b, highlightSlugs))
+  const hl = highlightSet(highlightSlugs)
+  return [...fish].sort((a, b) => compareRecruiterOrder(a, b, hl))
 }
 
 /** Display range from fractional years (`2025.67` → `2025–now`). */
