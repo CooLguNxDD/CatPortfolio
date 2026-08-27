@@ -10,7 +10,7 @@ import {
   SPECIES_TOKEN,
   SPECIES_FALLBACK_HEX,
 } from "@/blocks/fishTankTokens"
-import { domainsInSchool, filterFish, orderFishForRecruiter } from "@/fish/matchFish"
+import { domainsInSchool, filterFish, orderFishForRecruiter, yearRangeLabel } from "@/fish/matchFish"
 import type { DomainIdType } from "@/content/schema"
 import { cn } from "@/lib/utils"
 
@@ -138,9 +138,9 @@ export function FishFlatGrid({
                 </span>
               </div>
               <h3>{f.title}</h3>
-              {yearRange(f) ? (
+              {yearRangeLabel(f) ? (
                 <p className="ft-ref">
-                  {DOMAIN_LABEL[f.species] || f.species} · {yearRange(f)}
+                  {DOMAIN_LABEL[f.species] || f.species} · {yearRangeLabel(f)}
                 </p>
               ) : null}
               {f.blurb ? <p>{f.blurb}</p> : null}
@@ -174,11 +174,4 @@ export function FishFlatGrid({
       ) : null}
     </main>
   )
-}
-
-function yearRange(f: FishSpecimenInput): string | null {
-  if (f.startYear == null && f.endYear == null) return null
-  const start = f.startYear != null ? String(Math.floor(f.startYear)) : "?"
-  const end = f.endYear != null ? String(Math.floor(f.endYear)) : "now"
-  return `${start}–${end}`
 }

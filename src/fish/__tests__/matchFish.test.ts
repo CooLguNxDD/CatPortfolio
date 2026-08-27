@@ -9,6 +9,7 @@ import {
   normalizeQuery,
   orderFishForRecruiter,
   questionTokens,
+  yearRangeLabel,
 } from "../matchFish"
 import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
 
@@ -130,6 +131,12 @@ describe("orderFishForRecruiter", () => {
       "weltel-devops",
       "weltel-ai",
     ])
+  })
+
+  it("formats year ranges", () => {
+    expect(yearRangeLabel({ startYear: 2024.7, endYear: 2026 })).toBe("2024–2026")
+    expect(yearRangeLabel({ startYear: 2025 })).toBe("2025–now")
+    expect(yearRangeLabel({})).toBeNull()
   })
 })
 
