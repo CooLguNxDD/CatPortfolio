@@ -10,6 +10,7 @@ import {
   extractHighlightSlugs,
   extractPendingJob,
   sanitizeAskMarkdown,
+  type BlockPatchResult,
   type CliMeta,
   type PendingJob,
 } from "@/api/harness";
@@ -107,6 +108,39 @@ function oneShotPillLabel(cli: CliMeta): string {
   if (agent === "agy" || cli.provider === "agy-cli") return "one-shot cli · agy";
   if (agent === "claude" || cli.provider === "claude-cli") return "one-shot cli · claude";
   return `one-shot cli · ${cli.agent}`;
+}
+
+/**
+ * Chip actions for an ask turn: focus pills for every relevant project, then
+ * "view" pills for patched blocks the visitor might want to jump to.
+ *
+ * The fishTank block is excluded from "view" pills — it's the live 3D scene
+ * itself, not a scrollable text card, so a pill for it would force `v=text`
+ * just to scroll to content already visible in tank mode.
+ */
+export function buildMessageActions(
+  focusSlug: string | null,
+  highlightSlugs: string[],
+  patch: BlockPatchResult | null,
+): MessageAction[] {
+  const actions: MessageAction[] = [];
+  const seenFocus = new Set<string>();
+  for (const slug of [focusSlug, ...highlightSlugs]) {
+    if (!slug || seenFocus.has(slug)) continue;
+    seenFocus.add(slug);
+    actions.push({ kind: "focus", target: slug, label: slug });
+  }
+  const fishTankIds = new Set(
+    (patch?.blocks ?? [])
+      .filter((b) => b.type === "fishTank")
+      .map((b) => b.id),
+  );
+  for (const id of patch?.patchedIds ?? []) {
+    if (actions.length >= 4) break;
+    if (fishTankIds.has(id)) continue;
+    actions.push({ kind: "view", target: id, label: id });
+  }
+  return actions;
 }
 
 export interface ChatPanelProps {
@@ -209,17 +243,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           const pendingJob = extractPendingJob(result.raw);
 
           // Chips let the visitor jump to what changed without re-asking.
-          const actions: MessageAction[] = [];
-          const seenFocus = new Set<string>();
-          for (const slug of [focusSlug, ...highlightSlugs]) {
-            if (!slug || seenFocus.has(slug)) continue;
-            seenFocus.add(slug);
-            actions.push({ kind: "focus", target: slug, label: slug });
-          }
-          for (const id of patch?.patchedIds ?? []) {
-            if (actions.length >= 4) break;
-            actions.push({ kind: "view", target: id, label: id });
-          }
+          const actions = buildMessageActions(focusSlug, highlightSlugs, patch);
           // A dropped block means the agent's output was partially malformed —
           // tell the visitor rather than silently rendering fewer blocks than
           // it meant to (previously only a console.warn in extractBlockPatch).
