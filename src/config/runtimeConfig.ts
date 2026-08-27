@@ -75,7 +75,25 @@ function resolveOctBaseUrl(raw: string | undefined | null): string {
     }
     return "";
   }
-  return v.replace(/\/$/, "");
+  const stripped = v.replace(/\/$/, "");
+  // Reject anything that isn't a well-formed http(s) URL — config.json is a
+  // patchable, unhashed static file, so this value isn't fully trusted the
+  // way a build-time env var is. It also becomes the target of an
+  // Authorization: Bearer header (see octClient.ts), so a malformed or
+  // non-http(s) scheme here must not be forwarded as a fetch origin.
+  try {
+    const parsed = new URL(stripped);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error(`unsupported scheme: ${parsed.protocol}`);
+    }
+  } catch (err) {
+    console.warn("resolveOctBaseUrl: rejecting invalid octBaseUrl, falling back to same-origin", stripped, err);
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return window.location.origin;
+    }
+    return "";
+  }
+  return stripped;
 }
 
 function envFallback(): RuntimeConfig {
@@ -127,6 +145,11 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
     } catch (err) {
       console.warn("loadRuntimeConfig: falling back to env config", err);
       cached = envFallback();
+      // Let a later call retry the fetch instead of pinning the whole
+      // session to the env fallback after one transient failure (a slow
+      // network, a momentary 5xx) — this promise still resolves with the
+      // fallback for anyone already awaiting it.
+      loadPromise = null;
     }
     return cached;
   })();

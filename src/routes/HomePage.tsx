@@ -47,8 +47,9 @@ function sourceLabel(data: LayoutLoadResult): string {
   }
 }
 
+/** `/` route component: resolves the active layout (live/baked/`?j=` demo) and renders it as the fish tank or the text matrix per `?v=`. See file header. */
 export function HomePage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate({ from: "/" })
   const search = useSearch({ from: "/" })
   const { j, v, f, scrollTo } = search
   const { data, layout, isLoading, shortId, isDemoSession } = usePageLayout(j)
@@ -87,7 +88,7 @@ export function HomePage() {
     function pick({ slug }: { slug: string }) {
       void navigate({
         to: "/",
-        search: (prev) => ({ ...((prev || {}) as DemoSearch), f: slug }),
+        search: (prev) => ({ ...(prev || {}), f: slug }),
         replace: true,
       })
     }
@@ -95,7 +96,7 @@ export function HomePage() {
       void navigate({
         to: "/",
         search: (prev) => {
-          const next = { ...((prev || {}) as DemoSearch) }
+          const next = { ...(prev || {}) }
           delete next.f
           return next
         },
@@ -127,7 +128,7 @@ export function HomePage() {
       void navigate({
         to: "/",
         search: (prev) => {
-          const next = { ...((prev || {}) as DemoSearch) }
+          const next = { ...(prev || {}) }
           delete next.scrollTo
           return next
         },
@@ -162,7 +163,7 @@ export function HomePage() {
   const setView = (next: "tank" | "text") =>
     void navigate({
       to: "/",
-      search: (prev) => ({ ...((prev || {}) as DemoSearch), v: next }),
+      search: (prev) => ({ ...(prev || {}), v: next }),
       replace: true,
     })
 

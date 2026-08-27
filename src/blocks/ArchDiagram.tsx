@@ -6,6 +6,7 @@ type ArchDiagramProps = Extract<Layout["blocks"][number], { type: "archDiagram" 
 
 const MermaidDiagram = lazy(() => import("./MermaidDiagram"));
 
+/** `archDiagram` block: renders `source` as an inline SVG data-URI (`kind: "svg"`) or a lazy-loaded Mermaid diagram, in a titled card. */
 export function ArchDiagram({ title, kind, source }: ArchDiagramProps) {
   return (
     <div className="w-full py-6">
