@@ -239,7 +239,7 @@ export function FishTankStage({
               ✕ Close
             </button>
           </div>
-          <div className="p-2 overflow-y-auto max-h-[calc(100svh-190px)]">
+          <div className="p-2 overflow-y-auto max-h-[calc(100svh-190px)]" data-ask-panel>
             <ChatPanel layout={layout} view="tank" />
           </div>
         </aside>

@@ -172,21 +172,40 @@ export function matchFishByName(
   return hits.length === 1 ? hits[0] : null
 }
 
+/** Recruiter sort: bake highlights first, then newest startYear/endYear. */
+export function compareRecruiterOrder(
+  a: { slug: string; startYear?: number; endYear?: number },
+  b: { slug: string; startYear?: number; endYear?: number },
+  highlightSlugs?: string[] | null,
+): number {
+  const hl = new Set(
+    (highlightSlugs ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean),
+  )
+  const ah = hl.has(a.slug.toLowerCase()) ? 0 : 1
+  const bh = hl.has(b.slug.toLowerCase()) ? 0 : 1
+  if (ah !== bh) return ah - bh
+  const year = (f: { startYear?: number; endYear?: number }) =>
+    f.startYear ?? f.endYear ?? Number.NEGATIVE_INFINITY
+  return year(b) - year(a)
+}
+
 /** Recruiter index: bake highlights first, then newest `startYear`/`endYear`. */
 export function orderFishForRecruiter(
   fish: FishSpecimenInput[],
   highlightSlugs?: string[] | null,
 ): FishSpecimenInput[] {
-  const hl = new Set(
-    (highlightSlugs ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean),
-  )
-  const year = (f: FishSpecimenInput) => f.startYear ?? f.endYear ?? Number.NEGATIVE_INFINITY
-  return [...fish].sort((a, b) => {
-    const ah = hl.has(a.slug.toLowerCase()) ? 0 : 1
-    const bh = hl.has(b.slug.toLowerCase()) ? 0 : 1
-    if (ah !== bh) return ah - bh
-    return year(b) - year(a)
-  })
+  return [...fish].sort((a, b) => compareRecruiterOrder(a, b, highlightSlugs))
+}
+
+/** Display range from fractional years (`2025.67` → `2025–now`). */
+export function yearRangeLabel(f: {
+  startYear?: number
+  endYear?: number
+}): string | null {
+  if (f.startYear == null && f.endYear == null) return null
+  const start = f.startYear != null ? String(Math.floor(f.startYear)) : "?"
+  const end = f.endYear != null ? String(Math.floor(f.endYear)) : "now"
+  return `${start}–${end}`
 }
 
 /** Domains present in the school (stable DomainId order optional via preferred). */

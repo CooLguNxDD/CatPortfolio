@@ -6,7 +6,7 @@
 - **Self-rendering:** the page is data. A Zod-validated layout spec (`src/content/layout.json`) flows through a whitelisted block registry (`src/render/registry.ts`). Layout grows; component code doesn't change. Unknown block type = skipped, never crashes.
 - **One front door on `/`:**
   - **Fish tank (default)** — a WebGL aquarium where each fish is a project/track. Falls back to the text layout when WebGL2 is missing, `prefers-reduced-motion` is set, no tank is authored and no fish exist, or `?v=text`. The default bake authors four WelTel specimens (`weltel-ai`, `weltel-devops`, `weltel-mobile`, `weltel-platform`). An authored `fishTank` with `fish: []` still opens an empty aquarium.
-  - **Text matrix (`?v=text`)** — chat panel + live layout. An ask turn patches the 1–3 blocks it needs; both views read the same working layout, so a spawned fish appears after switching views.
+  - **Text matrix (`?v=text`)** — recruiter index (`FishFlatGrid`, highlight then timeline years) + chat panel + live layout. Ask questions are stored in `portfolio_ask_turns` (length-capped; that is not consent). Canonical/OG URL is the absolute `?v=text` link.
 - **`/ask`** — kept as a `beforeLoad` redirect to `/` (same search params) so old links still resolve. Bare `/ask` now opens the tank, matching the single front door.
 - Layout source of truth is `design/layout.yaml` → `npm run compile:layout` → `src/content/layout.json`. CI verifies sync (`check:layout`), never generates.
 - Backend is **OpenCat Tunnel (OCT)**, an MCP + REST server. All calls degrade to the baked snapshot — the site never hard-fails on a backend outage (it backs a public HR-facing link).

@@ -220,12 +220,17 @@
 @media print {
   canvas,
   .ft-canvas-host,
-  [data-fishtank-flat] ~ * {
+  .ft-stage,
+  [data-ask-panel],
+  .ft-ask-dock,
+  .ft-view-pills {
     display: none !important;
   }
-  .ft-canvas-host,
-  canvas {
-    display: none !important;
+  [data-fishtank-flat],
+  [data-print-root],
+  .layout-shell,
+  .layout-canvas {
+    display: block !important;
   }
   body::before {
     display: none !important;
