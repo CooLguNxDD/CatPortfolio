@@ -187,6 +187,7 @@ export function FishTankStage({
       {tank.chrome === "flat" ? (
         <FishFlatGrid
           fish={tank.fish}
+          highlightSlugs={tank.scene.highlightSlugs}
           curationLabel={tank.curationLabel ?? undefined}
           onSelect={(slug) => fishBus.emit("fish:pick", { slug })}
         />

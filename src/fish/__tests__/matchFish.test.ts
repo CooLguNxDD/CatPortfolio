@@ -5,7 +5,9 @@ import {
   filterFish,
   fishLitFactor,
   matchesFish,
+  matchFishByName,
   normalizeQuery,
+  orderFishForRecruiter,
   questionTokens,
 } from "../matchFish"
 import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
@@ -103,6 +105,31 @@ describe("bestFishForQuestion", () => {
 
   it("handles an empty tank", () => {
     expect(bestFishForQuestion([], "devops")).toBeNull()
+  })
+})
+
+describe("matchFishByName", () => {
+  it("resolves exact title and unique substring", () => {
+    expect(matchFishByName(sample, "WelTel MCP")?.slug).toBe("weltel-ai")
+    expect(matchFishByName(sample, "EKS")?.slug).toBe("weltel-devops")
+    expect(matchFishByName(sample, "WelTel")).toBeNull()
+  })
+})
+
+describe("orderFishForRecruiter", () => {
+  it("puts highlight slugs first, then newest year", () => {
+    const dated = [
+      { ...sample[0], startYear: 2022 },
+      { ...sample[1], startYear: 2025 },
+    ]
+    expect(orderFishForRecruiter(dated, ["weltel-ai"]).map((f) => f.slug)).toEqual([
+      "weltel-ai",
+      "weltel-devops",
+    ])
+    expect(orderFishForRecruiter(dated, []).map((f) => f.slug)).toEqual([
+      "weltel-devops",
+      "weltel-ai",
+    ])
   })
 })
 

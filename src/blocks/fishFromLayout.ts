@@ -25,9 +25,18 @@ function clampTags(tags: unknown): string[] {
     .map((t) => t.slice(0, 48))
 }
 
+/** Drop HTML comments before the 600-char slice so leftover `<!--` cannot render as `<!`. */
+export function stripHtmlComments(s: string): string {
+  const stripped = s.replace(/<!--[\s\S]*?-->/g, "")
+  const cut = stripped.indexOf("<!--")
+  return (cut >= 0 ? stripped.slice(0, cut) : stripped).trim()
+}
+
 function clampBody(s: unknown): string | undefined {
   if (typeof s !== "string" || !s.trim()) return undefined
-  return s.slice(0, 600)
+  const cleaned = stripHtmlComments(s)
+  if (!cleaned) return undefined
+  return cleaned.slice(0, 600)
 }
 
 function metricsFrom(raw: unknown): { label: string; value: string }[] {

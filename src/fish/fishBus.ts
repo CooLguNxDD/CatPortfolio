@@ -8,6 +8,7 @@
  */
 
 import mitt, { type Emitter } from "mitt"
+import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
 
 export interface FishAnchor {
   /** Canvas-local px position of the locked fish. */
@@ -39,6 +40,8 @@ export type FishEvents = {
   "tank:dive": void
   "tank:surface": void
   "fish:pick": { slug: string }
+  "fish:focus": { slug: string }
+  "fish:spawn": { fish: FishSpecimenInput | FishSpecimenInput[] }
   "fish:release": void
   "view:chrome": FishChrome
   "filter:query": string
@@ -84,3 +87,22 @@ export function createFishBus(): FishBus {
 
 /** App-wide singleton. Components with no mounted stage never emit into it. */
 export const fishBus: FishBus = createFishBus()
+
+/** Dispatches a fish focus command via typed fishBus and DOM CustomEvent bridge. */
+export function dispatchFishFocus(slug: string): void {
+  if (!slug) return
+  fishBus.emit("fish:pick", { slug })
+  fishBus.emit("fish:focus", { slug })
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("catportfolio:fish:focus", { detail: { slug } }))
+  }
+}
+
+/** Dispatches a fish spawn command via typed fishBus and DOM CustomEvent bridge. */
+export function dispatchFishSpawn(fish: FishSpecimenInput | FishSpecimenInput[]): void {
+  if (!fish) return
+  fishBus.emit("fish:spawn", { fish })
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("catportfolio:fish:spawn", { detail: { fish } }))
+  }
+}

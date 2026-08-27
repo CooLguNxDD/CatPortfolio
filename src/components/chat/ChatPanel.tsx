@@ -7,7 +7,9 @@ import {
   extractBlockPatch,
   extractCarryLayout,
   extractFocusSlug,
+  extractHighlightSlugs,
   extractPendingJob,
+  sanitizeAskMarkdown,
   type CliMeta,
   type PendingJob,
 } from "@/api/harness";
@@ -203,12 +205,16 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           // 1) Surgical overlay — the ask path. Changed blocks only.
           const patch = extractBlockPatch(result.raw);
           const focusSlug = extractFocusSlug(result.raw);
+          const highlightSlugs = extractHighlightSlugs(result.raw);
           const pendingJob = extractPendingJob(result.raw);
 
           // Chips let the visitor jump to what changed without re-asking.
           const actions: MessageAction[] = [];
-          if (focusSlug) {
-            actions.push({ kind: "focus", target: focusSlug, label: focusSlug });
+          const seenFocus = new Set<string>();
+          for (const slug of [focusSlug, ...highlightSlugs]) {
+            if (!slug || seenFocus.has(slug)) continue;
+            seenFocus.add(slug);
+            actions.push({ kind: "focus", target: slug, label: slug });
           }
           for (const id of patch?.patchedIds ?? []) {
             if (actions.length >= 4) break;
@@ -225,7 +231,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
             ...prev,
             {
               role: "assistant",
-              markdown: result.markdown + droppedNote,
+              markdown: sanitizeAskMarkdown(result.markdown) + droppedNote,
               ...(actions.length ? { actions } : {}),
             },
           ]);
@@ -466,7 +472,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           <div className="h-48 flex flex-col items-center justify-center text-center p-4 gap-3">
             <p className="text-sm text-(--fg-muted) max-w-sm">
               {isOnline
-                ? "Ask about experience, projects, or a job fit — the page re-renders live from fragments while the agent answers."
+                ? "Ask about experience, projects, or a job fit — the page re-renders live from fragments while the agent answers. Questions are stored (capped) in an ask-turn audit; the layout overlay is not."
                 : "OpenCat Tunnel connection is currently unavailable. Chat will activate when the server comes online."}
             </p>
             {isOnline && (
@@ -540,6 +546,10 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           Send
         </Button>
       </div>
+      <p className="text-[11px] text-(--fg-subtle) font-mono">
+        The question is persisted in <code>portfolio_ask_turns</code> (length-capped).
+        That is not consent to keep a conversation — overlays die on reload.
+      </p>
     </div>
   );
 }

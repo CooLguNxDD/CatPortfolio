@@ -162,9 +162,9 @@ export const ChatMessage = memo(function ChatMessage({
                 key={`${action.kind}-${action.target}`}
                 type="button"
                 onClick={() => runAction(action)}
+                data-slug={action.kind === "focus" ? action.target : undefined}
                 className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors"
               >
-                <span aria-hidden="true">{action.kind === "focus" ? "🐟 " : "📄 "}</span>
                 {action.label}
               </button>
             ))}

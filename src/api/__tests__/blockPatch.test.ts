@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   extractBlockPatch,
   extractFocusSlug,
+  extractHighlightSlugs,
   extractPendingJob,
 } from "../harness"
 
@@ -75,6 +76,14 @@ describe("extractFocusSlug", () => {
   it("returns null when absent or blank", () => {
     expect(extractFocusSlug({ carry: { focus_slug: "  " } })).toBeNull()
     expect(extractFocusSlug({})).toBeNull()
+  })
+})
+
+describe("extractHighlightSlugs", () => {
+  it("reads highlights even when there are no blocks", () => {
+    expect(extractHighlightSlugs({ carry: { highlight_slugs: ["weltel-ai", "fisoul"] } })).toEqual(
+      ["weltel-ai", "fisoul"],
+    )
   })
 })
 

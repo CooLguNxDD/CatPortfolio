@@ -152,6 +152,43 @@ export function bestFishForQuestion(
   return bestScore >= floor ? best : null
 }
 
+/**
+ * Resolve a chart series/point label to a specimen. Exact slug or title wins;
+ * a unique substring match is accepted. No match → no affordance.
+ */
+export function matchFishByName(
+  fish: FishSpecimenInput[],
+  name: string,
+): FishSpecimenInput | null {
+  const n = name.trim().toLowerCase()
+  if (!n || !fish.length) return null
+  const exact = fish.find(
+    (f) => f.slug.toLowerCase() === n || f.title.toLowerCase() === n,
+  )
+  if (exact) return exact
+  const hits = fish.filter(
+    (f) => f.slug.toLowerCase().includes(n) || f.title.toLowerCase().includes(n),
+  )
+  return hits.length === 1 ? hits[0] : null
+}
+
+/** Recruiter index: bake highlights first, then newest `startYear`/`endYear`. */
+export function orderFishForRecruiter(
+  fish: FishSpecimenInput[],
+  highlightSlugs?: string[] | null,
+): FishSpecimenInput[] {
+  const hl = new Set(
+    (highlightSlugs ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean),
+  )
+  const year = (f: FishSpecimenInput) => f.startYear ?? f.endYear ?? Number.NEGATIVE_INFINITY
+  return [...fish].sort((a, b) => {
+    const ah = hl.has(a.slug.toLowerCase()) ? 0 : 1
+    const bh = hl.has(b.slug.toLowerCase()) ? 0 : 1
+    if (ah !== bh) return ah - bh
+    return year(b) - year(a)
+  })
+}
+
 /** Domains present in the school (stable DomainId order optional via preferred). */
 export function domainsInSchool(
   fish: FishSpecimenInput[],
