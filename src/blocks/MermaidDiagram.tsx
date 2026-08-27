@@ -6,6 +6,12 @@ import { themeRegistry } from "@/themes/registry";
 let mermaidInitialized = false;
 let mermaidTheme: string | null = null;
 
+/**
+ * Renders Mermaid `source` (agent- or backend-authored, not just the baked
+ * snapshot) to SVG via `mermaid.render` under `securityLevel: "strict"`.
+ * Shows the raw source as a pulsing placeholder while rendering and as a
+ * plain fallback on render error.
+ */
 export default function MermaidDiagram({ source }: { source: string }) {
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<boolean>(false);

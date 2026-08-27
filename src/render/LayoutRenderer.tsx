@@ -339,13 +339,19 @@ function usePatchHighlight(
     });
     // Move keyboard focus too, not just the scroll — otherwise a keyboard
     // user is left in the chat input and has to tab through unrelated
-    // content to reach what just changed.
-    nodes[0].setAttribute("tabindex", "-1");
+    // content to reach what just changed. Only add tabindex if the element
+    // isn't already focusable, and remove it again once the pulse ends so
+    // the block doesn't linger in the tab order or confuse screen readers.
+    const hadTabIndex = nodes[0].hasAttribute("tabindex");
+    if (!hadTabIndex) nodes[0].setAttribute("tabindex", "-1");
     nodes[0].focus({ preventScroll: true });
 
     const unmark = () => {
       for (const node of nodes) {
         if (document.body.contains(node)) node.classList.remove("is-patched");
+      }
+      if (!hadTabIndex && document.body.contains(nodes[0])) {
+        nodes[0].removeAttribute("tabindex");
       }
     };
     for (const node of nodes) node.classList.add("is-patched");
@@ -359,6 +365,11 @@ function usePatchHighlight(
   }, [patchedIds, reduced]);
 }
 
+/**
+ * Renders a `Layout`'s blocks through the registry — DAG-banded matrix rows
+ * when `meta.dag` is present, else a stagger/span grid — applying the
+ * layout's theme and pulse-highlighting any patched blocks on change.
+ */
 export function LayoutRenderer({
   layout,
   themeMode = "auto",

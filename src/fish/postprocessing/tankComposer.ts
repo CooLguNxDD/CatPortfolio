@@ -170,6 +170,11 @@ const BACKGROUND_BOKEH_FRAGMENT = /* glsl */ `
   }
 `
 
+/**
+ * Builds the tank's post-processing chain: `RenderPass` always, then bokeh +
+ * bloom + wobble only when `options.effects` is on (quality-tier gated —
+ * `tier: "low"` gets `RenderPass -> OutputPass` only) plus an `OutputPass`.
+ */
 export function createTankComposer(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,

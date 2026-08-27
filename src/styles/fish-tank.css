@@ -991,6 +991,12 @@
 
 .ft-close {
   align-self: flex-end;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  /* Opaque enough to stay legible over content scrolling beneath it. */
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  backdrop-filter: blur(8px);
 }
 
 .ft-specimen {

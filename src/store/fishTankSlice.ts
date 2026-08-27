@@ -17,7 +17,7 @@ import type { StateCreator } from "zustand"
 import { fishBus } from "@/fish/fishBus"
 import { createDiveAnimator } from "@/fish/diveAnimator"
 import { DIVE_DURATION_MS, SURFACE_DURATION_MS } from "@/blocks/fishTankLayout"
-import { next, type TankState } from "@/fish/tankMachine"
+import { canFocus, next, type TankState } from "@/fish/tankMachine"
 
 /** Legacy two-bucket scene label — derived from TankState, see tankMachine.deriveScene. */
 export type FishTankScene = "surface" | "tank"
@@ -51,6 +51,12 @@ export interface FishTankSlice {
   depthFocus: number | null
   /** Sonar mini-map visibility. */
   sonarOpen: boolean
+  /**
+   * Slug awaiting the dive a surface pick started — `focus` above is set
+   * immediately (camera tracks through the descent), applied to `state`
+   * once the dive lands. See tankMachine.ts `canFocus`.
+   */
+  pendingFocus: string | null
 
   dive: () => void
   surface: () => void
@@ -69,6 +75,8 @@ export interface FishTankSlice {
   dropFood: (pos?: { x?: number; y?: number; z?: number }) => void
   /** Full reset when leaving tank mode / unmounting stage. */
   resetFishTankUi: () => void
+  /** Live dive/surface progress (0..1) — imperative only, never select this into React. */
+  getProgress: () => number
 }
 
 const DEFAULTS: Pick<
@@ -83,6 +91,7 @@ const DEFAULTS: Pick<
   | "soundEnabled"
   | "depthFocus"
   | "sonarOpen"
+  | "pendingFocus"
 > = {
   state: "surface",
   chrome: "3d",
@@ -94,6 +103,7 @@ const DEFAULTS: Pick<
   soundEnabled: false,
   depthFocus: null,
   sonarOpen: true,
+  pendingFocus: null,
 }
 
 /** Creates the fish-tank transient UI slice. */
@@ -105,6 +115,16 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
     animator.animateTo(target, durationMs, () => {
       const arrived = next(get().state, "arrive")
       if (arrived) set({ state: arrived })
+
+      // Drain a surface-pick's queued focus once the dive lands.
+      const pending = get().pendingFocus
+      if (!pending) return
+      if (get().focus === pending) {
+        const focused = next(get().state, "focus")
+        set(focused ? { state: focused, pendingFocus: null } : { pendingFocus: null })
+      } else {
+        set({ pendingFocus: null })
+      }
     })
   }
 
@@ -122,7 +142,7 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
     surface: () => {
       const target = next(get().state, "surface")
       if (!target) return
-      set({ state: target, focus: null })
+      set({ state: target, focus: null, pendingFocus: null })
       fishBus.emit("audio:fx", { type: "surface" })
       runTransition(0, SURFACE_DURATION_MS)
     },
@@ -141,11 +161,28 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
     setFocus: (slug) => {
       set({ focus: slug })
       const cur = get().state
-      const target = slug ? next(cur, "focus") : next(cur, "release")
-      if (target) set({ state: target })
-      if (slug) {
-        fishBus.emit("audio:fx", { type: "chime" })
+
+      if (!slug) {
+        // Release mid-dive drops the queued pick too.
+        set({ pendingFocus: null })
+        const released = next(cur, "release")
+        if (released) set({ state: released })
+        return
       }
+
+      if (!canFocus(cur)) {
+        // Surface pick: dive first, apply focus on arrival (runTransition
+        // drains pendingFocus) — the camera already tracks `focus` while
+        // diving.
+        set({ pendingFocus: slug })
+        get().dive()
+        fishBus.emit("audio:fx", { type: "chime" })
+        return
+      }
+
+      const target = next(cur, "focus")
+      if (target) set({ state: target })
+      fishBus.emit("audio:fx", { type: "chime" })
     },
 
     applyBake: (active = true) =>
@@ -201,6 +238,8 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
       animator.cancel()
       set({ ...DEFAULTS })
     },
+
+    getProgress: () => animator.progress(),
   }
 }
 

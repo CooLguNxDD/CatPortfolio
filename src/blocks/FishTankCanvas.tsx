@@ -7,9 +7,13 @@
  * filter and bake state are read imperatively off the zustand store via
  * `subscribe` (never through props/refs mirrored at render time); dive
  * progress and the dossier anchor are bus-only observations, never React
- * state. `fish` / `immersive` / `themeKey` / `highlightSlugs` stay props —
- * they only change together with a new layout, which already remounts this
- * effect via the `fish` identity change.
+ * state. `fish` and `highlightSlugs` are read through refs, keyed by
+ * `rosterKey` (slug set only — an ask-mode patch that keeps the same
+ * specimens, including a highlight/blurb-only `focus_fish` rebuild, must not
+ * remount the WebGL scene or reset the camera). `immersive` is a real
+ * scene-effect dependency; `themeKey` is not — a theme/accent switch resamples
+ * `applyPalette` in place (see the theme effect below) so a visitor mid-dive
+ * never gets kicked back to the surface or loses fish positions.
  */
 
 import { useEffect, useRef } from "react"
@@ -188,10 +192,17 @@ export default function FishTankCanvas({
   // array on every turn — depending on it tore down and rebuilt the scene,
   // which the visitor reads as "the tank reset". Same slugs in the same order
   // => same scene, and unchanged fish keep their position and locomotion.
-  const rosterKey = fish.map((f) => f.slug).join("|")
+  const rosterKey = [...fish].map((f) => f.slug).sort().join("|")
   const highlightKey = highlightSlugs.join("|")
   const fishRef = useRef(fish)
   fishRef.current = fish
+  // Highlights/blurbs are read imperatively, like `fish` — a highlight-only
+  // patch (e.g. a focus_fish turn's re-scored dossier blurb) must not remount
+  // the WebGL scene. `applyHighlightRef` lets the effect below refresh
+  // filterRef without highlightKey being a scene-effect dependency.
+  const highlightRef = useRef(highlightSlugs)
+  highlightRef.current = highlightSlugs
+  const applyHighlightRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     const root = hostRef.current
@@ -207,19 +218,29 @@ export default function FishTankCanvas({
     const filterRef = { current: filterFromStore() }
     function filterFromStore(): FishFilter {
       const s = useFishTankStore.getState()
-      return { query: s.query, domain: s.domain, highlightSlugs, bakeActive: s.bakeActive }
+      return {
+        query: s.query,
+        domain: s.domain,
+        highlightSlugs: highlightRef.current,
+        bakeActive: s.bakeActive,
+      }
     }
     const unsubStore = useFishTankStore.subscribe((s) => {
       focusedRef.current = s.focus
       depthFocusRef.current = s.depthFocus
-      filterRef.current = {
-        query: s.query,
-        domain: s.domain,
-        highlightSlugs,
-        bakeActive: s.bakeActive,
-      }
+      filterRef.current = filterFromStore()
     })
-    const progressChannel = createFrameChannel(fishBus, "tank:progress", 0)
+    applyHighlightRef.current = () => {
+      filterRef.current = filterFromStore()
+    }
+    // Seeded from the store, not 0 — a remount (e.g. a roster patch) while
+    // mid-dive must not snap the camera back to the surface before the next
+    // `tank:progress` frame arrives.
+    const progressChannel = createFrameChannel(
+      fishBus,
+      "tank:progress",
+      useFishTankStore.getState().getProgress(),
+    )
     const progRef = { current: progressChannel.get() }
     const unsubProgress = progressChannel.subscribe((v) => {
       progRef.current = v
@@ -265,6 +286,23 @@ export default function FishTankCanvas({
       alpha: false,
     })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CAMERA_CONFIG.maxPixelRatio))
+    // devicePixelRatio only changes when the window moves to a different-DPI
+    // display (e.g. dragging between a laptop panel and an external monitor).
+    // matchMedia's `resolution` query re-fires on that transition, so watch
+    // it and re-apply pixel ratio instead of staying blurry/oversampled —
+    // each firing re-subscribes at the new dppx since the query is a fixed
+    // point, not a range.
+    let dprMediaQuery: MediaQueryList | null = null
+    const onDprChange = () => {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CAMERA_CONFIG.maxPixelRatio))
+      subscribeDprChange()
+    }
+    function subscribeDprChange() {
+      dprMediaQuery?.removeEventListener("change", onDprChange)
+      dprMediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`)
+      dprMediaQuery.addEventListener("change", onDprChange)
+    }
+    subscribeDprChange()
     host.appendChild(renderer.domElement)
     renderer.domElement.style.width = "100%"
     renderer.domElement.style.height = immersive ? "100%" : `${CAMERA_CONFIG.nonImmersiveHeightPx}px`
@@ -511,6 +549,9 @@ export default function FishTankCanvas({
       segs: (THREE.Object3D | null)[]
       seed: number
     }[] = []
+    // Theme-tintable materials, resampled in place by applyPalette below.
+    const weedMats: THREE.MeshStandardMaterial[] = []
+    const coralMats: { mat: THREE.MeshStandardMaterial; i: number }[] = []
     for (let i = 0; i < SEAWEED_PLACEMENT_CONFIG.count; i++) {
       const stalk = buildSeaweed(
         SEAWEED_PLACEMENT_CONFIG.heightBase + (i % SEAWEED_PLACEMENT_CONFIG.heightModIndex) * SEAWEED_PLACEMENT_CONFIG.heightModStep,
@@ -526,7 +567,11 @@ export default function FishTankCanvas({
       const { segs, seed } = stalk.userData as { segs: number; seed: number }
       const segRefs: (THREE.Object3D | null)[] = []
       for (let s = 0; s < segs; s++) {
-        segRefs.push(stalk.getObjectByName(`seg${s}`) ?? null)
+        const seg = stalk.getObjectByName(`seg${s}`) ?? null
+        segRefs.push(seg)
+        if (s === 0 && seg instanceof THREE.Mesh && seg.material instanceof THREE.MeshStandardMaterial) {
+          weedMats.push(seg.material)
+        }
       }
       weedRigs.push({ segs: segRefs, seed })
     }
@@ -536,6 +581,10 @@ export default function FishTankCanvas({
         new THREE.Color(i % 2 ? palette.accent : palette.neon),
         CORAL_PLACEMENT_CONFIG.scaleBase + (i % CORAL_PLACEMENT_CONFIG.scaleModIndex) * CORAL_PLACEMENT_CONFIG.scaleModStep,
       )
+      const firstArm = coral.children[0]
+      if (firstArm instanceof THREE.Mesh && firstArm.material instanceof THREE.MeshStandardMaterial) {
+        coralMats.push({ mat: firstArm.material, i })
+      }
       coral.position.set(
         (i + CORAL_PLACEMENT_CONFIG.xOffset) * (TANK_HALF_W * CORAL_PLACEMENT_CONFIG.xSpreadFrac),
         FLOOR_Y + CORAL_PLACEMENT_CONFIG.yAboveFloor,
@@ -824,6 +873,34 @@ export default function FishTankCanvas({
       skyMat.uniforms.uSunSize.value = palette.sunSize
       skyMat.uniforms.uStarDensity.value = palette.starDensity
       skyMat.uniforms.uCloud.value = palette.cloudStrength
+
+      // Theme (not circadian) resample of species-accented decor — a theme
+      // switch no longer remounts the scene, so this is the only place these
+      // colors get refreshed. `domainColor` re-reads the CSS var each call.
+      for (const o of fishObjs) {
+        const col = domainColor(o.data.species)
+        o.built.body.color.set(col)
+        o.built.body.emissive.set(col)
+        o.built.fin.color.set(col)
+        o.built.fin.emissive.set(col)
+        const hex = `#${col.getHexString()}`
+        const withHex = o.label as HTMLDivElement & { _pill?: HTMLDivElement; _hex?: string }
+        withHex._hex = hex
+        if (withHex._pill) {
+          withHex._pill.style.borderColor = `${col.getHexString()}${LABEL_CONFIG.pillBorderAlpha}`
+          withHex._pill.style.color = hex
+        }
+      }
+      for (const m of weedMats) {
+        m.color.set(palette.weed)
+        m.emissive.set(palette.weed)
+      }
+      for (const { mat, i } of coralMats) {
+        const c = i % 2 ? palette.accent : palette.neon
+        mat.color.set(c)
+        mat.emissive.set(c)
+      }
+      minnows.setColors([palette.accent, palette.cyan, palette.neon].map((c) => new THREE.Color(c)))
     }
     applyPaletteRef.current = applyPalette
     let paletteFrame = requestAnimationFrame(() => applyPalette(circadianRef.current))
@@ -1016,7 +1093,7 @@ export default function FishTankCanvas({
       lx: 0,
       ly: 0,
       moved: 0,
-      prevProg: 0,
+      prevProg: progRef.current,
     }
 
     function catchFish(group: THREE.Group) {
@@ -1869,12 +1946,14 @@ export default function FishTankCanvas({
     return () => {
       disposed = true
       applyPaletteRef.current = null
+      applyHighlightRef.current = null
       cancelAnimationFrame(raf)
       cancelAnimationFrame(paletteFrame)
       unsubStore()
       unsubProgress()
       fishBus.emit("fish:anchor", null)
       ro?.disconnect()
+      dprMediaQuery?.removeEventListener("change", onDprChange)
       renderer.domElement.removeEventListener("pointerdown", onPointerDown)
       renderer.domElement.removeEventListener("pointerup", onPointerUp)
       renderer.domElement.removeEventListener("pointerleave", onPointerUp)
@@ -1915,14 +1994,29 @@ export default function FishTankCanvas({
       pelletMat.dispose()
     }
     // `fish` / `highlightSlugs` are intentionally absent: they are read through
-    // refs and represented by rosterKey/highlightKey, so a same-roster patch
-    // does not remount the WebGL scene.
+    // refs and represented by rosterKey, so a same-roster patch (including a
+    // highlight/blurb-only rebuild, e.g. a focus_fish turn on a fish already
+    // in the tank) does not remount the WebGL scene. `themeKey` is also
+    // intentionally absent — see the theme effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rosterKey, immersive, themeKey, highlightKey])
+  }, [rosterKey, immersive])
 
   useEffect(() => {
     applyPaletteRef.current?.(circadian)
   }, [circadian])
+
+  // Theme/accent switch resamples the live palette instead of remounting the
+  // scene (rAF-deferred: ThemeProvider writes the CSS vars this reads via
+  // getComputedStyle in its own effect, so this must run after that commits).
+  useEffect(() => {
+    const handle = requestAnimationFrame(() => applyPaletteRef.current?.(circadianRef.current))
+    return () => cancelAnimationFrame(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [themeKey])
+
+  useEffect(() => {
+    applyHighlightRef.current?.()
+  }, [highlightKey])
 
   return (
     <div

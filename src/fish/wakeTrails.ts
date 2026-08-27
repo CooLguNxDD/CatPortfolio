@@ -21,6 +21,7 @@ export interface WakeParticle {
   maxLife: number
 }
 
+/** Fixed-size particle ring buffer for wake trails: pre-allocates `maxParticles`, then reuses slots round-robin on `emit()` instead of growing/GC-ing the array every frame. */
 export class WakeTrailPool {
   public particles: WakeParticle[] = []
   private maxParticles: number

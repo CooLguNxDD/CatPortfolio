@@ -84,6 +84,7 @@ const COMMIT_FALL = 0.9
 /** A frame longer than this is a tab restore, not a slow frame. */
 const MAX_DT = 0.1
 
+/** Initial per-fish behaviour state: cruising its orbit, no commitment, no target. */
 export function createFishBehavior(): FishBehaviorState {
   return { state: "cruise", commit: 0, elapsed: 0, targetId: null }
 }
