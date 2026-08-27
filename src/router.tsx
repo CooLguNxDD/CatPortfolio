@@ -14,13 +14,15 @@ const rootRoute = createRootRoute({
 })
 
 /**
- * Shared search: job-layout short id, view mode (tank default), focused fish.
+ * Shared search: job-layout short id, view mode (tank default), focused fish,
+ * one-shot matrix scroll target (cleared after the block is in view).
  * Absent `v` resolves to tank when capable (see resolveViewMode).
  */
 export const demoSearchSchema = z.object({
   j: z.string().optional().catch(undefined),
   v: z.enum(["text", "tank"]).optional().catch(undefined),
   f: z.string().optional().catch(undefined),
+  scrollTo: z.string().optional().catch(undefined),
 })
 
 export type DemoSearch = z.infer<typeof demoSearchSchema>

@@ -71,9 +71,21 @@ export class OctClient {
       this.client = null;
       this._initializeResult = null;
       try {
-        await client.close();
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error("close timeout")), 3000);
+          client.close().then(
+            () => {
+              clearTimeout(timer);
+              resolve();
+            },
+            (closeErr) => {
+              clearTimeout(timer);
+              reject(closeErr);
+            },
+          );
+        });
       } catch {
-        // ignore cleanup failures
+        // ignore cleanup failures or close timeout so the original error rethrows
       }
       throw err;
     }

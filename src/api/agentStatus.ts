@@ -34,7 +34,8 @@ export async function fetchAgentStatus(opts?: {
     if (!res.ok) return null;
     const json = await res.json();
     return (json?.activity as AgentActivity | null) ?? null;
-  } catch {
+  } catch (err) {
+    console.warn("fetchAgentStatus failed", err);
     return null;
   }
 }

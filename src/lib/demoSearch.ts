@@ -19,5 +19,6 @@ export function clearDemoSearch(prev: DemoSearch | undefined | null): DemoSearch
   const next: DemoSearch = {}
   if (prev?.v) next.v = prev.v
   if (prev?.f) next.f = prev.f
+  if (prev?.scrollTo) next.scrollTo = prev.scrollTo
   return next
 }
