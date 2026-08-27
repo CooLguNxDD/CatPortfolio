@@ -4,6 +4,22 @@ export interface ThemeDef {
   description?: string
   default?: boolean
   vars: Record<string, string>
+  /** True when ``vars.bg`` OKLCH lightness is above 0.6. */
+  isLight: boolean
+}
+
+/** Parse OKLCH lightness (L) from a CSS color string. */
+export function oklchLightness(color: string | undefined | null): number | null {
+  if (!color || typeof color !== "string") return null
+  const m = color.trim().match(/^oklch\(\s*([0-9.]+)/i)
+  if (!m) return null
+  const L = Number(m[1])
+  return Number.isFinite(L) ? L : null
+}
+
+function isLightFromVars(vars: Record<string, string>): boolean {
+  const L = oklchLightness(vars.bg)
+  return L != null && L > 0.6
 }
 
 export interface RawThemeFile {
@@ -140,6 +156,7 @@ export function buildRegistry(rawModules: Record<string, unknown>): Record<strin
       description: rawTheme.description,
       default: rawTheme.default,
       vars: resolvedVars,
+      isLight: isLightFromVars(resolvedVars),
     }
   }
 
@@ -154,4 +171,17 @@ const rawModules = import.meta.glob<unknown>("./*.theme.json", {
 
 export const themeRegistry: Record<string, ThemeDef> = buildRegistry(rawModules)
 export const themeList: ThemeDef[] = Object.values(themeRegistry)
-export const DEFAULT_THEME_ID = "cozy"
+export const DEFAULT_THEME_ID = "mocha"
+export const DEFAULT_LIGHT_THEME_ID = "latte"
+
+export type ThemeMode = "dark" | "light"
+
+/** Dark vs light from a registered theme id (unknown ids count as dark). */
+export function themeModeOf(themeId: string): ThemeMode {
+  return themeRegistry[themeId]?.isLight ? "light" : "dark"
+}
+
+/** Themes available in a light or dark mode. */
+export function themesForMode(mode: ThemeMode): ThemeDef[] {
+  return themeList.filter((t) => (t.isLight ? "light" : "dark") === mode)
+}

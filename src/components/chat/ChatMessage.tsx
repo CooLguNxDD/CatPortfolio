@@ -121,14 +121,8 @@ export const ChatMessage = memo(function ChatMessage({
     }
     void navigate({
       to: "/",
-      search: (prev) => ({ ...(prev || {}), v: "text" }),
+      search: (prev) => ({ ...(prev || {}), v: "text", scrollTo: action.target }),
       replace: true,
-    });
-    // Let the matrix mount before scrolling to the block.
-    requestAnimationFrame(() => {
-      document
-        .querySelector(`[data-block-id="${CSS.escape(action.target)}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   };
 

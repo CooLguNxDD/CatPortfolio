@@ -17,7 +17,7 @@
 1. Update this file after every structural change (routes, components, deps, contracts).
 2. New component → add to Project Structure. New dependency → add to Tech Stack.
 3. `@/` alias for cross-directory imports; relative within a directory.
-4. Gate before commit: `npm run check:layout && npm run lint && npm run test && npm run build`.
+4. Gate before commit: `npm run check:layout && npm run lint && npm run test && npm run build`. Theme JSON is synced from OCT with `npm run gen:themes` when palettes change (manual, like `gen:fragments`).
 5. **Never edit `src/content/layout.json` directly** — edit `design/layout.yaml`, run `npm run compile:layout`.
 6. **New block type checklist:** Zod member in `schema.ts` → reviewed component in `src/blocks/` → barrel export → registry entry → tests → Python mirror sync (or a `design/pending-mirror/<date>-<type>.md` note). Enforced by `scripts/__tests__/mirror-drift.test.ts` against `design/mirror-manifest.json`.
 7. Generated/agent changes go through a PR on `portfolio-gen/<date>-<slug>`. Never push `main`, never touch `.github/workflows/deploy.yml`.
@@ -33,10 +33,11 @@
 | `j`   | Job bake short id (`{slug}_{≥10 alnum}`), minted by the OCT "bake & send" pipeline. Fetches `GET /api/portfolio/public/layout/{j}`; falls back to baked snapshot on any failure. |
 | `v`   | `tank` \| `text` view mode. Absent → tank when capable. |
 | `f`   | Focused fish slug (deep-linkable specimen). |
+| `scrollTo` | One-shot block id for text/matrix `scrollIntoView` (cleared after the target is in the DOM). |
 
 - `/` → `routes/HomePage.tsx` — `usePageLayout` resolves demo (`?j=`), live default, or a patched working copy. Tank mode renders `FishTankStage` (Ask dock + chrome); text mode is the two-column ask + matrix.
 - `/ask` → `beforeLoad` redirect onto `/` with the same search params. No page component.
-- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`).
+- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`).
 
 ## Fish Tank
 
@@ -51,6 +52,7 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Boids steering + cursor intent (pure) | `fish/fishBoids.ts`, `fish/cursorIntent.ts` |
 | Per-fish behaviour states + integrated swim body (pure) | `fish/fishBehavior.ts`, `fish/fishLocomotion.ts` |
 | Theme tokens, quality tiers, circadian cycle | `blocks/fishTankTokens.ts` (`resolveCircadianPhase` / `applyCircadian`) |
+| Numeric tuning: camera feel, geometry placement, particles, interaction/highlight formulas | `blocks/fishTankConfig.ts` (`resolveFishTankTuning(light)` for the day/night-varying subset — opacities, fish emissive floors, accent/bed light intensity) |
 | GPU shoal — InstancedMesh, vertex-shader path + spine | `fish/minnowField.ts`, `fish/shaders/spineDeform.ts` |
 | Post chain (bokeh → bloom → wobble → output) | `fish/postprocessing/tankComposer.ts` |
 | Optics: Beer-Lambert fog chunk, world-space caustics | `fish/shaders/absorption.ts`, `fish/shaders/causticProjection.ts` |
@@ -152,7 +154,7 @@ CatPortfolio/
 │   │   ├── Chart (+ charts/) FlowAnim ArchDiagram MermaidDiagram (lazy) Prose CodeSnippet
 │   │   ├── QuickActions Composite McpSandbox CostSimulator
 │   │   ├── Scene2d + Scene2dCanvas + scene2dLayout.ts
-│   │   ├── FishTank + FishTankCanvas + fishTankLayout.ts fishTankTokens.ts fishFromLayout.ts
+│   │   ├── FishTank + FishTankCanvas + fishTankLayout.ts fishTankTokens.ts fishTankConfig.ts fishFromLayout.ts
 │   │   └── primitives/         # Metric Quote Sparkline MarkdownText Divider Progress IconTile BadgeCloud
 │   ├── object3D/               # 3D character avatars & forward kinematics rigs
 │   │   └── Cat/                # Modular 2D/3D Cat Rig & Animation Engine
@@ -178,21 +180,21 @@ CatPortfolio/
 │   ├── hooks/                  # useFishTank useDemoLayout usePageLayout useLayoutDag useLayoutTheme
 │   │                           # useThemeRegistry useThemeTokens useLayoutSessionHydrated
 │   ├── api/                    # octClient harness instructions agentStatus
-│   ├── themes/                 # cozy / neon / paper theme JSONs + registry + context
+│   ├── themes/                 # cozy / neon / paper + Catppuccin; globbed by registry.ts (isLight from --bg)
 │   ├── styles/                 # matrix.css (level bands, lighting) · fish-tank.css
 │   ├── lib/                    # utils.ts (cn) · demoSearch.ts
 │   └── types/three.d.ts
 ├── design/                     # Generation source of truth (human/agent editable)
 │   ├── layout.yaml             # Matrix + fish tank source → layout.json
 │   ├── design.md               # Design contract: tokens, voice, audience, block + matrix rules
-│   ├── fragments.json          # Cached OCT fragment catalog (gen:fragments)
+│   ├── fragments.json          # Cached OCT fragment catalog (gen:fragments; includes themes: ids)
 │   ├── sources.yaml            # External context sources (Zod-checked in tests)
 │   ├── mirror-manifest.json    # Canonical mirror guard data
 │   ├── pending-mirror/         # Block types awaiting OCT-side Pydantic sync
 │   ├── fish/                   # tank3d extraction notes (README, body/css/js)
 │   ├── prototypes/             # Layout drafts + HTML prototypes
 │   └── sampleDesign/
-├── scripts/                    # compile-layout · gen-layout · gen-fragments · sources-schema
+├── scripts/                    # compile-layout · gen-layout · gen-fragments · gen-themes · sources-schema
 ├── .claude/skills/             # react-app-guide · react_generator · agy-tdd-pipeline
 ├── .github/workflows/          # ci.yml · deploy.yml · portfolio-gen.yml
 ├── public/                     # favicon.svg · config.json (runtime, unhashed)
@@ -213,6 +215,8 @@ npm run check:layout     # Fail if layout.json is stale (CI)
 npm run gen:layout [-- --audience=recruiter|hiring-manager|peer|default]
                          # Seed layout.yaml from local OCT, then compile. Never in CI
 npm run gen:fragments    # Refresh design/fragments.json from OCT (manual only)
+npm run gen:themes       # Pull theme JSON from OCT design-context theme_defs (manual only)
+npm run check:themes     # Diff on-disk src/themes vs live OCT (needs OCT_URL; not CI)
 ```
 
 **Docker:** `docker compose up --build` → http://localhost:11000/CatPortfolio/. After editing `design/layout.yaml`, run `compile:layout` **and rebuild the image** — the bind mount will not update an nginx root baked at build time.

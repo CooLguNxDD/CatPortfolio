@@ -3,7 +3,7 @@
 # CI verifies sync via: npm run check:layout — never generates.
 
 version: 1
-theme: cozy
+theme: mocha
 meta:
   audience: default
   generatedAt: "2026-08-10T20:00:00Z"

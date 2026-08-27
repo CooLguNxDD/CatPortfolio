@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(notebooklm auth *)"
+      "PowerShell(notebooklm auth *)",
+      "Bash(gh pr *)"
     ]
   }
 }

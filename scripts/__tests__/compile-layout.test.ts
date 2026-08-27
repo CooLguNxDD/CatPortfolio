@@ -87,5 +87,9 @@ describe("readThemeIds", () => {
     expect(ids).toContain("cozy");
     expect(ids).toContain("neon");
     expect(ids).toContain("paper");
+    expect(ids).toContain("mocha");
+    expect(ids).toContain("latte");
+    expect(ids).toContain("frappe");
+    expect(ids).toContain("macchiato");
   });
 });

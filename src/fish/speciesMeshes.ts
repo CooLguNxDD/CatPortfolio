@@ -7,6 +7,7 @@
 import * as THREE from "three"
 import { resolveFishForm, type FishForm } from "./formFromDomain"
 import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
+import { FISH_MATERIAL_CONFIG, EYE_CONFIG, PLANT_MATERIAL_CONFIG } from "@/blocks/fishTankConfig"
 
 const geoCache = new Map<string, THREE.BufferGeometry>()
 
@@ -35,21 +36,21 @@ function makeMaterials(color: THREE.Color, glow: number) {
   const body = new THREE.MeshStandardMaterial({
     color,
     emissive: color,
-    emissiveIntensity: Math.max(0.2, glow * 0.75),
-    roughness: 0.45,
-    metalness: 0.08,
+    emissiveIntensity: Math.max(FISH_MATERIAL_CONFIG.bodyEmissiveFloor, glow * FISH_MATERIAL_CONFIG.bodyEmissiveGlowMul),
+    roughness: FISH_MATERIAL_CONFIG.bodyRoughness,
+    metalness: FISH_MATERIAL_CONFIG.bodyMetalness,
     transparent: true,
-    opacity: 0.98,
+    opacity: FISH_MATERIAL_CONFIG.bodyOpacity,
     flatShading: true,
   })
   const fin = new THREE.MeshStandardMaterial({
     color,
     emissive: color,
-    emissiveIntensity: Math.max(0.35, glow * 1.1),
+    emissiveIntensity: Math.max(FISH_MATERIAL_CONFIG.finEmissiveFloor, glow * FISH_MATERIAL_CONFIG.finEmissiveGlowMul),
     transparent: true,
-    opacity: 0.85,
-    roughness: 0.3,
-    metalness: 0.05,
+    opacity: FISH_MATERIAL_CONFIG.finOpacity,
+    roughness: FISH_MATERIAL_CONFIG.finRoughness,
+    metalness: FISH_MATERIAL_CONFIG.finMetalness,
     side: THREE.DoubleSide,
     flatShading: true,
   })
@@ -57,13 +58,19 @@ function makeMaterials(color: THREE.Color, glow: number) {
 }
 
 const EYE_WHITE = new THREE.MeshStandardMaterial({
-  color: 0xf2f7fa,
-  roughness: 0.25,
-  metalness: 0,
+  color: EYE_CONFIG.whiteColor,
+  roughness: EYE_CONFIG.whiteRoughness,
+  metalness: EYE_CONFIG.whiteMetalness,
 })
-const EYE_PUPIL = new THREE.MeshBasicMaterial({ color: 0x050810 })
+const EYE_PUPIL = new THREE.MeshBasicMaterial({ color: EYE_CONFIG.pupilColor })
 
-function addEyes(g: THREE.Group, forward: number, spread: number, up = 0.18, r = 0.16) {
+function addEyes(
+  g: THREE.Group,
+  forward: number,
+  spread: number,
+  up: number = EYE_CONFIG.defaultUp,
+  r: number = EYE_CONFIG.defaultRadius,
+) {
   for (const side of [-1, 1] as const) {
     const eye = new THREE.Mesh(
       cached("eyeball", () => new THREE.SphereGeometry(1, 8, 6)),
@@ -77,15 +84,19 @@ function addEyes(g: THREE.Group, forward: number, spread: number, up = 0.18, r =
       cached("pupil", () => new THREE.SphereGeometry(1, 6, 5)),
       EYE_PUPIL,
     )
-    pupil.scale.setScalar(r * 0.55)
-    pupil.position.set(side * spread * 1.06, up, forward + r * 0.62)
+    pupil.scale.setScalar(r * EYE_CONFIG.pupilScaleMul)
+    pupil.position.set(side * spread * EYE_CONFIG.pupilXSpreadMul, up, forward + r * EYE_CONFIG.pupilForwardMul)
     g.add(pupil)
   }
 }
 
 function addHitSphere(g: THREE.Group) {
   const hit = new THREE.Mesh(
-    cached("hit", () => new THREE.SphereGeometry(2.4, 8, 6)),
+    cached("hit", () => new THREE.SphereGeometry(
+      EYE_CONFIG.hitSphereRadius,
+      EYE_CONFIG.hitSphereWidthSegments,
+      EYE_CONFIG.hitSphereHeightSegments,
+    )),
     new THREE.MeshBasicMaterial({
       transparent: true,
       opacity: 0,
@@ -321,7 +332,11 @@ export function buildFishMesh(
   const form = resolveFishForm(data.species)
   const { body, fin } = makeMaterials(color, data.glow)
   const { group, spineSegments, pecL, pecR, tentacles } = buildForm(form, body, fin)
-  const glow = new THREE.PointLight(color, Math.max(0.6, data.glow * 1.6), 8)
+  const glow = new THREE.PointLight(
+    color,
+    Math.max(FISH_MATERIAL_CONFIG.glowIntensityFloor, data.glow * FISH_MATERIAL_CONFIG.glowIntensityMul),
+    FISH_MATERIAL_CONFIG.glowDistance,
+  )
   group.add(glow)
   group.userData = { slug: data.slug, data, form }
   return { group, body, fin, glow, form, spineSegments, pecL, pecR, tentacles }
@@ -395,13 +410,13 @@ export function buildSeaweed(
   const mat = new THREE.MeshStandardMaterial({
     color,
     emissive: color,
-    emissiveIntensity: 0.18,
-    roughness: 0.75,
-    metalness: 0.05,
+    emissiveIntensity: PLANT_MATERIAL_CONFIG.seaweed.emissiveIntensity,
+    roughness: PLANT_MATERIAL_CONFIG.seaweed.roughness,
+    metalness: PLANT_MATERIAL_CONFIG.seaweed.metalness,
     side: THREE.DoubleSide,
     flatShading: true,
     transparent: true,
-    opacity: 0.94,
+    opacity: PLANT_MATERIAL_CONFIG.seaweed.opacity,
   })
   const segH = height / segs
   for (let i = 0; i < segs; i++) {
@@ -421,15 +436,15 @@ export function buildCoral(color: THREE.Color, scale = 1): THREE.Group {
   const mat = new THREE.MeshStandardMaterial({
     color,
     emissive: color,
-    emissiveIntensity: 0.45,
-    roughness: 0.5,
-    metalness: 0.1,
+    emissiveIntensity: PLANT_MATERIAL_CONFIG.coral.emissiveIntensity,
+    roughness: PLANT_MATERIAL_CONFIG.coral.roughness,
+    metalness: PLANT_MATERIAL_CONFIG.coral.metalness,
     flatShading: true,
   })
   const tipMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
+    color: PLANT_MATERIAL_CONFIG.coral.tipColor,
     transparent: true,
-    opacity: 0.9,
+    opacity: PLANT_MATERIAL_CONFIG.coral.tipOpacity,
   })
 
   const arms = 6
@@ -459,11 +474,11 @@ export function buildCyberCrystal(color: THREE.Color, scale = 1): THREE.Group {
   const mat = new THREE.MeshStandardMaterial({
     color,
     emissive: color,
-    emissiveIntensity: 0.65,
-    roughness: 0.2,
-    metalness: 0.3,
+    emissiveIntensity: PLANT_MATERIAL_CONFIG.crystal.emissiveIntensity,
+    roughness: PLANT_MATERIAL_CONFIG.crystal.roughness,
+    metalness: PLANT_MATERIAL_CONFIG.crystal.metalness,
     transparent: true,
-    opacity: 0.92,
+    opacity: PLANT_MATERIAL_CONFIG.crystal.opacity,
     flatShading: true,
   })
   const mesh = new THREE.Mesh(

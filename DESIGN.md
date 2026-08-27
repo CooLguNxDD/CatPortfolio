@@ -73,20 +73,23 @@ OpenCat exposes plugin orchestration, proxy integrations, terminal relay, and mu
 The styling combines high-fidelity administrative terminal UI controls with physical warmth. Color choices, layout density, and font pairings emphasize instrumentation telemetry.
 
 ### Colors & Themes (`data-theme`)
-The application supports three selectable themes driven by OKLCH parameters defined on `.ct-root`:
+The application supports seven selectable themes driven by OKLCH parameters in `src/themes/*.theme.json` (injected onto `:root`; Mocha is the FOUC fallback):
 
-1.  **Cozy (Default Dark)**:
+1.  **🐱 Mocha (Default Dark)** — Catppuccin Mocha. Background `oklch(0.243 0.030 284)`, peach primary, mauve species accent.
+2.  **🐱 Macchiato / 🐱 Frappé** — Catppuccin dark deltas over Mocha.
+3.  **🐱 Latte** — Catppuccin light (`oklch(0.958 0.006 265)`). Treated as a light surface (Mermaid `neutral`, daylight fish tank).
+4.  **Cozy (Warm Dark)**:
     - Background: `oklch(0.18 0.018 45)` (Warm control-room dark)
     - Card: `oklch(0.23 0.022 48)`
     - Amber Accent (Primary): `oklch(0.82 0.165 70)`
     - Hot Pink (Secondary): `oklch(0.76 0.180 350)`
     - Terminal Green (Success): `oklch(0.86 0.200 145)`
-2.  **Paper (Light Mode)**:
+5.  **Paper (Light Mode)**:
     - Background: `oklch(0.97 0.012 80)` (Warm off-white paper texture)
     - Card: `oklch(0.99 0.008 80)`
     - Ink Text (Foreground): `oklch(0.22 0.030 40)`
     - Amber Accent: `oklch(0.62 0.155 55)`
-3.  **Neon Alley (Cyberpunk Dark)**:
+6.  **Neon Alley (Cyberpunk Dark)**:
     - Background: `oklch(0.16 0.040 285)` (Indigo-tinted cool dark)
     - Card: `oklch(0.21 0.055 290)`
     - Magenta Primary: `oklch(0.78 0.200 320)`
@@ -159,7 +162,7 @@ Grid spacings and paddings automatically adjust via the density configuration:
 
 ## Explicit Guardrails
 
-1. **Warm Neutrals Only**: Never use standard cool-toned slate/gray/zinc colors in the Cozy theme. All borders, shadows, and secondary texts must retain warm tones (e.g., `oklch(0.32 0.025 55)`).
+1. **Warm Neutrals Only**: Never use standard cool-toned slate/gray/zinc colors in the Cozy theme. All borders, shadows, and secondary texts must retain warm tones (e.g., `oklch(0.32 0.025 55)`). Catppuccin flavors (Mocha / Macchiato / Frappé / Latte) are exempt — they use the official cool mauve/blue surfaces.
 2. **Strict Spacing Boundaries**: Maintain consistent roundness rules. Never use border-radius parameters that exceed `14px` (`--radius-lg`) or fall below `6px` (`--radius-sm`).
 3. **No Unsanitized Inputs**: In accordance with `platform_rules`, always prompt with confirmation models on any bulk operation.
 4. **No Undocumented Terminology**: Keep dashboard wording synced with back-end configuration names and plugin manifests.
