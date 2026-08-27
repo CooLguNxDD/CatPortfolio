@@ -13,7 +13,12 @@ import {
   usePreferencesStore,
   type Accent,
 } from "@/store"
-import { themeList } from "@/themes/registry"
+import {
+  DEFAULT_LIGHT_THEME_ID,
+  DEFAULT_THEME_ID,
+  themeModeOf,
+  themesForMode,
+} from "@/themes/registry"
 import { Button } from "@/components/ui/button"
 import type { DemoSearch } from "@/router"
 import { clearDemoSearch, mergeDemoSearch } from "@/lib/demoSearch"
@@ -108,6 +113,19 @@ function App() {
     setTheme(id)
   }
 
+  const activeMode = themeModeOf(activeThemeId)
+  const modeThemes = themesForMode(activeMode)
+  const selectValue = modeThemes.some((t) => t.id === activeThemeId)
+    ? activeThemeId
+    : modeThemes[0]?.id
+
+  const handleModeClick = (mode: "dark" | "light") => {
+    if (themeModeOf(activeThemeId) === mode) return
+    const fallback = mode === "light" ? DEFAULT_LIGHT_THEME_ID : DEFAULT_THEME_ID
+    const next = themesForMode(mode).find((t) => t.id === fallback) ?? themesForMode(mode)[0]
+    if (next) handleThemeClick(next.id)
+  }
+
   return (
     <div
       className="app-root min-h-screen flex flex-col bg-(--bg) text-(--fg)"
@@ -174,16 +192,52 @@ function App() {
                 />
               ))}
             </div>
-            {themeList.map((t) => (
+            <div
+              className="flex items-center gap-1"
+              role="group"
+              aria-label="Color mode"
+            >
               <Button
-                key={t.id}
                 size="xs"
-                variant={activeThemeId === t.id ? "default" : "ghost"}
-                onClick={() => handleThemeClick(t.id)}
+                variant={activeMode === "dark" ? "default" : "ghost"}
+                onClick={() => handleModeClick("dark")}
+                aria-pressed={activeMode === "dark"}
               >
-                {t.label}
+                Dark
               </Button>
-            ))}
+              <Button
+                size="xs"
+                variant={activeMode === "light" ? "default" : "ghost"}
+                onClick={() => handleModeClick("light")}
+                aria-pressed={activeMode === "light"}
+              >
+                Light
+              </Button>
+            </div>
+            <label className="inline-flex items-center gap-1.5 text-xs text-(--fg-muted)">
+              <span className="hidden sm:inline">Theme</span>
+              <span className="relative inline-flex">
+                <select
+                  id="theme-select"
+                  aria-label="Theme"
+                  className="h-7 max-w-[12rem] appearance-none rounded-md border border-(--hairline) bg-(--bg-elevated) px-2 pr-7 text-xs text-(--fg)"
+                  value={selectValue}
+                  onChange={(e) => handleThemeClick(e.target.value)}
+                >
+                  {modeThemes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-(--fg-muted)"
+                  aria-hidden
+                >
+                  ▾
+                </span>
+              </span>
+            </label>
             {import.meta.env.DEV ? (
               <Button
                 size="xs"

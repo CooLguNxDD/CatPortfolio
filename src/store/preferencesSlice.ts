@@ -8,6 +8,7 @@
 import type { StateCreator } from "zustand"
 
 import type { CircadianMode } from "@/blocks/fishTankTokens"
+import { DEFAULT_THEME_ID } from "@/themes/registry"
 
 export type Theme = string
 export type Accent = "amber" | "pink" | "neon" | "cyan" | "violet"
@@ -45,7 +46,7 @@ export interface PreferencesSlice {
 /** Selector: returns data-attribute props to spread on any `.ct-root` element. */
 export function selectThemeAttrs(s: PreferencesSlice): ThemeAttrs {
   const attrs: ThemeAttrs = {}
-  if (s.theme !== "cozy") attrs["data-theme"] = s.theme
+  if (s.theme !== DEFAULT_THEME_ID) attrs["data-theme"] = s.theme
   if (s.accent !== "amber") attrs["data-accent"] = s.accent
   if (s.density !== "comfortable") attrs["data-density"] = s.density
   return attrs
@@ -62,7 +63,7 @@ const DEFAULT_NOTIFICATIONS: NotificationPreferences = {
  * Creates the preferences slice of the Zustand store.
  */
 export const createPreferencesSlice: StateCreator<PreferencesSlice> = (set) => ({
-  theme: "cozy",
+  theme: DEFAULT_THEME_ID,
   accent: "amber",
   density: "comfortable",
   circadian: "auto",

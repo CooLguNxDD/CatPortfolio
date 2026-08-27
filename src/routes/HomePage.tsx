@@ -50,7 +50,7 @@ function sourceLabel(data: LayoutLoadResult): string {
 export function HomePage() {
   const navigate = useNavigate()
   const search = useSearch({ from: "/" })
-  const { j, v, f } = search
+  const { j, v, f, scrollTo } = search
   const { data, layout, isLoading, shortId, isDemoSession } = usePageLayout(j)
 
   const scene = useMemo(() => sceneFromLayout(layout), [layout])
@@ -109,6 +109,55 @@ export function HomePage() {
       fishBus.off("fish:release", release)
     }
   }, [navigate])
+
+  // Chat view-actions encode the block id in `?scrollTo=`; wait until the
+  // matrix has actually mounted `[data-block-id]` before scrolling, then
+  // drop the param so this doesn't re-fire.
+  useEffect(() => {
+    if (!scrollTo || mode !== "text") return
+    const inLayout = Boolean(layout?.blocks?.some((b) => b.id === scrollTo))
+    if (!inLayout) return
+
+    let cancelled = false
+    let raf = 0
+    let attempts = 0
+    const maxAttempts = 60
+
+    const clearScrollTo = () => {
+      void navigate({
+        to: "/",
+        search: (prev) => {
+          const next = { ...((prev || {}) as DemoSearch) }
+          delete next.scrollTo
+          return next
+        },
+        replace: true,
+        resetScroll: false,
+      })
+    }
+
+    const tryScroll = () => {
+      if (cancelled) return
+      const el = document.querySelector(`[data-block-id="${CSS.escape(scrollTo)}"]`)
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" })
+        clearScrollTo()
+        return
+      }
+      attempts += 1
+      if (attempts < maxAttempts) {
+        raf = requestAnimationFrame(tryScroll)
+      } else {
+        clearScrollTo()
+      }
+    }
+
+    raf = requestAnimationFrame(tryScroll)
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+    }
+  }, [scrollTo, mode, navigate, layout])
 
   const setView = (next: "tank" | "text") =>
     void navigate({

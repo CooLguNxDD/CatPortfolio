@@ -19,9 +19,10 @@ describe("mergeDemoSearch", () => {
 
 describe("clearDemoSearch", () => {
   it("drops j but keeps v", () => {
-    expect(clearDemoSearch({ j: "old", v: "tank", f: "a" })).toEqual({
+    expect(clearDemoSearch({ j: "old", v: "tank", f: "a", scrollTo: "hero" })).toEqual({
       v: "tank",
       f: "a",
+      scrollTo: "hero",
     })
   })
 
@@ -37,6 +38,13 @@ describe("demoSearchSchema", () => {
       j: undefined,
       v: undefined,
       f: undefined,
+    })
+  })
+
+  it("accepts scrollTo as an optional string", () => {
+    expect(demoSearchSchema.parse({ v: "text", scrollTo: "hero" })).toEqual({
+      v: "text",
+      scrollTo: "hero",
     })
   })
 })

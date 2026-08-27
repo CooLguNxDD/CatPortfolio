@@ -124,7 +124,8 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
             ? parseTimeoutMs(json.askTimeoutMs, fallback.askTimeoutMs)
             : fallback.askTimeoutMs,
       };
-    } catch {
+    } catch (err) {
+      console.warn("loadRuntimeConfig: falling back to env config", err);
       cached = envFallback();
     }
     return cached;

@@ -6,43 +6,43 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Default fallbacks / Cozy Cyberpunk initial variables */
-  --bg: oklch(0.18 0.018 45);
-  --bg-sunken: oklch(0.14 0.015 42);
-  --bg-elevated: oklch(0.22 0.020 47);
-  --card: oklch(0.23 0.022 48);
-  --card-soft: oklch(0.26 0.024 50);
-  --fg: oklch(0.96 0.020 80);
-  --fg-muted: oklch(0.74 0.025 70);
-  --fg-subtle: oklch(0.56 0.022 60);
-  --border: oklch(0.32 0.025 55);
-  --border-strong: oklch(0.42 0.035 60);
-  --hairline: oklch(0.28 0.022 50);
+  /* Default fallbacks / Mocha (Catppuccin) pre-hydration paint */
+  --bg: oklch(0.243 0.030 284);
+  --bg-sunken: oklch(0.183 0.020 284);
+  --bg-elevated: oklch(0.216 0.025 284);
+  --card: oklch(0.324 0.032 282);
+  --card-soft: oklch(0.404 0.032 280);
+  --fg: oklch(0.879 0.043 272);
+  --fg-muted: oklch(0.751 0.040 274);
+  --fg-subtle: oklch(0.618 0.037 276);
+  --border: oklch(0.404 0.032 280);
+  --border-strong: oklch(0.477 0.034 279);
+  --hairline: oklch(0.324 0.032 282);
   /* Base chroma — accent swap re-points --amber (and glow/soft). */
-  --amber: oklch(0.82 0.165 70);
-  --amber-glow: oklch(0.88 0.14 70);
-  --amber-soft: oklch(0.28 0.08 70);
-  --pink: oklch(0.76 0.180 350);
-  --neon: oklch(0.86 0.200 145);
-  --cyan: oklch(0.82 0.130 200);
-  --violet: oklch(0.72 0.160 300);
+  --amber: oklch(0.824 0.101 53);
+  --amber-glow: oklch(0.950 0.080 87);
+  --amber-soft: oklch(0.320 0.045 53);
+  --pink: oklch(0.870 0.075 336);
+  --neon: oklch(0.858 0.109 143);
+  --cyan: oklch(0.847 0.083 210);
+  --violet: oklch(0.787 0.119 305);
 
   /* 5-accent palette (picker swatches + data-accent rebind of --amber) */
-  --accent-amber: oklch(0.82 0.165 70);
-  --accent-pink: oklch(0.76 0.180 350);
-  --accent-neon: oklch(0.86 0.200 145);
-  --accent-cyan: oklch(0.82 0.130 200);
-  --accent-violet: oklch(0.72 0.160 300);
+  --accent-amber: oklch(0.824 0.101 53);
+  --accent-pink: oklch(0.870 0.075 336);
+  --accent-neon: oklch(0.858 0.109 143);
+  --accent-cyan: oklch(0.847 0.083 210);
+  --accent-violet: oklch(0.787 0.119 305);
 
   /* Domain accents (Open Design matrix system) — orthogonal to global accent picker */
-  --accent-ai: oklch(0.82 0.165 70);
-  --accent-ai-soft: oklch(0.28 0.08 70);
-  --accent-devops: oklch(0.84 0.18 145);
-  --accent-devops-soft: oklch(0.26 0.07 145);
-  --accent-mobile: oklch(0.76 0.18 350);
-  --accent-mobile-soft: oklch(0.28 0.08 350);
-  --accent-platform: oklch(0.82 0.13 200);
-  --accent-platform-soft: oklch(0.26 0.06 200);
+  --accent-ai: oklch(0.787 0.119 305);
+  --accent-ai-soft: oklch(0.320 0.054 305);
+  --accent-devops: oklch(0.858 0.109 143);
+  --accent-devops-soft: oklch(0.320 0.049 143);
+  --accent-mobile: oklch(0.870 0.075 336);
+  --accent-mobile-soft: oklch(0.320 0.034 336);
+  --accent-platform: oklch(0.847 0.083 210);
+  --accent-platform-soft: oklch(0.320 0.037 210);
 
   --shadow-card: 0 0 0 1px var(--hairline), 0 12px 28px -20px rgba(0,0,0,0.6);
   --glow-ambient: radial-gradient(

@@ -33,6 +33,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const def = themeRegistry[themeId] ?? themeRegistry[DEFAULT_THEME_ID]
     if (!def) return
     const root = document.documentElement
+    root.setAttribute("data-theme", def.id)
+    root.setAttribute("data-light", def.isLight ? "true" : "false")
     for (const [key, value] of Object.entries(def.vars)) {
       root.style.setProperty(`--${key}`, value)
     }
