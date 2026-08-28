@@ -6,6 +6,7 @@ import {
   extractBakeMeta,
   extractBlockPatch,
   extractCarryLayout,
+  extractFishPool,
   extractFocusSlug,
   extractHighlightSlugs,
   extractPendingJob,
@@ -154,6 +155,60 @@ export function buildMessageActions(
   return actions;
 }
 
+/** Args the spawn_pooled_fish tool expects, built from the same skeleton an ask turn ships. */
+export function buildSpawnArgs(
+  poolId: string,
+  slug: string,
+  ctx: AskContext,
+  sessionId: string,
+): Record<string, unknown> {
+  return {
+    pool_id: poolId,
+    slugs: [slug],
+    block_index: ctx.blockIndex,
+    tank_slugs: ctx.tankSlugs,
+    dag: ctx.dag,
+    time_span: ctx.timeSpan,
+    visitor_session_id: sessionId,
+  };
+}
+
+/** Spawn one pooled specimen and apply the returned overlay through the ask pipeline. */
+export async function spawnPooledFish(deps: {
+  client: { callTool: (name: string, args: Record<string, unknown>) => Promise<any> };
+  queryClient: any;
+  poolId: string;
+  slug: string;
+  ctx: AskContext;
+  sessionId: string;
+}): Promise<{ ok: true; patched: boolean } | { ok: false; error: string }> {
+  try {
+    const args = buildSpawnArgs(deps.poolId, deps.slug, deps.ctx, deps.sessionId);
+    const result = await deps.client.callTool("spawn_pooled_fish", args);
+    if (result?.isError) {
+      const textBlock = (result.content as Array<{ type?: string; text?: string }> | undefined)?.find(
+        (c) => c?.type === "text" && typeof c?.text === "string",
+      );
+      const error =
+        (typeof textBlock?.text === "string" && textBlock.text.trim()) || "Spawn failed";
+      return { ok: false, error };
+    }
+    const patch = extractBlockPatch(result?.data);
+    if (!patch) {
+      return { ok: true, patched: false };
+    }
+    const patched = applyBlockPatch(deps.queryClient, {
+      blocks: patch.blocks,
+      patchedIds: patch.patchedIds,
+      dag: patch.dag,
+      highlightSlugs: patch.highlightSlugs,
+    });
+    return { ok: true, patched };
+  } catch (err: any) {
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
 export interface ChatPanelProps {
   /** The layout currently on screen — the thing an ask turn patches. */
   layout?: Layout | null;
@@ -174,6 +229,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  const [spawning, setSpawning] = useState<Set<string>>(new Set());
   const [cliMeta, setCliMeta] = useState<CliMeta | null>(null);
   const [discoveryJob, setDiscoveryJob] = useState<PendingJob | null>(null);
   // Read at send time, not captured in the callback's deps — a layout patch
@@ -252,9 +308,15 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           const focusSlug = extractFocusSlug(result.raw);
           const highlightSlugs = extractHighlightSlugs(result.raw);
           const pendingJob = extractPendingJob(result.raw);
+          const fishPool = extractFishPool(result.raw);
 
           // Chips let the visitor jump to what changed without re-asking.
-          const actions = buildMessageActions(focusSlug, highlightSlugs, patch);
+          const actions = buildMessageActions(
+            focusSlug,
+            highlightSlugs,
+            patch,
+            fishPool?.pool ?? null,
+          );
           // A dropped block means the agent's output was partially malformed —
           // tell the visitor rather than silently rendering fewer blocks than
           // it meant to (previously only a console.warn in extractBlockPatch).
@@ -268,6 +330,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
               role: "assistant",
               markdown: sanitizeAskMarkdown(result.markdown) + droppedNote,
               ...(actions.length ? { actions } : {}),
+              ...(fishPool?.poolId ? { poolId: fishPool.poolId } : {}),
             },
           ]);
 
@@ -338,6 +401,70 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
       }
     },
     [pending, isOnline, sessionId, queryClient],
+  );
+
+  const handleSpawn = useCallback(
+    async (action: MessageAction, poolId?: string | null) => {
+      const slug = action.target;
+      if (!slug || spawning.has(slug)) return;
+
+      if (!poolId) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            markdown: "Spawn failed: missing pool ID",
+            isError: true,
+          },
+        ]);
+        return;
+      }
+
+      setSpawning((prev) => {
+        const next = new Set(prev);
+        next.add(slug);
+        return next;
+      });
+
+      try {
+        const client = await getSharedClient();
+        const ctx = buildAskContext(currentLayoutRef.current, viewRef.current);
+        const res = await spawnPooledFish({
+          client,
+          queryClient,
+          poolId,
+          slug,
+          ctx,
+          sessionId,
+        });
+        if (!res.ok) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              markdown: res.error,
+              isError: true,
+            },
+          ]);
+        }
+      } catch (err: any) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            markdown: err?.message || "Spawn failed",
+            isError: true,
+          },
+        ]);
+      } finally {
+        setSpawning((prev) => {
+          const next = new Set(prev);
+          next.delete(slug);
+          return next;
+        });
+      }
+    },
+    [spawning, queryClient, sessionId],
   );
 
   // Latest sendText for the poller below — read at fire time, not captured at
@@ -537,6 +664,9 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
               markdown={msg.markdown}
               isError={msg.isError}
               actions={msg.actions}
+              poolId={msg.poolId}
+              spawningTargets={spawning}
+              onSpawn={(action) => void handleSpawn(action, msg.poolId)}
             />
           ))
         )}

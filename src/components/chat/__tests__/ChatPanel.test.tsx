@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest"
-import { askDirective, buildAskContext, buildMessageActions } from "../ChatPanel"
+import { describe, expect, it, vi } from "vitest"
+import {
+  askDirective,
+  buildAskContext,
+  buildMessageActions,
+  buildSpawnArgs,
+  spawnPooledFish,
+} from "../ChatPanel"
 import type { Layout } from "@/content/schema"
 import type { BlockPatchResult, FishPoolItem } from "@/api/harness"
 
@@ -187,3 +193,171 @@ describe("buildMessageActions", () => {
     ])
   })
 })
+
+describe("buildSpawnArgs", () => {
+  it("produces the exact key set and references ctx values", () => {
+    const ctx = buildAskContext(LAYOUT, "tank")
+    const args = buildSpawnArgs("pool_123", "weltel-ai", ctx, "session_456")
+    expect(Object.keys(args).sort()).toEqual([
+      "block_index",
+      "dag",
+      "pool_id",
+      "slugs",
+      "tank_slugs",
+      "time_span",
+      "visitor_session_id",
+    ])
+    expect(args.pool_id).toBe("pool_123")
+    expect(args.slugs).toEqual(["weltel-ai"])
+    expect(args.visitor_session_id).toBe("session_456")
+    expect(args.block_index).toEqual(ctx.blockIndex)
+    expect(args.tank_slugs).toEqual(ctx.tankSlugs)
+    expect(args.dag).toEqual(ctx.dag)
+    expect(args.time_span).toEqual(ctx.timeSpan)
+  })
+})
+
+describe("spawnPooledFish", () => {
+  it("calls client.callTool exactly once with spawn_pooled_fish and matching pool_id / slugs", async () => {
+    const callTool = vi.fn().mockResolvedValue({
+      isError: false,
+      data: null,
+    })
+    const queryClient = { setQueryData: vi.fn(), getQueryData: vi.fn() } as any
+    const ctx = buildAskContext(LAYOUT, "tank")
+
+    await spawnPooledFish({
+      client: { callTool },
+      queryClient,
+      poolId: "pool_abc",
+      slug: "test-fish",
+      ctx,
+      sessionId: "session_xyz",
+    })
+
+    expect(callTool).toHaveBeenCalledTimes(1)
+    expect(callTool).toHaveBeenCalledWith(
+      "spawn_pooled_fish",
+      expect.objectContaining({
+        pool_id: "pool_abc",
+        slugs: ["test-fish"],
+      }),
+    )
+  })
+
+  it("applies overlay and returns {ok: true, patched: true} when result data carries an overlay", async () => {
+    const setQueryData = vi.fn()
+    const queryClient = { getQueryData: vi.fn(), setQueryData } as any
+    const ctx = buildAskContext(LAYOUT, "tank")
+    const overlayBlock = {
+      type: "card",
+      id: "card-weltel-ai",
+      props: { title: "AI Patched", name: "AI Patched", tagline: "Patched", pitch: "Patched", links: [] },
+    }
+    const callTool = vi.fn().mockResolvedValue({
+      isError: false,
+      data: {
+        blocks: [overlayBlock],
+        patched_block_ids: ["card-weltel-ai"],
+      },
+    })
+
+    const res = await spawnPooledFish({
+      client: { callTool },
+      queryClient,
+      poolId: "pool_abc",
+      slug: "weltel-ai",
+      ctx,
+      sessionId: "session_xyz",
+    })
+
+    expect(res).toEqual({ ok: true, patched: true })
+    expect(setQueryData).toHaveBeenCalled()
+  })
+
+  it("returns {ok: false, ...} on isError: true and does not touch queryClient", async () => {
+    const setQueryData = vi.fn()
+    const queryClient = { getQueryData: vi.fn(), setQueryData } as any
+    const ctx = buildAskContext(LAYOUT, "tank")
+    const callTool = vi.fn().mockResolvedValue({
+      isError: true,
+      content: [{ type: "text", text: "Pool specimen exhausted" }],
+    })
+
+    const res = await spawnPooledFish({
+      client: { callTool },
+      queryClient,
+      poolId: "pool_abc",
+      slug: "weltel-ai",
+      ctx,
+      sessionId: "session_xyz",
+    })
+
+    expect(res).toEqual({ ok: false, error: "Pool specimen exhausted" })
+    expect(setQueryData).not.toHaveBeenCalled()
+  })
+
+  it("falls back to 'Spawn failed' when isError: true has no text content", async () => {
+    const setQueryData = vi.fn()
+    const queryClient = { getQueryData: vi.fn(), setQueryData } as any
+    const ctx = buildAskContext(LAYOUT, "tank")
+    const callTool = vi.fn().mockResolvedValue({
+      isError: true,
+      content: [],
+    })
+
+    const res = await spawnPooledFish({
+      client: { callTool },
+      queryClient,
+      poolId: "pool_abc",
+      slug: "weltel-ai",
+      ctx,
+      sessionId: "session_xyz",
+    })
+
+    expect(res).toEqual({ ok: false, error: "Spawn failed" })
+    expect(setQueryData).not.toHaveBeenCalled()
+  })
+
+  it("catches rejected callTool and returns {ok: false, error: ...} without throwing", async () => {
+    const setQueryData = vi.fn()
+    const queryClient = { getQueryData: vi.fn(), setQueryData } as any
+    const ctx = buildAskContext(LAYOUT, "tank")
+    const callTool = vi.fn().mockRejectedValue(new Error("Network timeout"))
+
+    const res = await spawnPooledFish({
+      client: { callTool },
+      queryClient,
+      poolId: "pool_abc",
+      slug: "weltel-ai",
+      ctx,
+      sessionId: "session_xyz",
+    })
+
+    expect(res).toEqual({ ok: false, error: "Network timeout" })
+    expect(setQueryData).not.toHaveBeenCalled()
+  })
+
+  it("returns {ok: true, patched: false} on successful result with no parseable overlay", async () => {
+    const setQueryData = vi.fn()
+    const queryClient = { getQueryData: vi.fn(), setQueryData } as any
+    const ctx = buildAskContext(LAYOUT, "tank")
+    const callTool = vi.fn().mockResolvedValue({
+      isError: false,
+      data: { status: "ok" },
+    })
+
+    const res = await spawnPooledFish({
+      client: { callTool },
+      queryClient,
+      poolId: "pool_abc",
+      slug: "weltel-ai",
+      ctx,
+      sessionId: "session_xyz",
+    })
+
+    expect(res).toEqual({ ok: true, patched: false })
+    expect(setQueryData).not.toHaveBeenCalled()
+  })
+})
+
