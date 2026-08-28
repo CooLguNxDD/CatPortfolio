@@ -314,35 +314,24 @@
   }
 }
 
-.ft-discovery {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: 52px;
-  width: min(760px, calc(100vw - 36px));
-  border-radius: 16px;
-  padding: 10px 14px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  pointer-events: auto;
-  z-index: 20;
-  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.35);
-}
-
-.ft-dock {
+/* ---------- Submerged Bottom Toolbar ---------- */
+.ft-tankui {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
   bottom: 22px;
+  width: min(860px, calc(100vw - 36px));
+  pointer-events: auto;
+  z-index: 20;
+}
+
+.ft-toolbar {
+  border-radius: 16px;
+  padding: 8px 12px;
   display: flex;
   gap: 8px;
   align-items: center;
-  border-radius: 999px;
-  padding: 8px 14px;
-  pointer-events: auto;
-  z-index: 20;
+  flex-wrap: wrap;
   box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.35);
 }
 
@@ -395,10 +384,6 @@
 @media (max-width: 640px) {
   .ft-dock-label {
     display: none;
-  }
-  .ft-dock {
-    padding: 6px 10px;
-    gap: 6px;
   }
   .ft-dock-btn {
     padding: 6px 8px;
@@ -457,25 +442,6 @@
   .ft-dock-btn.on .ft-eq-3 {
     animation: ft-eq-3 0.85s ease-in-out infinite alternate;
   }
-}
-
-.ft-tankui {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 22px;
-  width: min(760px, calc(100vw - 36px));
-  pointer-events: auto;
-}
-
-.ft-toolbar {
-  border-radius: 16px;
-  padding: 12px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.35);
 }
 
 .ft-input {
@@ -722,7 +688,7 @@
   left: 16px;
   width: min(420px, calc(100vw - 32px));
   max-height: calc(100svh - 175px);
-  z-index: 30;
+  z-index: 70;
   border-radius: var(--radius-lg, 16px);
   overflow: hidden;
   display: flex;

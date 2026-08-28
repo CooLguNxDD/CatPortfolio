@@ -13,18 +13,16 @@ import {
   sanitizeAskMarkdown,
   type BlockPatchResult,
   type CliMeta,
-  type PendingJob,
   type Recommendation,
 } from "@/api/harness";
 import { loadJobLayout } from "@/content/loadLayout";
-import { ChatMessage, type Message, type MessageAction } from "./ChatMessage";
+import { ChatMessage, type MessageAction } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/store/chatSlice";
 import { useFishTankStore, useLayoutStore } from "@/store";
 import { applyBlockPatch, applyLayoutToCache } from "@/store/applyLayout";
 import { fishBus } from "@/fish/fishBus";
-import { bestFishForQuestion } from "@/fish/matchFish";
 import { sceneFromLayout } from "@/fish/sceneFromLayout";
 import type { Layout } from "@/content/schema";
 
@@ -210,11 +208,20 @@ const DISCOVERY_TIMEOUT_MS = 60_000;
  * executing ask-mode layout patches or fish tank focus changes.
  */
 export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {}) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const messages = useChatStore((s) => s.messages);
+  const setMessages = useChatStore((s) => s.setMessages);
+  const pending = useChatStore((s) => s.pending);
+  const setPending = useChatStore((s) => s.setPending);
+  const cliMeta = useChatStore((s) => s.cliMeta);
+  const setCliMeta = useChatStore((s) => s.setCliMeta);
+  const discoveryJob = useChatStore((s) => s.discoveryJob);
+  const setDiscoveryJob = useChatStore((s) => s.setDiscoveryJob);
+  const sessionId = useChatStore((s) => s.sessionId);
+  const clearChat = useChatStore((s) => s.clearChat);
+  const pendingPrompt = useChatStore((s) => s.pendingPrompt);
+  const setPendingPrompt = useChatStore((s) => s.setPendingPrompt);
+
   const [input, setInput] = useState("");
-  const [pending, setPending] = useState(false);
-  const [cliMeta, setCliMeta] = useState<CliMeta | null>(null);
-  const [discoveryJob, setDiscoveryJob] = useState<PendingJob | null>(null);
   // Read at send time, not captured in the callback's deps — a layout patch
   // mid-turn must not re-create sendText and cancel the in-flight turn.
   const currentLayoutRef = useRef<Layout | null>(layout);
@@ -225,11 +232,8 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   const [lastBakeId, setLastBakeId] = useState<string | null>(
     () => useLayoutStore.getState().shortId,
   );
-  const [sessionId] = useState(() => crypto.randomUUID());
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const logContainerRef = useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
-  const pendingPrompt = useChatStore((s) => s.pendingPrompt);
-  const setPendingPrompt = useChatStore((s) => s.setPendingPrompt);
 
   const [copied, setCopied] = useState(false);
   const [phaseIndex, setPhaseIndex] = useState(0);
@@ -277,13 +281,13 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   };
 
   const handleClear = () => {
-    setMessages([]);
-    setCliMeta(null);
-    setDiscoveryJob(null);
+    clearChat();
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
   }, [messages, pending]);
 
   const sendText = useCallback(
@@ -302,17 +306,6 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
         visitorSessionId: sessionId,
       };
       const directive = askDirective(ctx);
-
-      // Focus a fish the visitor can already see, before the round trip. The
-      // server's focus_slug overrides this when the turn lands; this only
-      // removes the wait, it never picks a fish that isn't in the tank.
-      if (!extras?.addSlugs?.length && ctx.view === "tank" && currentLayout) {
-        const local = bestFishForQuestion(
-          sceneFromLayout(currentLayout).fish,
-          userMessageText,
-        );
-        if (local) fishBus.emit("fish:pick", { slug: local.slug });
-      }
 
       // No REST race. `loadLayoutForQuery` / `composeLayoutLive` each rebuild
       // the whole page, which is precisely what an ask turn must not do — that
@@ -532,23 +525,23 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           <h2 className="text-xl font-bold text-(--fg) tracking-tight">Ask Portfolio</h2>
           <div
             className={cn(
-              "rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium flex items-center gap-1.5 border uppercase tracking-wider",
+              "rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium flex items-center gap-1.5 border uppercase tracking-wider whitespace-nowrap shrink-0",
               isOnline
                 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                : "bg-(--amber)/10 text-(--amber) border-(--amber)/20",
+                : "bg-red-500/10 text-red-500 border-red-500/20",
             )}
           >
             <span
               className={cn(
                 "h-1.5 w-1.5 rounded-full animate-pulse",
-                isOnline ? "bg-emerald-500" : "bg-(--amber)",
+                isOnline ? "bg-emerald-500" : "bg-red-500",
               )}
             />
-            {isOnline ? `oct online · ${tools.length} tools` : "oct offline — chat disabled"}
+            {isOnline ? "oct online" : "oct offline"}
           </div>
           {cliMeta && (
             <div
-              className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium flex items-center gap-1.5 border uppercase tracking-wider bg-(--neon)/10 text-(--neon) border-(--neon)/30"
+              className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium flex items-center gap-1.5 border uppercase tracking-wider bg-(--neon)/10 text-(--neon) border-(--neon)/30 whitespace-nowrap shrink-0"
               title="OpenCat core LLM is a headless CLI provider — this turn ran as a single CLI agent spawn."
             >
               <span className="h-1.5 w-1.5 rounded-full bg-(--neon) animate-pulse" />
@@ -558,7 +551,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           {lastBakeId && (
             <a
               href={`${import.meta.env.BASE_URL}?j=${encodeURIComponent(lastBakeId)}`}
-              className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium border border-(--border) text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) transition-colors"
+              className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium border border-(--border) text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) transition-colors whitespace-nowrap shrink-0"
               title="Open the baked job layout on the home page"
             >
               baked · j={lastBakeId}
@@ -573,46 +566,31 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
                 type="button"
                 onClick={() => void handleCopy()}
                 disabled={!lastAssistantMsg}
-                title="Copy the latest answer markdown to clipboard"
-                className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-1 text-xs font-mono text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                title={copied ? "Copied!" : "copy chat"}
+                aria-label="copy chat"
+                className="h-7 w-7 rounded-full border border-(--border) bg-(--bg-elevated) inline-flex items-center justify-center text-xs font-mono text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0"
               >
-                {copied ? "✓ Copied" : "📋 Copy answer"}
+                {copied ? "✓" : "📋"}
               </button>
               <button
                 type="button"
                 onClick={handleClear}
-                title="Clear conversation log (keeps session ID)"
-                className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-1 text-xs font-mono text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) transition-colors cursor-pointer"
+                title="clear chat"
+                aria-label="clear chat"
+                className="h-7 w-7 rounded-full border border-(--border) bg-(--bg-elevated) inline-flex items-center justify-center text-xs font-mono text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) transition-colors cursor-pointer shrink-0"
               >
-                🗑️ Clear
+                🗑️
               </button>
             </>
           )}
-          {isOnline && tools && (
-            <details className="group/details text-xs max-w-md w-full md:w-auto">
-              <summary className="cursor-pointer text-(--fg-subtle) hover:text-(--fg) transition-colors font-mono select-none flex items-center gap-1 list-none justify-end">
-                <span>[</span>
-                <span className="underline underline-offset-2">preview capabilities</span>
-                <span>]</span>
-              </summary>
-              <div className="mt-2 bg-background border border-(--hairline) rounded-xl p-3 max-h-48 overflow-y-auto space-y-2 text-left shadow-inner">
-                {tools.map((t) => (
-                  <div key={t.name} className="border-b border-(--hairline) last:border-0 pb-1.5 last:pb-0">
-                    <div className="font-mono text-xs font-semibold text-(--fg)">{t.name}</div>
-                    {t.description && (
-                      <div className="text-[11px] text-(--fg-muted) mt-0.5 leading-normal">
-                        {t.description}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </details>
-          )}
+          <span className="rounded-full border border-(--hairline) bg-(--card)/40 px-2 py-0.5 text-[10px] font-mono text-(--fg-subtle) uppercase tracking-wider select-none shrink-0">
+            preview
+          </span>
         </div>
       </div>
 
       <div
+        ref={logContainerRef}
         className="min-h-48 max-h-[450px] overflow-y-auto pr-2 space-y-2 select-text"
         role="log"
         aria-live="polite"
@@ -718,7 +696,6 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       <div className="flex gap-2">

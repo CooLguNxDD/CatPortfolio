@@ -23,6 +23,7 @@
 7. Generated/agent changes go through a PR on `portfolio-gen/<date>-<slug>`. Never push `main`, never touch `.github/workflows/deploy.yml`.
 8. **State ownership** (see `.claude/skills/react-app-guide`): shareable state → URL search params; server payloads → TanStack Query; device prefs → persisted Zustand; transient UI → non-persisted Zustand. Do not duplicate across layers.
 9. `graphify-out/` and `test-results/` are generated local artifacts; both are gitignored and excluded from Docker build context.
+10. - **test**: test should run on docker container unless it is a worktree
 
 ## Routes & URL State
 
