@@ -54,6 +54,17 @@ export function FishTankChrome({
   const rootRef = useRef<HTMLDivElement | null>(null)
   const surfaceSectionRef = useRef<HTMLElement | null>(null)
   const tankSectionRef = useRef<HTMLElement | null>(null)
+  const searchRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    const onSearchFocus = () => {
+      searchRef.current?.focus()
+    }
+    fishBus.on("search:focus", onSearchFocus)
+    return () => {
+      fishBus.off("search:focus", onSearchFocus)
+    }
+  }, [])
 
   useEffect(() => {
     const channel = createFrameChannel(
@@ -136,84 +147,114 @@ export function FishTankChrome({
           </div>
         </div>
 
-        <div className="ft-tankui">
-          <div className="ft-toolbar glass">
-            <input
-              type="search"
-              id="q"
-              className="ft-input"
-              value={query}
-              onChange={(e) => fishBus.emit("filter:query", e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && query.trim()) {
-                  e.preventDefault()
-                  fishBus.emit("ask:open", { prompt: query.trim() })
-                }
-              }}
-              placeholder="Ask the tank — mcp, kubernetes, planner"
-              aria-label="Search projects or ask a question"
-            />
-            <div className="ft-chips" role="group" aria-label="Domain filter">
-              {domains.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={cn("ft-chip", domain === d && "on")}
-                  onClick={() => fishBus.emit("filter:domain", d)}
-                >
-                  {DOMAIN_LABEL[d] || d}
-                </button>
-              ))}
-            </div>
-            <div className="ft-count">
-              <b>
-                {litCount}/{total}
-              </b>{" "}
-              lit
-            </div>
-            <button
-              type="button"
-              className="ft-chip"
-              onClick={() => fishBus.emit("ask:toggle")}
-              title="Open Ask — live patch the tank"
-            >
-              💬 Ask
-            </button>
-            <button
-              type="button"
-              className="ft-chip"
-              onClick={() => dropFood()}
-              title="Drop food pellets into the tank (or double-click canvas)"
-            >
-              🍲 Feed
-            </button>
-            <button
-              type="button"
-              className={cn("ft-chip", soundEnabled && "on")}
-              onClick={() => toggleSound()}
-              title="Toggle hydro-acoustic sound synthesizer"
-            >
-              {soundEnabled ? "🔊 Audio" : "🔇 Muted"}
-            </button>
-            <button
-              type="button"
-              className={cn("ft-chip", circadian !== "auto" && "on")}
-              onClick={() => cycleCircadian()}
-              title="Day / night cycle (auto follows your local clock)"
-            >
-              {circadian === "night" ? "🌙 Abyss" : circadian === "day" ? "☀️ Lagoon" : "🕓 Auto"}
-            </button>
-            {showBake ? (
+        <div className="ft-discovery glass">
+          <input
+            ref={searchRef}
+            type="search"
+            id="q"
+            className="ft-input"
+            value={query}
+            onChange={(e) => fishBus.emit("filter:query", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && query.trim()) {
+                e.preventDefault()
+                fishBus.emit("ask:open", { prompt: query.trim() })
+              }
+            }}
+            placeholder="Ask the tank — mcp, kubernetes, planner"
+            aria-label="Search projects or ask a question"
+          />
+          <div className="ft-chips" role="group" aria-label="Domain filter">
+            {domains.map((d) => (
               <button
+                key={d}
                 type="button"
-                className="ft-chip"
-                onClick={() => fishBus.emit("bake:apply")}
-                title="Simulate a job-specific bake highlight"
+                className={cn("ft-chip", domain === d && "on")}
+                onClick={() => fishBus.emit("filter:domain", d)}
               >
-                ⚡ Bake
+                {DOMAIN_LABEL[d] || d}
               </button>
-            ) : null}
+            ))}
           </div>
+          <div className="ft-count">
+            <b>
+              {litCount}/{total}
+            </b>{" "}
+            lit
+          </div>
+        </div>
+
+        <div className="ft-dock glass" role="toolbar" aria-label="Aquarium controls">
+          <button
+            type="button"
+            className="ft-dock-btn"
+            onClick={() => fishBus.emit("ask:toggle")}
+            title="Open Ask — live patch the tank"
+          >
+            <span className="ft-dock-icon">💬</span>
+            <span className="ft-dock-label">Ask</span>
+          </button>
+          <button
+            type="button"
+            className="ft-dock-btn"
+            onClick={() => dropFood()}
+            title="Drop food pellets into the tank (or double-click canvas)"
+          >
+            <span className="ft-dock-icon">🍲</span>
+            <span className="ft-dock-label">Feed</span>
+          </button>
+          <button
+            type="button"
+            className={cn("ft-dock-btn", soundEnabled && "on")}
+            onClick={() => toggleSound()}
+            title="Toggle hydro-acoustic sound synthesizer"
+          >
+            <span className="ft-dock-icon">
+              {soundEnabled ? (
+                <span className="ft-eq" aria-hidden="true">
+                  <span className="ft-eq-bar ft-eq-1" />
+                  <span className="ft-eq-bar ft-eq-2" />
+                  <span className="ft-eq-bar ft-eq-3" />
+                </span>
+              ) : (
+                "🔇"
+              )}
+            </span>
+            <span className="ft-dock-label">{soundEnabled ? "Audio" : "Muted"}</span>
+          </button>
+          <button
+            type="button"
+            className={cn("ft-dock-btn", circadian !== "auto" && "on")}
+            onClick={() => cycleCircadian()}
+            title="Day / night cycle (auto follows your local clock)"
+          >
+            <span className="ft-dock-icon">
+              {circadian === "night" ? "🌙" : circadian === "day" ? "☀️" : "🕓"}
+            </span>
+            <span className="ft-dock-label">
+              {circadian === "night" ? "Abyss" : circadian === "day" ? "Lagoon" : "Auto"}
+            </span>
+          </button>
+          {showBake ? (
+            <button
+              type="button"
+              className="ft-dock-btn"
+              onClick={() => fishBus.emit("bake:apply")}
+              title="Simulate a job-specific bake highlight"
+            >
+              <span className="ft-dock-icon">⚡</span>
+              <span className="ft-dock-label">Bake</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ft-dock-btn"
+            onClick={() => fishBus.emit("shortcuts:toggle")}
+            title="Keyboard shortcuts (?)"
+          >
+            <span className="ft-dock-icon">⌨</span>
+            <span className="ft-dock-label">Shortcuts</span>
+          </button>
         </div>
 
         {tankScene === "tank" ? (

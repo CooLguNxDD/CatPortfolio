@@ -314,6 +314,151 @@
   }
 }
 
+.ft-discovery {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 52px;
+  width: min(760px, calc(100vw - 36px));
+  border-radius: 16px;
+  padding: 10px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  pointer-events: auto;
+  z-index: 20;
+  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.35);
+}
+
+.ft-dock {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 22px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 14px;
+  pointer-events: auto;
+  z-index: 20;
+  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.35);
+}
+
+.ft-dock-btn {
+  font: inherit;
+  font-size: 11px;
+  font-family: var(--ft-mono);
+  color: var(--ft-dim);
+  background: transparent;
+  border: 1px solid var(--ft-line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ft-dock-btn:hover {
+  color: var(--ft-fg, var(--fg));
+  border-color: var(--ft-accent);
+}
+
+.ft-dock-btn.on {
+  color: var(--bg);
+  background: var(--ft-accent);
+  border-color: var(--ft-accent);
+  font-weight: 700;
+}
+
+.ft-dock-btn:focus-visible {
+  outline: 2px solid var(--ft-accent);
+  outline-offset: 2px;
+}
+
+.ft-dock-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.ft-dock-label {
+  display: inline-block;
+}
+
+@media (max-width: 640px) {
+  .ft-dock-label {
+    display: none;
+  }
+  .ft-dock {
+    padding: 6px 10px;
+    gap: 6px;
+  }
+  .ft-dock-btn {
+    padding: 6px 8px;
+  }
+}
+
+/* Audio Equalizer */
+.ft-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 14px;
+  height: 12px;
+}
+
+.ft-eq-bar {
+  width: 2.5px;
+  background-color: currentColor;
+  border-radius: 1px;
+}
+
+.ft-eq-1 {
+  height: 40%;
+}
+
+.ft-eq-2 {
+  height: 85%;
+}
+
+.ft-eq-3 {
+  height: 60%;
+}
+
+@keyframes ft-eq-1 {
+  0%, 100% { height: 30%; }
+  50% { height: 90%; }
+}
+
+@keyframes ft-eq-2 {
+  0%, 100% { height: 85%; }
+  50% { height: 35%; }
+}
+
+@keyframes ft-eq-3 {
+  0%, 100% { height: 45%; }
+  50% { height: 100%; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ft-dock-btn.on .ft-eq-1 {
+    animation: ft-eq-1 0.7s ease-in-out infinite alternate;
+  }
+  .ft-dock-btn.on .ft-eq-2 {
+    animation: ft-eq-2 0.5s ease-in-out infinite alternate;
+  }
+  .ft-dock-btn.on .ft-eq-3 {
+    animation: ft-eq-3 0.85s ease-in-out infinite alternate;
+  }
+}
+
 .ft-tankui {
   position: absolute;
   left: 50%;
@@ -548,16 +693,17 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 92px;
+  bottom: 74px;
   z-index: 25;
   border-radius: 999px;
-  padding: 8px 16px;
+  padding: 6px 14px;
   font-size: 12px;
   color: var(--ft-dim);
   display: none;
   align-items: center;
   gap: 10px;
   pointer-events: auto;
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.4);
 }
 
 .ft-curation.show {
@@ -890,7 +1036,7 @@
 
 /* Connector from the specimen to the panel edge. Sibling of the panel so it is
    never clipped by (or contributes scroll to) the panel's own overflow box. */
-.ft-lead {
+.ft-lead-line {
   position: absolute;
   height: 1px;
   pointer-events: none;
@@ -903,7 +1049,7 @@
 }
 
 /* lead="left": panel is right of the fish, so the line fades left→right. */
-.ft-lead[data-lead="right"] {
+.ft-lead-line[data-lead="right"] {
   background: linear-gradient(
     270deg,
     color-mix(in oklab, var(--ft-panel-accent) 85%, transparent),
@@ -912,7 +1058,7 @@
 }
 
 /* Tap dot sits at the specimen end of the line. */
-.ft-lead::before {
+.ft-lead-line::before {
   content: "";
   position: absolute;
   top: -2px;
@@ -923,11 +1069,11 @@
   box-shadow: 0 0 8px var(--ft-panel-accent);
 }
 
-.ft-lead[data-lead="left"]::before {
+.ft-lead-line[data-lead="left"]::before {
   left: 0;
 }
 
-.ft-lead[data-lead="right"]::before {
+.ft-lead-line[data-lead="right"]::before {
   right: 0;
 }
 
@@ -971,7 +1117,7 @@
 
 /* Undocked (rail) fallback keeps the rounded sheet — no brackets needed. */
 .ft-modal[data-docked="false"] .ft-corner,
-.ft-modal[data-docked="false"] .ft-lead {
+.ft-modal[data-docked="false"] .ft-lead-line {
   display: none;
 }
 

@@ -25,6 +25,8 @@ export interface FishDossierProps {
   index?: number
   total?: number
   onClose: () => void
+  onPrev?: () => void
+  onNext?: () => void
   className?: string
 }
 
@@ -53,6 +55,8 @@ export function FishDossier({
   index = 1,
   total = 1,
   onClose,
+  onPrev,
+  onNext,
   className,
 }: FishDossierProps) {
   const open = Boolean(fish)
@@ -124,7 +128,7 @@ export function FishDossier({
     >
       <span
         ref={leadRef}
-        className="ft-lead"
+        className="ft-lead-line"
         style={{ "--ft-panel-accent": `var(--${token}, ${fallback})` } as CSSProperties}
         aria-hidden
       />
@@ -147,12 +151,36 @@ export function FishDossier({
           >
             Release ✕
           </button>
-          <p className="ft-specimen">
-            Specimen locked · <span>{specimen}</span>
-            {total > 1 ? (
-              <span className="ft-dim"> / {String(total).padStart(2, "0")}</span>
+          <div className="flex items-center justify-between gap-2">
+            <p className="ft-specimen">
+              Specimen locked · <span>{specimen}</span>
+              {total > 1 ? (
+                <span className="ft-dim"> / {String(total).padStart(2, "0")}</span>
+              ) : null}
+            </p>
+            {total > 1 && (onPrev || onNext) ? (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="ft-nav-btn text-[11px] font-mono px-2 py-0.5 rounded border border-(--hairline) hover:border-(--ft-panel-accent) text-(--fg-muted) hover:text-(--fg) cursor-pointer transition-colors"
+                  onClick={onPrev}
+                  title="Previous specimen (←)"
+                  aria-label="Previous specimen"
+                >
+                  ‹ Prev
+                </button>
+                <button
+                  type="button"
+                  className="ft-nav-btn text-[11px] font-mono px-2 py-0.5 rounded border border-(--hairline) hover:border-(--ft-panel-accent) text-(--fg-muted) hover:text-(--fg) cursor-pointer transition-colors"
+                  onClick={onNext}
+                  title="Next specimen (→)"
+                  aria-label="Next specimen"
+                >
+                  Next ›
+                </button>
+              </div>
             ) : null}
-          </p>
+          </div>
           <div className="ft-badge-row">
             <span
               className="ft-badge"
@@ -194,9 +222,15 @@ export function FishDossier({
               <div className="ft-sect text-xs font-mono tracking-widest text-(--fg-muted)">DEPLOYED STACK</div>
               <div className="ft-tagrow flex flex-wrap gap-1.5">
                 {fish.tags!.map((t) => (
-                  <span key={t} className="ft-tag text-[11px] px-2 py-0.5 rounded-full bg-(--hairline)/40 text-(--fg-muted) border border-(--hairline)">
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => fishBus.emit("filter:query", t)}
+                    title={`Filter by #${t}`}
+                    className="ft-tag text-[11px] px-2 py-0.5 rounded-full bg-(--hairline)/40 text-(--fg-muted) border border-(--hairline) hover:border-(--ft-panel-accent) hover:text-(--fg) cursor-pointer transition-colors"
+                  >
                     #{t}
-                  </span>
+                  </button>
                 ))}
               </div>
             </>
