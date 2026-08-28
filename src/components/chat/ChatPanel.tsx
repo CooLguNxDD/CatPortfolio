@@ -9,10 +9,12 @@ import {
   extractFocusSlug,
   extractHighlightSlugs,
   extractPendingJob,
+  extractRecommendations,
   sanitizeAskMarkdown,
   type BlockPatchResult,
   type CliMeta,
   type PendingJob,
+  type Recommendation,
 } from "@/api/harness";
 import { loadJobLayout } from "@/content/loadLayout";
 import { ChatMessage, type Message, type MessageAction } from "./ChatMessage";
@@ -33,6 +35,8 @@ export interface AskContext {
   tankSlugs: string[];
   dag: Layout["meta"]["dag"] | null;
   timeSpan: { min: number; max: number } | null;
+  addSlugs?: string[];
+  visitorSessionId?: string;
 }
 
 /** Project slug carried by a block, when it has one. */
@@ -97,6 +101,8 @@ export function askDirective(ctx: AskContext): string {
       tank_slugs: ctx.tankSlugs,
       dag: ctx.dag,
       time_span: ctx.timeSpan,
+      ...(ctx.addSlugs?.length ? { add_slugs: ctx.addSlugs } : {}),
+      ...(ctx.visitorSessionId ? { visitor_session_id: ctx.visitorSessionId } : {}),
     }) +
     "]"
   );
@@ -110,9 +116,11 @@ function oneShotPillLabel(cli: CliMeta): string {
   return `one-shot cli · ${cli.agent}`;
 }
 
+const MAX_ACTIONS = 4;
+
 /**
- * Chip actions for an ask turn: focus pills for every relevant project, then
- * "view" pills for patched blocks the visitor might want to jump to.
+ * Chip actions for an ask turn: recommendation ask/add chips first, then
+ * focus pills, then "view" pills for patched blocks.
  *
  * The fishTank block is excluded from "view" pills — it's the live 3D scene
  * itself, not a scrollable text card, so a pill for it would force `v=text`
@@ -122,25 +130,58 @@ export function buildMessageActions(
   focusSlug: string | null,
   highlightSlugs: string[],
   patch: BlockPatchResult | null,
+  recommendations: Recommendation[] = [],
 ): MessageAction[] {
   const actions: MessageAction[] = [];
-  const seenFocus = new Set<string>();
-  for (const slug of [focusSlug, ...highlightSlugs]) {
-    if (!slug || seenFocus.has(slug)) continue;
-    seenFocus.add(slug);
-    actions.push({ kind: "focus", target: slug, label: slug });
+  const seen = new Set<string>();
+
+  const push = (action: MessageAction, key: string) => {
+    if (actions.length >= MAX_ACTIONS) return;
+    if (seen.has(key)) return;
+    seen.add(key);
+    actions.push(action);
+  };
+
+  for (const rec of recommendations) {
+    if (!rec.slug) continue;
+    if (rec.in_tank) {
+      push(
+        {
+          kind: "ask",
+          target: `Tell me about ${rec.name}`,
+          label: `💡 Ask about ${rec.name}`,
+          title: rec.reason,
+          slug: rec.slug,
+        },
+        rec.slug,
+      );
+    } else {
+      push(
+        {
+          kind: "add",
+          target: rec.slug,
+          label: `+ Add ${rec.name} to tank`,
+          title: rec.reason,
+          slug: rec.slug,
+        },
+        rec.slug,
+      );
+    }
   }
+
+  for (const slug of [focusSlug, ...highlightSlugs]) {
+    if (!slug) continue;
+    push({ kind: "focus", target: slug, label: slug }, slug);
+  }
+
   const fishTankIds = new Set(
     (patch?.blocks ?? [])
       .filter((b) => b.type === "fishTank")
       .map((b) => b.id),
   );
-  const seenView = new Set<string>();
   for (const id of patch?.patchedIds ?? []) {
-    if (actions.length >= 4) break;
-    if (fishTankIds.has(id) || seenView.has(id)) continue;
-    seenView.add(id);
-    actions.push({ kind: "view", target: id, label: id });
+    if (fishTankIds.has(id)) continue;
+    push({ kind: "view", target: id, label: id }, `view:${id}`);
   }
   return actions;
 }
@@ -205,7 +246,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   }, [messages, pending]);
 
   const sendText = useCallback(
-    async (userMessageText: string) => {
+    async (userMessageText: string, extras?: { addSlugs?: string[] }) => {
       if (!userMessageText.trim() || pending || !isOnline) return;
 
       setInput("");
@@ -214,13 +255,17 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
       setMessages((prev) => [...prev, { role: "user", markdown: userMessageText }]);
 
       const currentLayout = currentLayoutRef.current;
-      const ctx = buildAskContext(currentLayout, viewRef.current);
+      const ctx: AskContext = {
+        ...buildAskContext(currentLayout, viewRef.current),
+        addSlugs: extras?.addSlugs,
+        visitorSessionId: sessionId,
+      };
       const directive = askDirective(ctx);
 
       // Focus a fish the visitor can already see, before the round trip. The
       // server's focus_slug overrides this when the turn lands; this only
       // removes the wait, it never picks a fish that isn't in the tank.
-      if (ctx.view === "tank" && currentLayout) {
+      if (!extras?.addSlugs?.length && ctx.view === "tank" && currentLayout) {
         const local = bestFishForQuestion(
           sceneFromLayout(currentLayout).fish,
           userMessageText,
@@ -243,9 +288,15 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           const focusSlug = extractFocusSlug(result.raw);
           const highlightSlugs = extractHighlightSlugs(result.raw);
           const pendingJob = extractPendingJob(result.raw);
+          const recommendations = extractRecommendations(result.raw);
 
           // Chips let the visitor jump to what changed without re-asking.
-          const actions = buildMessageActions(focusSlug, highlightSlugs, patch);
+          const actions = buildMessageActions(
+            focusSlug,
+            highlightSlugs,
+            patch,
+            recommendations,
+          );
           // A dropped block means the agent's output was partially malformed —
           // tell the visitor rather than silently rendering fewer blocks than
           // it meant to (previously only a console.warn in extractBlockPatch).
@@ -329,6 +380,15 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
       }
     },
     [pending, isOnline, sessionId, queryClient],
+  );
+
+  const sendAdd = useCallback(
+    (slug: string) => {
+      const name = slug.trim();
+      if (!name) return;
+      void sendText(`Add ${name} to the tank`, { addSlugs: [name] });
+    },
+    [sendText],
   );
 
   // Latest sendText for the poller below — read at fire time, not captured at
@@ -528,6 +588,8 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
               markdown={msg.markdown}
               isError={msg.isError}
               actions={msg.actions}
+              onAsk={sendText}
+              onAdd={sendAdd}
             />
           ))
         )}

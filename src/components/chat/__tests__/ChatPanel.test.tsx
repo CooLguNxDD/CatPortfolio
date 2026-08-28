@@ -95,6 +95,16 @@ describe("askDirective", () => {
     expect(d).toContain("weltel-devops")
     expect(d).toContain('"view":"tank"')
   })
+
+  it("includes add_slugs and visitor_session_id when present", () => {
+    const d = askDirective({
+      ...buildAskContext(LAYOUT, "tank"),
+      addSlugs: ["fisoul"],
+      visitorSessionId: "sess-1",
+    })
+    expect(d).toContain('"add_slugs":["fisoul"]')
+    expect(d).toContain('"visitor_session_id":"sess-1"')
+  })
 })
 
 describe("buildMessageActions", () => {
@@ -109,12 +119,35 @@ describe("buildMessageActions", () => {
     expect(actions.some((a) => a.kind === "view" && a.target === "card-weltel-ai")).toBe(true)
   })
 
-  it("still lists focus pills for every relevant slug", () => {
+  it("still lists focus pills for every relevant slug when there are no recs", () => {
     const actions = buildMessageActions("weltel-ai", ["weltel-devops"], null)
     expect(actions).toEqual([
       { kind: "focus", target: "weltel-ai", label: "weltel-ai" },
       { kind: "focus", target: "weltel-devops", label: "weltel-devops" },
     ])
+  })
+
+  it("emits ask vs add chips by in_tank and respects the global cap", () => {
+    const recs = [
+      { slug: "weltel-ai", name: "WelTel AI", blurb: "", tags: [], reason: "tag", in_tank: true },
+      { slug: "fisoul", name: "Fisoul", blurb: "", tags: [], reason: "name", in_tank: false },
+      { slug: "a", name: "A", blurb: "", tags: [], reason: "", in_tank: false },
+      { slug: "b", name: "B", blurb: "", tags: [], reason: "", in_tank: false },
+      { slug: "c", name: "C", blurb: "", tags: [], reason: "", in_tank: false },
+    ]
+    const actions = buildMessageActions("weltel-ai", ["weltel-devops"], null, recs)
+    expect(actions).toHaveLength(4)
+    expect(actions[0]).toMatchObject({
+      kind: "ask",
+      label: "💡 Ask about WelTel AI",
+      slug: "weltel-ai",
+    })
+    expect(actions[1]).toMatchObject({
+      kind: "add",
+      label: "+ Add Fisoul to tank",
+      target: "fisoul",
+    })
+    expect(actions.some((a) => a.kind === "focus" && a.target === "weltel-devops")).toBe(false)
   })
 
   it("deduplicates patched ids in view actions", () => {
