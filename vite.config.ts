@@ -29,6 +29,12 @@ export default defineConfig({
         manualChunks(id: string) {
           if (id.includes("node_modules/three")) return "three"
           if (id.includes("node_modules/@tanstack")) return "tanstack"
+          if (
+            id.includes("node_modules/recharts") ||
+            id.includes("node_modules/victory-vendor")
+          ) {
+            return "recharts"
+          }
         },
       },
     },
