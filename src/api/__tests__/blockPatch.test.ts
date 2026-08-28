@@ -4,6 +4,7 @@ import {
   extractFocusSlug,
   extractHighlightSlugs,
   extractPendingJob,
+  extractRecommendations,
 } from "../harness"
 
 const CARD = { type: "card", id: "card-a", props: { title: "A" } }
@@ -97,5 +98,53 @@ describe("extractPendingJob", () => {
 
   it("ignores a malformed job token", () => {
     expect(extractPendingJob({ carry: { pending_job: { status: "pending" } } })).toBeNull()
+  })
+})
+
+describe("extractRecommendations", () => {
+  const rec = {
+    slug: "weltel-ai",
+    name: "WelTel AI",
+    blurb: "agents",
+    tags: ["ai"],
+    reason: "closest tag match",
+    in_tank: true,
+  }
+
+  it("reads recommendations from response.carry", () => {
+    expect(
+      extractRecommendations({ response: { carry: { recommendations: [rec] } } }),
+    ).toEqual([rec])
+  })
+
+  it("reads a step-result bag newest-first", () => {
+    expect(
+      extractRecommendations({
+        step_results: [{ status: "ok" }, { recommendations: [rec] }],
+      }),
+    ).toEqual([rec])
+  })
+
+  it("drops malformed entries instead of failing the turn", () => {
+    expect(
+      extractRecommendations({
+        carry: { recommendations: [rec, { name: "no slug" }, null, "x"] },
+      }),
+    ).toEqual([rec])
+  })
+
+  it("returns [] when absent", () => {
+    expect(extractRecommendations({ carry: { focus_slug: "weltel-ai" } })).toEqual([])
+    expect(extractRecommendations(null)).toEqual([])
+  })
+
+  it("fills name from slug when name is missing", () => {
+    expect(
+      extractRecommendations({
+        carry: { recommendations: [{ slug: "fisoul", in_tank: false }] },
+      }),
+    ).toEqual([
+      expect.objectContaining({ slug: "fisoul", name: "fisoul", in_tank: false }),
+    ])
   })
 })
