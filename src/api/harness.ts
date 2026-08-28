@@ -385,6 +385,66 @@ export function extractPendingJob(data: unknown): PendingJob | null {
   return null;
 }
 
+export const FishPoolItemSchema = z.object({
+  slug: z.string().min(1),
+  name: z.string().min(1),
+  blurb: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  reason: z.string().optional(),
+  in_tank: z.boolean().optional(),
+});
+export type FishPoolItem = z.infer<typeof FishPoolItemSchema>;
+
+export interface FishPoolResult {
+  poolId: string | null;
+  pool: FishPoolItem[];
+  recommendations: FishPoolItem[];
+}
+
+/** Fish pool candidate specimens and recommendations from an ask turn. */
+export function extractFishPool(data: unknown): FishPoolResult | null {
+  if (!data || typeof data !== "object") return null;
+  const obj = data as Record<string, any>;
+  const bags: unknown[] = [obj?.response?.carry, obj?.carry, obj?.response, obj];
+  for (const bag of [obj?.data, obj?.step_results, obj?.response?.step_results]) {
+    if (Array.isArray(bag)) for (let i = bag.length - 1; i >= 0; i--) bags.push(bag[i]);
+  }
+  for (const b of bags) {
+    if (!b || typeof b !== "object") continue;
+    const e = b as Record<string, any>;
+    const rawPool = e.fish_pool ?? e.fishPool;
+    const rawPoolId = e.pool_id ?? e.poolId;
+    const hasPool = Array.isArray(rawPool);
+    const hasPoolId = typeof rawPoolId === "string" && rawPoolId.trim().length > 0;
+    if (!hasPool && !hasPoolId) continue;
+
+    const poolId = hasPoolId ? rawPoolId.trim() : null;
+    const pool: FishPoolItem[] = [];
+    if (hasPool) {
+      for (const item of rawPool) {
+        const parsed = FishPoolItemSchema.safeParse(item);
+        if (parsed.success) pool.push(parsed.data);
+      }
+    }
+
+    const rawRecs = e.recommendations;
+    const recommendations: FishPoolItem[] = [];
+    if (Array.isArray(rawRecs)) {
+      for (const item of rawRecs) {
+        const parsed = FishPoolItemSchema.safeParse(item);
+        if (parsed.success) recommendations.push(parsed.data);
+      }
+    }
+
+    return {
+      poolId,
+      pool,
+      recommendations,
+    };
+  }
+  return null;
+}
+
 /** Theme id from a validated carry layout, if present. */
 export function extractCarryTheme(layout: Layout | null | undefined): string | null {
   const theme = layout?.meta?.theme;
