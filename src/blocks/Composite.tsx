@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import type { PropsOf } from "@/render/registry";
 import type { CompositeNodeType } from "@/content/schema";
 import { Metric } from "./primitives/Metric";
@@ -9,9 +10,10 @@ import { Divider } from "./primitives/Divider";
 import { IconTile } from "./primitives/IconTile";
 import { MarkdownText } from "./primitives/MarkdownText";
 import { Card } from "./Card";
-import { BarChart, DonutChart, LineChart, RadarChart } from "./charts/ChartSvg";
-import type { Series } from "./charts/scale";
+import type { Series } from "./charts/toChartData";
 import { cn } from "@/lib/utils";
+
+const RechartsBody = lazy(() => import("./charts/RechartsBody"));
 
 function containerClass(kind: string, cols?: number, gap?: string): string {
   const g = gap === "sm" ? "gap-2" : gap === "lg" ? "gap-6" : "gap-4";
@@ -102,11 +104,11 @@ function Leaf({ node }: { node: CompositeNodeType }) {
     case "chart": {
       const series = (Array.isArray(n.series) ? n.series : []) as Series[];
       const kind = typeof n.chartKind === "string" ? n.chartKind : "bar";
-      if (kind === "line") return <LineChart series={series} />;
-      if (kind === "area") return <LineChart series={series} area />;
-      if (kind === "donut") return <DonutChart series={series} />;
-      if (kind === "radar") return <RadarChart series={series} />;
-      return <BarChart series={series} />;
+      return (
+        <Suspense fallback={<div className="h-40 w-full rounded bg-(--bg-sunken)" />}>
+          <RechartsBody kind={kind} series={series} />
+        </Suspense>
+      );
     }
     case "card":
       return (

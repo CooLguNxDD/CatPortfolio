@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Personal portfolio SPA: **React 19 · Vite 8 · TypeScript 6 · Tailwind v4 · TanStack Router/Query · Zustand · Zod v3 · three.js**.
+- Personal portfolio SPA: **React 19 · Vite 8 · TypeScript 6 · Tailwind v4 · TanStack Router/Query · Zustand · Zod v3 · three.js · Recharts 3**.
 - **Self-rendering:** the page is data. A Zod-validated layout spec (`src/content/layout.json`) flows through a whitelisted block registry (`src/render/registry.ts`). Layout grows; component code doesn't change. Unknown block type = skipped, never crashes.
 - **One front door on `/`:**
   - **Fish tank (default)** — a WebGL aquarium where each fish is a project/track. Falls back to the text layout when WebGL2 is missing, `prefers-reduced-motion` is set, no tank is authored and no fish exist, or `?v=text`. The default bake authors four WelTel specimens (`weltel-ai`, `weltel-devops`, `weltel-mobile`, `weltel-platform`). An authored `fishTank` with `fish: []` still opens an empty aquarium.
@@ -105,6 +105,8 @@ Extensible 2D/3D skeletal rigging and procedural animation framework:
 
 `hero · projectGrid · statStrip · starStory · archDiagram · codeSnippet · prose · chart · timeline · flowAnim · kpiGrid · comparison · quickActions · card · mcpSandbox · costSim · composite · scene2d · fishTank`
 
+`chart` renders via lazy Recharts (`blocks/charts/RechartsBody`, kind registry). Colors are `--chart-1..5` aliases of theme chroma. Schema is still `kind` + `series[]`.
+
 - `composite` — recursive container DSL (`grid|stack|split|cards`), depth ≤ 3, ≤ 40 nodes, typed leaves (`LEAF_KINDS`).
 - `scene2d` — declarative canvas-2D presets (`orbit|pulse-grid|particle-field`), not a drawing DSL.
 - `meta` carries `audience`, `theme`, `accent`, allowlisted `themeOverrides` (`THEME_VAR_ALLOWLIST`, sanitized), `sources`, `mode`, `dag`, and job-bake framing (`jobCompany`, `jobRole`, `tailored`, `contentFingerprint`, `recipeId`, …).
@@ -151,7 +153,7 @@ CatPortfolio/
 │   │   └── BlockErrorBoundary.tsx
 │   ├── blocks/                 # Whitelisted block components + barrel (index.ts)
 │   │   ├── Hero Card ProjectGrid StatStrip StarStory KpiGrid Timeline Comparison
-│   │   ├── Chart (+ charts/) FlowAnim ArchDiagram MermaidDiagram (lazy) Prose CodeSnippet
+│   │   ├── Chart (+ charts/: toChartData, kinds registry, lazy RechartsBody) FlowAnim ArchDiagram MermaidDiagram (lazy) Prose CodeSnippet
 │   │   ├── QuickActions Composite McpSandbox CostSimulator
 │   │   ├── Scene2d + Scene2dCanvas + scene2dLayout.ts
 │   │   ├── FishTank + FishTankCanvas + fishTankLayout.ts fishTankTokens.ts fishTankConfig.ts fishFromLayout.ts
@@ -175,7 +177,7 @@ CatPortfolio/
 │   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber
 │   │   ├── chat/               # ChatPanel ChatMessage
 │   │   ├── ThemeProvider.tsx AgenticHeader.tsx SourceCitations.tsx AgentStatusPill.tsx
-│   │   └── ui/                 # shadcn: button card
+│   │   └── ui/                 # shadcn: button card chart (Recharts ChartContainer)
 │   ├── store/                  # index.ts + preferences (persisted) / layout / fishTank / chat slices, applyLayout.ts
 │   ├── hooks/                  # useFishTank useDemoLayout usePageLayout useLayoutDag useLayoutTheme
 │   │                           # useThemeRegistry useThemeTokens useLayoutSessionHydrated
