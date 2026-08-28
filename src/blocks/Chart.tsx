@@ -83,6 +83,8 @@ function ChartFishHits({ series }: { series: Series[] }) {
           key={h.slug}
           type="button"
           data-slug={h.slug}
+          aria-label={`Focus ${h.label} in the fish tank`}
+          aria-controls="fish-tank"
           title={`Focus ${h.label} in the tank`}
           onClick={() => dispatchFishFocus(h.slug)}
           className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber)"

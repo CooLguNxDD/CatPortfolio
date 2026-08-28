@@ -177,17 +177,23 @@ export function highlightSet(highlightSlugs?: string[] | null): Set<string> {
   return new Set((highlightSlugs ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean))
 }
 
+interface RecruiterOrderable {
+  slug: string
+  startYear?: number
+  endYear?: number
+}
+
 /** Recruiter sort: bake highlights first, then newest startYear/endYear. */
 export function compareRecruiterOrder(
-  a: { slug: string; startYear?: number; endYear?: number },
-  b: { slug: string; startYear?: number; endYear?: number },
+  a: RecruiterOrderable,
+  b: RecruiterOrderable,
   highlightSlugs?: string[] | Set<string> | null,
 ): number {
   const hl = highlightSlugs instanceof Set ? highlightSlugs : highlightSet(highlightSlugs)
   const ah = hl.has(a.slug.toLowerCase()) ? 0 : 1
   const bh = hl.has(b.slug.toLowerCase()) ? 0 : 1
   if (ah !== bh) return ah - bh
-  const year = (f: { startYear?: number; endYear?: number }) =>
+  const year = (f: RecruiterOrderable) =>
     f.startYear ?? f.endYear ?? Number.NEGATIVE_INFINITY
   const ya = year(a)
   const yb = year(b)
