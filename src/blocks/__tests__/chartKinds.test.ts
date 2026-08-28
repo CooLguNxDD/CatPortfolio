@@ -29,4 +29,10 @@ describe("chart kind registry vs schema", () => {
   it("rejects an unknown kind", () => {
     expect(LayoutSchema.safeParse(chartLayout("sankey")).success).toBe(false)
   })
+
+  it("does not treat Object.prototype keys as registry members via CHART_KINDS", () => {
+    expect((CHART_KINDS as readonly string[]).includes("toString")).toBe(false)
+    // `in` walks the prototype — RechartsBody must use CHART_KINDS.includes instead.
+    expect("toString" in CHART_KIND_REGISTRY).toBe(true)
+  })
 })
