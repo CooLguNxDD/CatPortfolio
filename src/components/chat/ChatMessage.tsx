@@ -210,8 +210,16 @@ export const ChatMessage = memo(function ChatMessage({
                     : undefined)
                 }
                 title={action.title}
-                className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors"
+                className={cn(
+                  "rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors inline-flex items-center gap-1.5",
+                  action.kind === "add" && "ft-chip-add",
+                  action.kind === "ask" && "ft-chip-ask",
+                  action.kind === "focus" && "ft-chip-focus",
+                )}
               >
+                {action.kind === "focus" ? (
+                  <span className="h-1.5 w-1.5 rounded-full bg-(--accent-devops,var(--neon)) shrink-0" />
+                ) : null}
                 {action.label}
               </button>
             ))}

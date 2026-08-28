@@ -16,8 +16,10 @@ import { FishFlatGrid } from "@/components/fish/FishFlatGrid"
 import { FishTankChrome } from "@/components/fish/FishTankChrome"
 import { SonarMiniMap } from "@/components/fish/SonarMiniMap"
 import { DepthScrubber } from "@/components/fish/DepthScrubber"
+import { ShortcutsModal } from "@/components/fish/ShortcutsModal"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { useFishTank } from "@/hooks/useFishTank"
+import { useTankHotkeys } from "@/hooks/useTankHotkeys"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
 import { fishBus } from "@/fish/fishBus"
 import { useChatStore } from "@/store"
@@ -41,9 +43,40 @@ export function FishTankStage({
 }: FishTankStageProps) {
   const tank = useFishTank(layout)
   const [askOpen, setAskOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const stageRef = useRef<HTMLDivElement | null>(null)
   const askDockRef = useRef<HTMLElement | null>(null)
 
   useFocusTrap(askOpen, askDockRef)
+
+  const handlePrev = () => {
+    if (!tank.fish.length || !tank.focusedSlug) return
+    const curIdx = tank.fish.findIndex((f) => f.slug === tank.focusedSlug)
+    if (curIdx === -1) return
+    const prevIdx = (curIdx - 1 + tank.fish.length) % tank.fish.length
+    const prevSlug = tank.fish[prevIdx]?.slug
+    if (prevSlug) {
+      fishBus.emit("fish:pick", { slug: prevSlug })
+    }
+  }
+
+  const handleNext = () => {
+    if (!tank.fish.length || !tank.focusedSlug) return
+    const curIdx = tank.fish.findIndex((f) => f.slug === tank.focusedSlug)
+    if (curIdx === -1) return
+    const nextIdx = (curIdx + 1) % tank.fish.length
+    const nextSlug = tank.fish[nextIdx]?.slug
+    if (nextSlug) {
+      fishBus.emit("fish:pick", { slug: nextSlug })
+    }
+  }
+
+  useTankHotkeys({
+    enabled: tank.chrome === "3d" && !shortcutsOpen,
+    domains: tank.domains,
+    onPrevSpecimen: tank.focusedSlug ? handlePrev : undefined,
+    onNextSpecimen: tank.focusedSlug ? handleNext : undefined,
+  })
 
   useEffect(() => {
     function onAskToggle() {
@@ -58,13 +91,18 @@ export function FishTankStage({
     function onAskClose() {
       setAskOpen(false)
     }
+    function onShortcutsToggle() {
+      setShortcutsOpen((prev) => !prev)
+    }
     fishBus.on("ask:toggle", onAskToggle)
     fishBus.on("ask:open", onAskOpen)
     fishBus.on("ask:close", onAskClose)
+    fishBus.on("shortcuts:toggle", onShortcutsToggle)
     return () => {
       fishBus.off("ask:toggle", onAskToggle)
       fishBus.off("ask:open", onAskOpen)
       fishBus.off("ask:close", onAskClose)
+      fishBus.off("shortcuts:toggle", onShortcutsToggle)
     }
   }, [])
 
@@ -86,6 +124,10 @@ export function FishTankStage({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return
+      if (shortcutsOpen) {
+        setShortcutsOpen(false)
+        return
+      }
       if (askOpen) {
         setAskOpen(false)
         return
@@ -101,13 +143,25 @@ export function FishTankStage({
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [askOpen, tank.focusedSlug, tank.tankScene])
+  }, [shortcutsOpen, askOpen, tank.focusedSlug, tank.tankScene])
 
   useEffect(() => {
     if (tank.chrome !== "3d") return
+    const stage = stageRef.current
+    if (!stage) return
     let lastWheelTime = 0
 
+    // Ask dock / dossier / shortcuts live inside #fish-tank. Ignore their
+    // scroll so a surfaced wheel over the overlay does not start a dive.
+    function isOverlayScroll(e: Event): boolean {
+      const t = e.target
+      return t instanceof Element && Boolean(
+        t.closest(".ft-ask-dock, .ft-modal, .ft-shortcuts-backdrop"),
+      )
+    }
+
     function onWheel(e: WheelEvent) {
+      if (isOverlayScroll(e)) return
       const now = performance.now()
       if (now - lastWheelTime < 250) return
 
@@ -122,11 +176,13 @@ export function FishTankStage({
 
     let touchStartY = 0
     function onTouchStart(e: TouchEvent) {
+      if (isOverlayScroll(e)) return
       if (e.touches.length === 1) {
         touchStartY = e.touches[0].clientY
       }
     }
     function onTouchEnd(e: TouchEvent) {
+      if (isOverlayScroll(e)) return
       if (e.changedTouches.length === 1) {
         const touchEndY = e.changedTouches[0].clientY
         const diff = touchStartY - touchEndY // positive = swipe up / scroll down
@@ -136,18 +192,19 @@ export function FishTankStage({
       }
     }
 
-    window.addEventListener("wheel", onWheel, { passive: false })
-    window.addEventListener("touchstart", onTouchStart, { passive: true })
-    window.addEventListener("touchend", onTouchEnd, { passive: true })
+    stage.addEventListener("wheel", onWheel, { passive: false })
+    stage.addEventListener("touchstart", onTouchStart, { passive: true })
+    stage.addEventListener("touchend", onTouchEnd, { passive: true })
     return () => {
-      window.removeEventListener("wheel", onWheel)
-      window.removeEventListener("touchstart", onTouchStart)
-      window.removeEventListener("touchend", onTouchEnd)
+      stage.removeEventListener("wheel", onWheel)
+      stage.removeEventListener("touchstart", onTouchStart)
+      stage.removeEventListener("touchend", onTouchEnd)
     }
   }, [tank.chrome, tank.tankState])
 
   return (
     <div
+      ref={stageRef}
       id="fish-tank"
       className={cn("ft-stage", className)}
       data-view={tank.chrome}
@@ -217,7 +274,14 @@ export function FishTankStage({
         fish={tank.focusedFish}
         index={tank.focusedIndex}
         total={tank.fish.length}
+        onPrev={handlePrev}
+        onNext={handleNext}
         onClose={() => fishBus.emit("fish:release")}
+      />
+
+      <ShortcutsModal
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
       />
 
       {askOpen ? (

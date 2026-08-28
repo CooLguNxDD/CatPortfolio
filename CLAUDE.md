@@ -23,6 +23,7 @@
 7. Generated/agent changes go through a PR on `portfolio-gen/<date>-<slug>`. Never push `main`, never touch `.github/workflows/deploy.yml`.
 8. **State ownership** (see `.claude/skills/react-app-guide`): shareable state → URL search params; server payloads → TanStack Query; device prefs → persisted Zustand; transient UI → non-persisted Zustand. Do not duplicate across layers.
 9. `graphify-out/` and `test-results/` are generated local artifacts; both are gitignored and excluded from Docker build context.
+10. - **test**: test should run on docker container unless it is a worktree
 
 ## Routes & URL State
 
@@ -59,8 +60,8 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Spatial audio (HRTF panner, waterline filter) + its math | `fish/fishAudio.ts`, `fish/audioMath.ts` |
 | Sonar / bathymetry projection (pure) | `fish/sonarProjection.ts`, `fish/bathymetry.ts` |
 | Transient UI: scene, chrome, query, domain, bake dim, depth lock, sonar | `store/fishTankSlice.ts` (non-persisted; rAF smoothstep dive/surface) |
-| Controller composing all of the above | `hooks/useFishTank.ts` |
-| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber}.tsx` |
+| Controller & hotkeys composing all of the above | `hooks/{useFishTank,useTankHotkeys}.ts` |
+| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber,ShortcutsModal}.tsx` |
 | WebGL only — sole importer of `three` | `blocks/FishTankCanvas.tsx` (lazy chunk; `manualChunks` splits `three` out of index) |
 | Registry block | `blocks/FishTank.tsx` → registry `fishTank` |
 
@@ -97,7 +98,7 @@ Extensible 2D/3D skeletal rigging and procedural animation framework:
 
 - **Zero-Discontinuity Look-At**: Eliminates atan2 branch cuts along negative axes via forward-hemisphere projection and $\arcsin$ vector normalization.
 - **Rear Attention Attenuation**: When targets move behind the cat ($\Delta z < 0$), a cosine-based smoothstep falloff smoothly relaxes the head to neutral forward gaze, preventing singularity jitter when orbiting the camera around to the cat's back.
-- **Continuous Camera Unprojection**: `FishTankCanvas.tsx` continuously recalculates 3D cursor unprojection on camera orbit/pan/dive and emits `"camera:move"` on `fishBus`.
+- **Continuous Camera Unprojection**: `FishTankCanvas.tsx` continuously recalculates 3D cursor unprojection on camera orbit/pan/dive.
 
 ## Layout Contract
 
@@ -150,7 +151,8 @@ CatPortfolio/
 │   ├── render/
 │   │   ├── registry.ts         # type → component whitelist (`satisfies` completeness)
 │   │   ├── LayoutRenderer.tsx  # Matrix bands when meta.dag; else stagger + span grid
-│   │   └── BlockErrorBoundary.tsx
+│   │   ├── BlockErrorBoundary.tsx
+│   │   └── LazyChunkBoundary.tsx  # retryable Suspense isolate for lazy charts in Composite
 │   ├── blocks/                 # Whitelisted block components + barrel (index.ts)
 │   │   ├── Hero Card ProjectGrid StatStrip StarStory KpiGrid Timeline Comparison
 │   │   ├── Chart (+ charts/: toChartData, kinds registry, lazy RechartsBody) FlowAnim ArchDiagram MermaidDiagram (lazy) Prose CodeSnippet

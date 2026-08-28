@@ -261,10 +261,12 @@ function App() {
         <CatDOMCompanion initialPosition={{ x: 24, y: 80 }} />
       )}
 
-      <footer className="py-6 text-center text-xs font-mono text-(--fg-muted) border-t border-(--hairline) max-w-6xl mx-auto w-full px-4">
-        schema-driven blocks · matrix levels · GenUI layout.json ·{" "}
-        {new Date().getFullYear()}
-      </footer>
+      {liveSearch?.v === "text" && (
+        <footer className="py-6 text-center text-xs font-mono text-(--fg-muted) border-t border-(--hairline) max-w-6xl mx-auto w-full px-4">
+          schema-driven blocks · matrix levels · GenUI layout.json ·{" "}
+          {new Date().getFullYear()}
+        </footer>
+      )}
     </div>
   )
 }

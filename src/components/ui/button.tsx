@@ -1,3 +1,8 @@
+/**
+ * shadcn Button primitive — CVA variants and size scale, Slot-composable.
+ * Token classes follow the shadcn/radix mapping.
+ */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"

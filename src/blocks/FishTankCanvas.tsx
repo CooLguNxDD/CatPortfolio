@@ -1235,15 +1235,6 @@ export default function FishTankCanvas({
       fishBus.emit("audio:fx", { type: "bubble" })
     }
 
-    // Keyboard equivalent for onDblClick — "F" drops food when the canvas
-    // has focus, since dblclick has no keyboard analogue.
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key.toLowerCase() === "f" && !e.repeat) {
-        e.preventDefault()
-        onDblClick()
-      }
-    }
-
     function onPointerLeave() {
       hasCursor3D = false
       hasPointer = false
@@ -1258,7 +1249,6 @@ export default function FishTankCanvas({
     renderer.domElement.addEventListener("wheel", onWheel, { passive: false })
     renderer.domElement.addEventListener("click", onClick)
     renderer.domElement.addEventListener("dblclick", onDblClick)
-    renderer.domElement.addEventListener("keydown", onKeyDown)
 
     const _v = new THREE.Vector3()
     const _v2 = new THREE.Vector3()
@@ -1356,11 +1346,7 @@ export default function FishTankCanvas({
       )
       camera.lookAt(orbit.target)
 
-      // Emit camera:move and dynamically update 3D cursor unprojection on camera changes
-      fishBus.emit("camera:move", {
-        position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
-        target: { x: orbit.target.x, y: orbit.target.y, z: orbit.target.z },
-      })
+      // Recalculate 3D cursor unprojection on camera orbit/pan/dive.
       updateCursorRaycast()
 
       // Bind the Web Audio listener to the camera (~15Hz is plenty for HRTF)
@@ -1963,7 +1949,6 @@ export default function FishTankCanvas({
       renderer.domElement.removeEventListener("wheel", onWheel)
       renderer.domElement.removeEventListener("click", onClick)
       renderer.domElement.removeEventListener("dblclick", onDblClick)
-      renderer.domElement.removeEventListener("keydown", onKeyDown)
       fishBus.off("feed:drop", onDropFood)
       holoReticle.dispose()
       hologram.dispose()

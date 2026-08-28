@@ -52,6 +52,8 @@ export type FishEvents = {
   "filter:domain": string
   "bake:apply": void
   "bake:dismiss": void
+  "shortcuts:toggle": void
+  "search:focus": void
   "ask:toggle": void
   "ask:open": { prompt?: string } | void
   "ask:close": void
@@ -74,11 +76,6 @@ export type FishEvents = {
   "fish:anchor": FishAnchor | null
   /** Radar contacts, emitted at ~10Hz (not per frame). */
   "tank:sonar": SonarContact[]
-  /** Live camera position and orbit target, emitted on camera changes. */
-  "camera:move": {
-    position: { x: number; y: number; z: number }
-    target: { x: number; y: number; z: number }
-  }
 }
 
 export type FishBus = Emitter<FishEvents>

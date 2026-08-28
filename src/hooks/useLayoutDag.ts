@@ -58,26 +58,35 @@ const DAG_SCROLL_TUNING = {
 };
 
 /**
+ * Story bands only — skip orphan "rest" rows so L7 remains the last unlock.
+ * Collected outside the scroll tick (levels effect + resize/RO).
+ */
+function collectStoryLevelNodes(): HTMLElement[] {
+  if (typeof document === "undefined") return [];
+  return [
+    ...document.querySelectorAll<HTMLElement>(".dag-level[data-dag-level]"),
+  ].filter((el) => el.getAttribute("data-dag-level") !== "rest");
+}
+
+/**
  * Pick the active level index from live DOM geometry.
  * Focus line sits under sticky header+minimap so triggers match on-screen rows.
  *
- * Queries `.dag-level[data-dag-level]` once (not once per level) — this runs
- * on every scroll/resize rAF tick, so per-level querySelector calls thrash
- * the DOM under heavy scrolling. `chromeEl` is passed in (queried once per
- * `levels` change, not re-queried every tick) — only its geometry is
- * re-read here, since `.matrix-sticky-chrome` moves as it (un)sticks.
+ * `nodes` is the story-band list, held outside the tick so scroll does not
+ * `querySelectorAll`. `chromeEl` is passed in (queried once per `levels`
+ * change) — only its geometry is re-read here, since `.matrix-sticky-chrome`
+ * moves as it (un)sticks.
  */
-function measureActiveIndex(chromeEl: HTMLElement | null): {
+function measureActiveIndex(
+  nodes: HTMLElement[],
+  chromeEl: HTMLElement | null,
+): {
   activeIdx: number;
   progress: number;
 } {
   if (typeof window === "undefined") {
     return { activeIdx: 0, progress: 0 };
   }
-  // Story bands only — skip orphan "rest" rows so L7 remains the last unlock.
-  const nodes = [
-    ...document.querySelectorAll<HTMLElement>(".dag-level[data-dag-level]"),
-  ].filter((el) => el.getAttribute("data-dag-level") !== "rest");
   if (nodes.length === 0) {
     return { activeIdx: 0, progress: 0 };
   }
@@ -124,6 +133,7 @@ export function useLayoutDag(layout: Layout | null | undefined) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [progress, setProgress] = useState(0);
   const [reduced, setReduced] = useState(false);
+  const nodesRef = useRef<HTMLElement[]>([]);
 
   useEffect(() => {
     setReduced(prefersReducedMotion());
@@ -135,10 +145,14 @@ export function useLayoutDag(layout: Layout | null | undefined) {
     // Queried once per `levels` change, not re-queried on every scroll tick —
     // only its (sticky, so still per-tick) geometry gets re-read in measureActiveIndex.
     const chromeEl = document.querySelector<HTMLElement>(".matrix-sticky-chrome");
+    const refreshNodes = () => {
+      nodesRef.current = collectStoryLevelNodes();
+    };
+    refreshNodes();
 
     let raf = 0;
     const tick = () => {
-      const m = measureActiveIndex(chromeEl);
+      const m = measureActiveIndex(nodesRef.current, chromeEl);
       setActiveIdx((prev) => (prev === m.activeIdx ? prev : m.activeIdx));
       setProgress((prev) =>
         Math.abs(prev - m.progress) < 0.005 ? prev : m.progress,
@@ -148,16 +162,21 @@ export function useLayoutDag(layout: Layout | null | undefined) {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(tick);
     };
+    const onResize = () => {
+      refreshNodes();
+      onScroll();
+    };
 
     // Initial measure after paint so level nodes exist.
     raf = requestAnimationFrame(tick);
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
 
-    // Re-measure when level nodes resize (charts/mermaid).
+    // Re-measure when level nodes resize (charts/mermaid); refresh the
+    // cached node list in case bands were added/removed.
     const ro =
       typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(onScroll)
+        ? new ResizeObserver(onResize)
         : null;
     document.querySelectorAll("[data-dag-level]").forEach((el) => {
       ro?.observe(el);
@@ -166,7 +185,7 @@ export function useLayoutDag(layout: Layout | null | undefined) {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("resize", onResize);
       ro?.disconnect();
     };
   }, [levels]);
@@ -219,7 +238,7 @@ export function useLayoutDag(layout: Layout | null | undefined) {
       );
       setActiveIdx(idx);
       const settle = () => {
-        const m = measureActiveIndex(chrome);
+        const m = measureActiveIndex(nodesRef.current, chrome);
         setActiveIdx(m.activeIdx);
         setProgress(m.progress);
         settleCleanupRef.current = null;
