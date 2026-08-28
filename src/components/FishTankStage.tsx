@@ -212,34 +212,46 @@ export function FishTankStage({
       data-fishtank-chrome={tank.chrome}
     >
       {/* Floating view toggles — not a second sticky header */}
-      <div
-        className="ft-view-pills"
-        role="group"
-        aria-label="Tank view"
-      >
-        <button
-          type="button"
-          className={cn("ft-chip-btn", tank.chrome === "3d" && "is-on")}
-          aria-pressed={tank.chrome === "3d"}
-          onClick={() => fishBus.emit("view:chrome", "3d")}
+      <div className="ft-top-actions">
+        {tank.tankScene === "tank" ? (
+          <button
+            type="button"
+            className="ft-surface-pill"
+            onClick={() => fishBus.emit("tank:surface")}
+            title="Back to the surface (Esc)"
+          >
+            ↑ Surface
+          </button>
+        ) : null}
+        <div
+          className="ft-view-pills"
+          role="group"
+          aria-label="Tank view"
         >
-          3D
-        </button>
-        <button
-          type="button"
-          className={cn("ft-chip-btn", tank.chrome === "flat" && "is-on")}
-          aria-pressed={tank.chrome === "flat"}
-          onClick={() => fishBus.emit("view:chrome", "flat")}
-        >
-          Flat
-        </button>
-        <Link
-          to="/"
-          search={{ ...demoSearch, v: "text" }}
-          className="ft-chip-btn no-underline"
-        >
-          Text
-        </Link>
+          <button
+            type="button"
+            className={cn("ft-chip-btn", tank.chrome === "3d" && "is-on")}
+            aria-pressed={tank.chrome === "3d"}
+            onClick={() => fishBus.emit("view:chrome", "3d")}
+          >
+            3D
+          </button>
+          <button
+            type="button"
+            className={cn("ft-chip-btn", tank.chrome === "flat" && "is-on")}
+            aria-pressed={tank.chrome === "flat"}
+            onClick={() => fishBus.emit("view:chrome", "flat")}
+          >
+            Flat
+          </button>
+          <Link
+            to="/"
+            search={{ ...demoSearch, v: "text" }}
+            className="ft-chip-btn no-underline"
+          >
+            Text
+          </Link>
+        </div>
       </div>
 
       {tank.chrome === "flat" ? (
