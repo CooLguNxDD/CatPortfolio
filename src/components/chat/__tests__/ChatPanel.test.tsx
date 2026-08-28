@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { askDirective, buildAskContext, buildMessageActions } from "../ChatPanel"
 import type { Layout } from "@/content/schema"
-import type { BlockPatchResult } from "@/api/harness"
+import type { BlockPatchResult, FishPoolItem } from "@/api/harness"
 
 /**
  * `patchDirective` is gone: routing an ask turn used to be a prompt asking the
@@ -127,6 +127,63 @@ describe("buildMessageActions", () => {
     expect(actions).toEqual([
       { kind: "view", target: "a", label: "a" },
       { kind: "view", target: "b", label: "b" },
+    ])
+  })
+
+  it("emits spawn actions for pool items in order with Add <name> labels", () => {
+    const pool: FishPoolItem[] = [
+      { slug: "alpha-fish", name: "Alpha Fish" },
+      { slug: "beta-fish", name: "Beta Fish" },
+    ]
+    const actions = buildMessageActions(null, [], null, pool)
+    expect(actions).toEqual([
+      { kind: "spawn", target: "alpha-fish", label: "Add Alpha Fish" },
+      { kind: "spawn", target: "beta-fish", label: "Add Beta Fish" },
+    ])
+  })
+
+  it("respects the 4-action cap when focus + view + spawn exceeds 4", () => {
+    const patch: BlockPatchResult = {
+      blocks: [],
+      patchedIds: ["card-1", "card-2"],
+      dropped: 0,
+    }
+    const pool: FishPoolItem[] = [
+      { slug: "pool-1", name: "Pool 1" },
+      { slug: "pool-2", name: "Pool 2" },
+    ]
+    const actions = buildMessageActions("focus-1", ["focus-2"], patch, pool)
+    expect(actions).toHaveLength(4)
+    expect(actions.map((a) => a.kind)).toEqual(["focus", "focus", "view", "view"])
+    expect(actions.some((a) => a.kind === "spawn")).toBe(false)
+  })
+
+  it("skips pool items whose slug is already covered by a focus chip", () => {
+    const pool: FishPoolItem[] = [
+      { slug: "weltel-ai", name: "Weltel AI" },
+      { slug: "unique-fish", name: "Unique Fish" },
+    ]
+    const actions = buildMessageActions("weltel-ai", [], null, pool)
+    expect(actions).toEqual([
+      { kind: "focus", target: "weltel-ai", label: "weltel-ai" },
+      { kind: "spawn", target: "unique-fish", label: "Add Unique Fish" },
+    ])
+  })
+
+  it("skips pool items whose slug matches an emitted view target", () => {
+    const patch: BlockPatchResult = {
+      blocks: [],
+      patchedIds: ["weltel-ai"],
+      dropped: 0,
+    }
+    const pool: FishPoolItem[] = [
+      { slug: "weltel-ai", name: "Weltel AI" },
+      { slug: "unique-fish", name: "Unique Fish" },
+    ]
+    const actions = buildMessageActions(null, [], patch, pool)
+    expect(actions).toEqual([
+      { kind: "view", target: "weltel-ai", label: "weltel-ai" },
+      { kind: "spawn", target: "unique-fish", label: "Add Unique Fish" },
     ])
   })
 })
