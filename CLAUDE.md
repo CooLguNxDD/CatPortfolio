@@ -105,7 +105,7 @@ Extensible 2D/3D skeletal rigging and procedural animation framework:
 
 `hero · projectGrid · statStrip · starStory · archDiagram · codeSnippet · prose · chart · timeline · flowAnim · kpiGrid · comparison · quickActions · card · mcpSandbox · costSim · composite · scene2d · fishTank`
 
-`chart` renders via lazy Recharts (`blocks/charts/RechartsBody`, kind registry). Colors are `--chart-1..5` aliases of theme chroma. Schema is still `kind` + `series[]`.
+`chart` renders via lazy Recharts (`blocks/charts/RechartsBody`, kind registry). Colors are `--chart-1..5` aliases of theme chroma. Schema is still `kind` + `series[]`. Kind dispatch uses `CHART_KINDS.includes` (not `in` — prototype walk). `seriesKey` always folds the series index so duplicate names stay distinct; cartesian labels come from the longest series and missing points are `null` (gap), not `0`. Do not put `role="img"` on `ChartContainer` when the child uses `accessibilityLayer`.
 
 - `composite` — recursive container DSL (`grid|stack|split|cards`), depth ≤ 3, ≤ 40 nodes, typed leaves (`LEAF_KINDS`).
 - `scene2d` — declarative canvas-2D presets (`orbit|pulse-grid|particle-field`), not a drawing DSL.

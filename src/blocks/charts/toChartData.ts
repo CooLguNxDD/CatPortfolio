@@ -22,23 +22,37 @@ export const CHART_TOKENS = [
   "var(--chart-5)",
 ] as const
 
-/** CSS-safe config key from a series/point name. */
+/** CSS-safe config key from a series/point name. Index is always folded in so duplicate names stay distinct. */
 export function seriesKey(name: string, i: number): string {
-  const slug = name
+  const slug = (name ?? "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-  const base = slug || `s${i}`
+  const base = slug ? `${slug}-${i}` : `s-${i}`
   return /^\d/.test(base) ? `s-${base}` : base
 }
 
-/** Cartesian rows: one object per x-label with a key per series. */
-export function seriesToRows(series: Series[]): Record<string, string | number>[] {
-  const labels = series[0]?.points.map((p) => String(p.x)) ?? []
+function pointsOf(s: Series | undefined): Point[] {
+  return s?.points ?? []
+}
+
+function numericOrNull(y: unknown): number | null {
+  if (y == null) return null
+  const n = Number(y)
+  return Number.isNaN(n) ? null : n
+}
+
+/** Cartesian rows: labels from the longest series; missing points are `null` (Recharts gap), not 0. */
+export function seriesToRows(series: Series[]): Record<string, string | number | null>[] {
+  const longest = series.reduce<Point[]>((acc, s) => {
+    const pts = pointsOf(s)
+    return pts.length > acc.length ? pts : acc
+  }, [])
+  const labels = longest.map((p) => String(p.x))
   return labels.map((label, i) => {
-    const row: Record<string, string | number> = { label }
+    const row: Record<string, string | number | null> = { label }
     series.forEach((s, si) => {
-      row[seriesKey(s.name, si)] = Number(s.points[i]?.y) || 0
+      row[seriesKey(s.name ?? "", si)] = numericOrNull(pointsOf(s)[i]?.y)
     })
     return row
   })
@@ -48,8 +62,8 @@ export function seriesToRows(series: Series[]): Record<string, string | number>[
 export function seriesToChartConfig(series: Series[]): ChartConfig {
   const config: ChartConfig = {}
   series.forEach((s, i) => {
-    config[seriesKey(s.name, i)] = {
-      label: s.name,
+    config[seriesKey(s.name ?? "", i)] = {
+      label: s.name ?? `Series ${i + 1}`,
       color: CHART_TOKENS[i % CHART_TOKENS.length],
     }
   })
@@ -58,7 +72,7 @@ export function seriesToChartConfig(series: Series[]): ChartConfig {
 
 /** Donut slices from the first series' points (y = value, x/name = slice). */
 export function donutRows(series: Series[]): { name: string; key: string; value: number }[] {
-  const values = series[0]?.points ?? []
+  const values = pointsOf(series[0])
   return values.map((p, i) => {
     const name = String(p.name ?? p.x)
     return { name, key: seriesKey(name, i), value: Number(p.y) || 0 }

@@ -39,7 +39,7 @@ function namesFromSeries(series: Series[]): string[] {
   const out: string[] = [];
   for (const s of series) {
     if (s.name) out.push(s.name);
-    for (const p of s.points) {
+    for (const p of s.points ?? []) {
       if (typeof p.name === "string" && p.name.trim()) out.push(p.name);
       if (typeof p.x === "string" && p.x.trim()) out.push(p.x);
     }

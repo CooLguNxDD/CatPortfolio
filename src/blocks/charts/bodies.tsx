@@ -1,6 +1,7 @@
 /**
  * Recharts kind bodies — colors come from ChartConfig --color-<key>.
  */
+import { useMemo } from "react"
 import {
   Area,
   AreaChart,
@@ -26,7 +27,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import type { ChartBodyProps } from "./toChartData"
+import type { ChartBodyProps, Series } from "./toChartData"
 import {
   donutChartConfig,
   donutRows,
@@ -37,15 +38,24 @@ import {
 
 const boxClass = "aspect-auto h-auto min-h-[160px] w-full max-w-md"
 
+function useCartesian(series: Series[]) {
+  return useMemo(
+    () => ({
+      rows: seriesToRows(series),
+      config: seriesToChartConfig(series),
+      keys: series.map((s, i) => seriesKey(s.name ?? "", i)),
+    }),
+    [series],
+  )
+}
+
+/** Renders a Recharts bar chart configured via the ChartConfig theming system. */
 export function BarBody({ series, ariaLabel }: ChartBodyProps) {
-  const rows = seriesToRows(series)
-  const config = seriesToChartConfig(series)
-  const keys = series.map((s, i) => seriesKey(s.name, i))
+  const { rows, config, keys } = useCartesian(series)
   return (
     <ChartContainer
       config={config}
       className={boxClass}
-      role="img"
       aria-label={ariaLabel ?? "Bar chart"}
     >
       <BarChart data={rows} accessibilityLayer>
@@ -61,15 +71,13 @@ export function BarBody({ series, ariaLabel }: ChartBodyProps) {
   )
 }
 
+/** Renders a Recharts line chart using the shared chart container styling. */
 export function LineBody({ series, ariaLabel }: ChartBodyProps) {
-  const rows = seriesToRows(series)
-  const config = seriesToChartConfig(series)
-  const keys = series.map((s, i) => seriesKey(s.name, i))
+  const { rows, config, keys } = useCartesian(series)
   return (
     <ChartContainer
       config={config}
       className={boxClass}
-      role="img"
       aria-label={ariaLabel ?? "Line chart"}
     >
       <LineChart data={rows} accessibilityLayer>
@@ -92,15 +100,13 @@ export function LineBody({ series, ariaLabel }: ChartBodyProps) {
   )
 }
 
+/** Renders a Recharts area chart using the provided series data and chart styling. */
 export function AreaBody({ series, ariaLabel }: ChartBodyProps) {
-  const rows = seriesToRows(series)
-  const config = seriesToChartConfig(series)
-  const keys = series.map((s, i) => seriesKey(s.name, i))
+  const { rows, config, keys } = useCartesian(series)
   return (
     <ChartContainer
       config={config}
       className={boxClass}
-      role="img"
       aria-label={ariaLabel ?? "Area chart"}
     >
       <AreaChart data={rows} accessibilityLayer>
@@ -124,14 +130,14 @@ export function AreaBody({ series, ariaLabel }: ChartBodyProps) {
   )
 }
 
+/** Renders a Recharts pie chart tailored as a donut chart for layout series data. */
 export function DonutBody({ series, ariaLabel }: ChartBodyProps) {
-  const rows = donutRows(series)
-  const config = donutChartConfig(series)
+  const rows = useMemo(() => donutRows(series), [series])
+  const config = useMemo(() => donutChartConfig(series), [series])
   return (
     <ChartContainer
       config={config}
       className={boxClass}
-      role="img"
       aria-label={ariaLabel ?? "Donut chart"}
     >
       <PieChart accessibilityLayer>
@@ -146,15 +152,13 @@ export function DonutBody({ series, ariaLabel }: ChartBodyProps) {
   )
 }
 
+/** Renders a Recharts radar chart using polar grid coordinates and layout series. */
 export function RadarBody({ series, ariaLabel }: ChartBodyProps) {
-  const rows = seriesToRows(series)
-  const config = seriesToChartConfig(series)
-  const keys = series.map((s, i) => seriesKey(s.name, i))
+  const { rows, config, keys } = useCartesian(series)
   return (
     <ChartContainer
       config={config}
       className={boxClass}
-      role="img"
       aria-label={ariaLabel ?? "Radar chart"}
     >
       <RadarChart data={rows} accessibilityLayer>
