@@ -1,3 +1,7 @@
+/**
+ * shadcn Card primitive — header/title/description/action/content/footer slots.
+ */
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

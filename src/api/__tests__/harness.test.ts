@@ -372,6 +372,36 @@ describe("Harness tests", () => {
       }
     });
 
+    it("rate limit retry-after is clamped to 3600s", async () => {
+      const mockClient = await getSharedClient();
+      vi.mocked(mockClient.callTool).mockRejectedValue({
+        message: "Request failed with status code 429. Please try again after 99999 seconds.",
+        status: 429,
+      });
+
+      const res = await askOct("question", "session-123");
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.kind).toBe("rate_limited");
+        expect(res.retryAfter).toBe(3600);
+      }
+    });
+
+    it("rate limit with non-positive retry-after omits the field", async () => {
+      const mockClient = await getSharedClient();
+      vi.mocked(mockClient.callTool).mockRejectedValue({
+        message: "Request failed with status code 429. Please try again after 0 seconds.",
+        status: 429,
+      });
+
+      const res = await askOct("question", "session-123");
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.kind).toBe("rate_limited");
+        expect(res.retryAfter).toBeUndefined();
+      }
+    });
+
     it("timeout error gets mapped correctly", async () => {
       const mockClient = await getSharedClient();
       // Real McpError(RequestTimeout) — not a plain Error with "timeout" in the

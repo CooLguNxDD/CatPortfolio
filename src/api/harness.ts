@@ -133,6 +133,9 @@ function extractMarkdownRaw(result: OctToolResult): string {
     if (typeof obj.message === "string" && obj.message.trim()) {
       return obj.message;
     }
+    if (typeof obj.text === "string" && obj.text.trim()) {
+      return obj.text;
+    }
     if (obj.response) {
       const resp = obj.response;
       if (typeof resp === "object" && resp !== null) {
@@ -141,6 +144,9 @@ function extractMarkdownRaw(result: OctToolResult): string {
         }
         if (typeof resp.message === "string" && resp.message.trim()) {
           return resp.message;
+        }
+        if (typeof resp.text === "string" && resp.text.trim()) {
+          return resp.text;
         }
         if (resp.message) {
           const msg = resp.message;
@@ -507,7 +513,10 @@ function parseRateLimit(err: any): { isRateLimit: boolean; retryAfter?: number }
     let retryAfter: number | undefined;
     const match = msg.match(/(?:retry-after|retry_after)[:\s]+(\d+)/) || msg.match(/after\s+(\d+)\s+seconds/);
     if (match) {
-      retryAfter = parseInt(match[1], 10);
+      const n = parseInt(match[1], 10);
+      if (Number.isSafeInteger(n) && n > 0) {
+        retryAfter = Math.min(n, 3600);
+      }
     }
     return { isRateLimit: true, retryAfter };
   }

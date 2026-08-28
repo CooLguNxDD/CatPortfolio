@@ -54,6 +54,17 @@ export function FishTankChrome({
   const rootRef = useRef<HTMLDivElement | null>(null)
   const surfaceSectionRef = useRef<HTMLElement | null>(null)
   const tankSectionRef = useRef<HTMLElement | null>(null)
+  const searchRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    const onSearchFocus = () => {
+      searchRef.current?.focus()
+    }
+    fishBus.on("search:focus", onSearchFocus)
+    return () => {
+      fishBus.off("search:focus", onSearchFocus)
+    }
+  }, [])
 
   useEffect(() => {
     const channel = createFrameChannel(
@@ -118,14 +129,32 @@ export function FishTankChrome({
       <section ref={tankSectionRef} className="ft-scene ft-scene--tank" data-off="false">
         <div className="ft-waterline">
           <div className="ft-bar">
-            <div>
-              <div className="ft-lbl">Aquarium surface rim</div>
-              <div className="ft-sub">
-                Depth{" "}
-                <b className="font-mono text-(--fg)">submerged</b> ·{" "}
-                <span>{total} species</span>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="ft-lbl">Aquarium surface rim</div>
+                <div className="ft-sub">
+                  Depth{" "}
+                  <b className="font-mono text-(--fg)">submerged</b> ·{" "}
+                  <span>{total} species</span>
+                </div>
               </div>
+              {curationLabel ? (
+                <button
+                  type="button"
+                  className="ft-chip-btn text-[10px] px-2 py-0.5"
+                  onClick={() => fishBus.emit("bake:dismiss")}
+                  title="Clear curation filter"
+                >
+                  clear
+                </button>
+              ) : null}
             </div>
+            {curationLabel ? (
+              <div className="text-[11px] font-mono text-(--amber) flex items-center gap-1.5 border-t border-(--hairline) pt-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-(--amber) shrink-0 animate-pulse" />
+                <span className="truncate">{curationLabel}</span>
+              </div>
+            ) : null}
             <div className="ft-wave" />
             <div
               className="ft-sub"
@@ -137,8 +166,9 @@ export function FishTankChrome({
         </div>
 
         <div className="ft-tankui">
-          <div className="ft-toolbar glass">
+          <div className="ft-toolbar glass" role="toolbar" aria-label="Aquarium controls">
             <input
+              ref={searchRef}
               type="search"
               id="q"
               className="ft-input"
@@ -173,46 +203,74 @@ export function FishTankChrome({
             </div>
             <button
               type="button"
-              className="ft-chip"
+              className="ft-dock-btn"
               onClick={() => fishBus.emit("ask:toggle")}
               title="Open Ask — live patch the tank"
             >
-              💬 Ask
+              <span className="ft-dock-icon">💬</span>
+              <span className="ft-dock-label">Ask</span>
             </button>
             <button
               type="button"
-              className="ft-chip"
+              className="ft-dock-btn"
               onClick={() => dropFood()}
               title="Drop food pellets into the tank (or double-click canvas)"
             >
-              🍲 Feed
+              <span className="ft-dock-icon">🍲</span>
+              <span className="ft-dock-label">Feed</span>
             </button>
             <button
               type="button"
-              className={cn("ft-chip", soundEnabled && "on")}
+              className={cn("ft-dock-btn", soundEnabled && "on")}
               onClick={() => toggleSound()}
               title="Toggle hydro-acoustic sound synthesizer"
             >
-              {soundEnabled ? "🔊 Audio" : "🔇 Muted"}
+              <span className="ft-dock-icon">
+                {soundEnabled ? (
+                  <span className="ft-eq" aria-hidden="true">
+                    <span className="ft-eq-bar ft-eq-1" />
+                    <span className="ft-eq-bar ft-eq-2" />
+                    <span className="ft-eq-bar ft-eq-3" />
+                  </span>
+                ) : (
+                  "🔇"
+                )}
+              </span>
+              <span className="ft-dock-label">{soundEnabled ? "Audio" : "Muted"}</span>
             </button>
             <button
               type="button"
-              className={cn("ft-chip", circadian !== "auto" && "on")}
+              className={cn("ft-dock-btn", circadian !== "auto" && "on")}
               onClick={() => cycleCircadian()}
               title="Day / night cycle (auto follows your local clock)"
             >
-              {circadian === "night" ? "🌙 Abyss" : circadian === "day" ? "☀️ Lagoon" : "🕓 Auto"}
+              <span className="ft-dock-icon">
+                {circadian === "night" ? "🌙" : circadian === "day" ? "☀️" : "🕓"}
+              </span>
+              <span className="ft-dock-label">
+                {circadian === "night" ? "Abyss" : circadian === "day" ? "Lagoon" : "Auto"}
+              </span>
             </button>
             {showBake ? (
               <button
                 type="button"
-                className="ft-chip"
+                className="ft-dock-btn"
                 onClick={() => fishBus.emit("bake:apply")}
                 title="Simulate a job-specific bake highlight"
               >
-                ⚡ Bake
+                <span className="ft-dock-icon">⚡</span>
+                <span className="ft-dock-label">Bake</span>
               </button>
             ) : null}
+            <button
+              type="button"
+              className="ft-dock-btn"
+              onClick={() => fishBus.emit("shortcuts:toggle")}
+              title="Keyboard shortcuts (?)"
+            >
+              <span className="ft-dock-icon">⌨</span>
+              <span className="ft-dock-label">Shortcuts</span>
+            </button>
           </div>
         </div>
 
@@ -227,19 +285,6 @@ export function FishTankChrome({
           </button>
         ) : null}
       </section>
-
-      {curationLabel ? (
-        <div className="ft-curation glass show">
-          <b>{curationLabel}</b>
-          <button
-            type="button"
-            className="ft-btn"
-            onClick={() => fishBus.emit("bake:dismiss")}
-          >
-            clear
-          </button>
-        </div>
-      ) : null}
     </div>
   )
 }
