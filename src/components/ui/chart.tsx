@@ -40,6 +40,7 @@ function useChart() {
   return context
 }
 
+/** Provides ChartConfig and a ResponsiveContainer for a Recharts chart. */
 function ChartContainer({
   id,
   className,
@@ -83,9 +84,24 @@ function ChartContainer({
   )
 }
 
+const SAFE_CSS_KEY = /^[a-zA-Z][a-zA-Z0-9-]*$/
+const UNSAFE_CSS_COLOR = /[;}]|\/\*|<|>|url\(/i
+
+/** True when `v` is a token/hex/color-fn safe to inject into a style tag. */
+function isSafeCssColor(v: string): boolean {
+  const s = v.trim()
+  if (!s || UNSAFE_CSS_COLOR.test(s)) return false
+  if (/^var\(\s*--[a-zA-Z][a-zA-Z0-9-]*\s*\)$/.test(s)) return true
+  if (/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(s)) return true
+  if (/^(?:rgb|rgba|hsl|hsla|oklch)\([^()]*\)$/i.test(s)) return true
+  return false
+}
+
+/** Injects --color-<key> custom properties from ChartConfig into a <style> tag. */
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
-    ([, itemConfig]) => itemConfig.theme ?? itemConfig.color
+    ([key, itemConfig]) =>
+      SAFE_CSS_KEY.test(key) && (itemConfig.theme ?? itemConfig.color)
   )
 
   if (!colorConfig.length) {
@@ -104,7 +120,7 @@ ${colorConfig
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ??
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    return color && isSafeCssColor(color) ? `  --color-${key}: ${color};` : null
   })
   .join("\n")}
 }
@@ -116,8 +132,10 @@ ${colorConfig
   )
 }
 
+/** Recharts Tooltip passthrough. */
 const ChartTooltip = RechartsPrimitive.Tooltip
 
+/** Default tooltip body using ChartConfig labels and --color-* indicators. */
 function ChartTooltipContent({
   active,
   payload,
@@ -272,8 +290,10 @@ function ChartTooltipContent({
   )
 }
 
+/** Recharts Legend passthrough. */
 const ChartLegend = RechartsPrimitive.Legend
 
+/** Default legend body using ChartConfig labels. */
 function ChartLegendContent({
   className,
   hideIcon = false,

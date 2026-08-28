@@ -1346,11 +1346,7 @@ export default function FishTankCanvas({
       )
       camera.lookAt(orbit.target)
 
-      // Emit camera:move and dynamically update 3D cursor unprojection on camera changes
-      fishBus.emit("camera:move", {
-        position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
-        target: { x: orbit.target.x, y: orbit.target.y, z: orbit.target.z },
-      })
+      // Recalculate 3D cursor unprojection on camera orbit/pan/dive.
       updateCursorRaycast()
 
       // Bind the Web Audio listener to the camera (~15Hz is plenty for HRTF)
