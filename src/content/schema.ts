@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-const Link = z.object({ label: z.string(), href: z.string().url() });
+/** Layout URLs are agent-authored — only http(s) may reach an <a href>. */
+const HttpUrl = z
+  .string()
+  .url()
+  .refine((v) => /^https?:\/\//i.test(v), { message: "url must be http(s)" });
+
+const Link = z.object({ label: z.string(), href: HttpUrl });
 const Stat = z.object({ label: z.string(), value: z.string() });
 
 /** Optional layout hints for LayoutRenderer CSS grid. */
@@ -246,7 +252,7 @@ const Card = z.object({
       .array(
         z.object({
           label: z.string(),
-          href: z.string().url().optional(),
+          href: HttpUrl.optional(),
           tone: z.enum(["neon", "amber"]).optional(),
         }),
       )

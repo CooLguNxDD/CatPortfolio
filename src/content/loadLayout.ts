@@ -58,11 +58,16 @@ function parseLayoutPayload(json: unknown): LayoutLoadResult | null {
 
 /** Loads a live layout from the backend with detailed load status. */
 export async function loadLiveWithStatus(audience: string): Promise<LayoutLoadResult> {
-  const base = import.meta.env.VITE_OCT_URL as string | undefined;
+  let base: string;
+  try {
+    base = getOctBaseUrl();
+  } catch {
+    return { layout: loadBaked(), source: "snapshot" };
+  }
   if (!base) return { layout: loadBaked(), source: "snapshot" };
   try {
     const res = await fetch(
-      `${base}/portfolio/layout?audience=${encodeURIComponent(audience)}`,
+      `${base.replace(/\/$/, "")}/portfolio/layout?audience=${encodeURIComponent(audience)}`,
       { signal: AbortSignal.timeout(4000) },
     );
     if (!res.ok) throw new Error(String(res.status));

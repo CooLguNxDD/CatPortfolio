@@ -54,4 +54,28 @@ describe("isEditableTarget", () => {
       ),
     ).toBe(false)
   })
+
+  it("returns true for ARIA editable roles", () => {
+    for (const role of ["textbox", "searchbox", "combobox", "spinbutton"]) {
+      expect(
+        isEditableTarget(
+          mockElement({
+            tagName: "DIV",
+            getAttribute: (attr) => (attr === "role" ? role : null),
+          }),
+        ),
+      ).toBe(true)
+    }
+  })
+
+  it("returns false for a non-editable ARIA role", () => {
+    expect(
+      isEditableTarget(
+        mockElement({
+          tagName: "DIV",
+          getAttribute: (attr) => (attr === "role" ? "button" : null),
+        }),
+      ),
+    ).toBe(false)
+  })
 })

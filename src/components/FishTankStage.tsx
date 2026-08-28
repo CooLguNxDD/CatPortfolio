@@ -71,7 +71,7 @@ export function FishTankStage({
   }
 
   useTankHotkeys({
-    enabled: tank.chrome === "3d",
+    enabled: tank.chrome === "3d" && !shortcutsOpen,
     domains: tank.domains,
     onPrevSpecimen: tank.focusedSlug ? handlePrev : undefined,
     onNextSpecimen: tank.focusedSlug ? handleNext : undefined,

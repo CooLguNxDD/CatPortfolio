@@ -25,6 +25,12 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   if (tag === "input" || tag === "textarea" || tag === "select") return true
   if (t.isContentEditable) return true
   if (typeof t.getAttribute === "function" && t.getAttribute("contenteditable") === "true") return true
+  if (typeof t.getAttribute === "function") {
+    const role = t.getAttribute("role")
+    if (role === "textbox" || role === "searchbox" || role === "combobox" || role === "spinbutton") {
+      return true
+    }
+  }
   return false
 }
 
