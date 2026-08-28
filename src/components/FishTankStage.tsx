@@ -148,6 +148,7 @@ export function FishTankStage({
 
   return (
     <div
+      id="fish-tank"
       className={cn("ft-stage", className)}
       data-view={tank.chrome}
       data-fishtank-stage={tank.tankScene}
