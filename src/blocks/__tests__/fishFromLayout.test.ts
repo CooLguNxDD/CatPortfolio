@@ -169,4 +169,42 @@ describe("fishFromLayout", () => {
     const b = fishFromLayout(l)
     expect(a.map((f) => f.school)).toEqual(b.map((f) => f.school))
   })
+
+  // A pooled/ask-spawned specimen arrives tagged `discovered` (or, later,
+  // `recommended`). Nothing styles those tags — this pins that they resolve
+  // through the normal path instead of throwing.
+  it("resolves a discovered/recommended-tagged specimen with default styling", () => {
+    for (const tag of ["discovered", "recommended"]) {
+      const fish = fishFromLayout(
+        layout([
+          {
+            type: "fishTank",
+            id: "fish-tank-1",
+            props: {
+              renderer: "webgl",
+              fish: [
+                {
+                  slug: "pooled-one",
+                  title: "Pooled One",
+                  species: "ai",
+                  size: 0.5,
+                  depth: 0.4,
+                  speed: 0.5,
+                  glow: 0.5,
+                  school: 0,
+                  tags: [tag],
+                  metrics: [],
+                },
+              ],
+              highlightSlugs: [],
+            },
+          },
+        ] as unknown as Layout["blocks"]),
+      )
+      expect(fish).toHaveLength(1)
+      expect(fish[0].slug).toBe("pooled-one")
+      expect(fish[0].tags).toContain(tag)
+      expect(Number.isFinite(fish[0].depth)).toBe(true)
+    }
+  })
 })
