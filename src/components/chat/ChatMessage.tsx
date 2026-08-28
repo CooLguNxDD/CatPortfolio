@@ -8,18 +8,52 @@ import { cn } from "@/lib/utils";
 
 /** A follow-up the visitor can take on what this turn changed. */
 export interface MessageAction {
-  kind: "focus" | "view";
-  /** Fish slug for `focus`, block id for `view`. */
+  kind: "focus" | "view" | "ask" | "add";
+  /** Fish slug for `focus`/`add`, block id for `view`, follow-up prompt for `ask`. */
   target: string;
   label: string;
+  /** Tooltip (recommendation reason). */
+  title?: string;
+  /** Project slug for e2e `data-slug` when `target` is not the slug. */
+  slug?: string;
 }
 
 export interface Message {
   role: "user" | "assistant";
   markdown: string;
   isError?: boolean;
-  /** Chips rendered under an assistant bubble (focus a fish / jump to a block). */
+  /** Chips rendered under an assistant bubble (focus / view / ask / add). */
   actions?: MessageAction[];
+}
+
+export interface ChatMessageProps extends Message {
+  onAsk?: (prompt: string) => void;
+  onAdd?: (slug: string) => void;
+}
+
+/** Dispatch a chip click. `focus`/`view` keep the existing tank/text jumps. */
+export function runMessageAction(
+  action: MessageAction,
+  deps: {
+    onAsk?: (prompt: string) => void;
+    onAdd?: (slug: string) => void;
+    focus?: (slug: string) => void;
+    view?: (blockId: string) => void;
+  },
+): void {
+  if (action.kind === "ask") {
+    deps.onAsk?.(action.target);
+    return;
+  }
+  if (action.kind === "add") {
+    deps.onAdd?.(action.target);
+    return;
+  }
+  if (action.kind === "focus") {
+    deps.focus?.(action.target);
+    return;
+  }
+  deps.view?.(action.target);
 }
 
 // Destructure `node` (react-markdown AST) so it is not spread onto DOM elements.
@@ -103,26 +137,33 @@ export const ChatMessage = memo(function ChatMessage({
   markdown,
   isError,
   actions,
-}: Message) {
+  onAsk,
+  onAdd,
+}: ChatMessageProps) {
   const isUser = role === "user";
   const navigate = useNavigate();
 
-  /** Focus a specimen or jump to a patched block without re-asking. */
+  /** Focus a specimen, jump to a patched block, ask a follow-up, or add a fish. */
   const runAction = (action: MessageAction) => {
-    if (action.kind === "focus") {
-      useFishTankStore.getState().setFocus(action.target);
-      void navigate({
-        to: "/",
-        search: (prev) => ({ ...(prev || {}), v: "tank", f: action.target }),
-        replace: true,
-      });
-      fishBus.emit("fish:pick", { slug: action.target });
-      return;
-    }
-    void navigate({
-      to: "/",
-      search: (prev) => ({ ...(prev || {}), v: "text", scrollTo: action.target }),
-      replace: true,
+    runMessageAction(action, {
+      onAsk,
+      onAdd,
+      focus: (slug) => {
+        useFishTankStore.getState().setFocus(slug);
+        void navigate({
+          to: "/",
+          search: (prev) => ({ ...(prev || {}), v: "tank", f: slug }),
+          replace: true,
+        });
+        fishBus.emit("fish:pick", { slug });
+      },
+      view: (blockId) => {
+        void navigate({
+          to: "/",
+          search: (prev) => ({ ...(prev || {}), v: "text", scrollTo: blockId }),
+          replace: true,
+        });
+      },
     });
   };
 
@@ -162,7 +203,13 @@ export const ChatMessage = memo(function ChatMessage({
                 key={`${action.kind}-${action.target}`}
                 type="button"
                 onClick={() => runAction(action)}
-                data-slug={action.kind === "focus" ? action.target : undefined}
+                data-slug={
+                  action.slug ??
+                  (action.kind === "focus" || action.kind === "add"
+                    ? action.target
+                    : undefined)
+                }
+                title={action.title}
                 className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors"
               >
                 {action.label}

@@ -369,6 +369,56 @@ export function extractHighlightSlugs(data: unknown): string[] {
   return [];
 }
 
+/** One next-step chip from a recommend turn. */
+export const RecommendationSchema = z.object({
+  slug: z.string().min(1),
+  name: z.string().min(1),
+  blurb: z.string().optional().default(""),
+  tags: z.array(z.string()).optional().default([]),
+  reason: z.string().optional().default(""),
+  in_tank: z.boolean(),
+});
+export type Recommendation = z.infer<typeof RecommendationSchema>;
+
+/** Walk the same envelope bags as extractFocusSlug / extractHighlightSlugs. */
+function walkAskBags(data: unknown): Record<string, any>[] {
+  if (!data || typeof data !== "object") return [];
+  const obj = data as Record<string, any>;
+  const bags: unknown[] = [obj?.response?.carry, obj?.carry, obj?.response, obj];
+  for (const bag of [obj?.data, obj?.step_results, obj?.response?.step_results]) {
+    if (Array.isArray(bag)) for (let i = bag.length - 1; i >= 0; i--) bags.push(bag[i]);
+  }
+  return bags.filter((b): b is Record<string, any> => !!b && typeof b === "object");
+}
+
+/** Recommendation chips from an ask envelope — malformed entries are dropped. */
+export function extractRecommendations(data: unknown): Recommendation[] {
+  for (const e of walkAskBags(data)) {
+    const raw = e.recommendations;
+    if (!Array.isArray(raw) || !raw.length) continue;
+    const out: Recommendation[] = [];
+    for (const item of raw) {
+      if (!item || typeof item !== "object") continue;
+      const rec = item as Record<string, unknown>;
+      const slug = typeof rec.slug === "string" ? rec.slug.trim() : "";
+      if (!slug) continue;
+      const name =
+        typeof rec.name === "string" && rec.name.trim() ? rec.name.trim() : slug;
+      const parsed = RecommendationSchema.safeParse({
+        slug,
+        name,
+        blurb: typeof rec.blurb === "string" ? rec.blurb : "",
+        tags: Array.isArray(rec.tags) ? rec.tags.map(String) : [],
+        reason: typeof rec.reason === "string" ? rec.reason : "",
+        in_tank: Boolean(rec.in_tank ?? rec.inTank),
+      });
+      if (parsed.success) out.push(parsed.data);
+    }
+    return out;
+  }
+  return [];
+}
+
 /** A queued discovery job token from an ask turn that found no match. */
 export function extractPendingJob(data: unknown): PendingJob | null {
   if (!data || typeof data !== "object") return null;

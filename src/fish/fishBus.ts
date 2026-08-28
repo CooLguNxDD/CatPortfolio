@@ -10,6 +10,9 @@
 import mitt, { type Emitter } from "mitt"
 import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
 
+export const FISH_FOCUS_EVENT = "catportfolio:fish:focus"
+export const FISH_SPAWN_EVENT = "catportfolio:fish:spawn"
+
 export interface FishAnchor {
   /** Canvas-local px position of the locked fish. */
   x: number
@@ -94,7 +97,7 @@ export function dispatchFishFocus(slug: string): void {
   fishBus.emit("fish:pick", { slug })
   fishBus.emit("fish:focus", { slug })
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("catportfolio:fish:focus", { detail: { slug } }))
+    window.dispatchEvent(new CustomEvent(FISH_FOCUS_EVENT, { detail: { slug } }))
   }
 }
 
@@ -103,6 +106,6 @@ export function dispatchFishSpawn(fish: FishSpecimenInput | FishSpecimenInput[])
   if (!fish) return
   fishBus.emit("fish:spawn", { fish })
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("catportfolio:fish:spawn", { detail: { fish } }))
+    window.dispatchEvent(new CustomEvent(FISH_SPAWN_EVENT, { detail: { fish } }))
   }
 }
