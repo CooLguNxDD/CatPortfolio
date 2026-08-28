@@ -20,10 +20,13 @@ export interface Message {
   isError?: boolean;
   /** Chips rendered under an assistant bubble (focus a fish / jump to a block). */
   actions?: MessageAction[];
+  /** Fish-pool token from the ask turn that produced this bubble's spawn chips. */
+  poolId?: string | null;
 }
 
 export interface ChatMessageProps extends Message {
   onSpawn?: (action: MessageAction) => void;
+  spawningTargets?: Set<string>;
 }
 
 // Destructure `node` (react-markdown AST) so it is not spread onto DOM elements.
@@ -108,6 +111,7 @@ export const ChatMessage = memo(function ChatMessage({
   isError,
   actions,
   onSpawn,
+  spawningTargets,
 }: ChatMessageProps) {
   const isUser = role === "user";
   const navigate = useNavigate();
@@ -166,18 +170,24 @@ export const ChatMessage = memo(function ChatMessage({
         )}
         {!isUser && actions?.length ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {actions.map((action) => (
-              <button
-                key={`${action.kind}-${action.target}`}
-                type="button"
-                onClick={() => runAction(action)}
-                data-slug={action.kind === "focus" ? action.target : undefined}
-                data-action={action.kind === "spawn" ? "spawn" : undefined}
-                className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors"
-              >
-                {action.label}
-              </button>
-            ))}
+            {actions.map((action) => {
+              const isSpawning =
+                action.kind === "spawn" && !!spawningTargets?.has(action.target);
+              return (
+                <button
+                  key={`${action.kind}-${action.target}`}
+                  type="button"
+                  onClick={() => runAction(action)}
+                  disabled={isSpawning}
+                  aria-busy={isSpawning ? "true" : undefined}
+                  data-slug={action.kind === "focus" ? action.target : undefined}
+                  data-action={action.kind === "spawn" ? "spawn" : undefined}
+                  className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {action.label}
+                </button>
+              );
+            })}
           </div>
         ) : null}
       </div>
