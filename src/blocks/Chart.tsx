@@ -1,30 +1,22 @@
 import type { PropsOf } from "@/render/registry";
-import { BarChart, DonutChart, LineChart, RadarChart } from "./charts/ChartSvg";
-import type { Series } from "./charts/scale";
+import type { Series } from "./charts/toChartData";
 import { useLayoutStore } from "@/store";
+import { useRenderedLayout } from "@/render/layoutContext";
 import { sceneFromLayout } from "@/fish/sceneFromLayout";
 import { matchFishByName } from "@/fish/matchFish";
 import { dispatchFishFocus } from "@/fish/fishBus";
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 
-/** Data-viz block — hand-rolled SVG, themed via CSS vars. */
+const RechartsBody = lazy(() => import("./charts/RechartsBody"));
+
+/** Data-viz block — Recharts via ChartConfig, themed with --chart-1..5. */
 export function Chart(props: PropsOf<"chart">) {
   const series = (props.series ?? []) as Series[];
-  const body = (() => {
-    switch (props.kind) {
-      case "line":
-        return <LineChart series={series} />;
-      case "area":
-        return <LineChart series={series} area />;
-      case "donut":
-        return <DonutChart series={series} />;
-      case "radar":
-        return <RadarChart series={series} />;
-      case "bar":
-      default:
-        return <BarChart series={series} />;
-    }
-  })();
+  const body = (
+    <Suspense fallback={<div className="h-40 w-full max-w-md rounded bg-(--bg-sunken)" />}>
+      <RechartsBody kind={props.kind ?? "bar"} series={series} ariaLabel={props.title ?? "Chart"} />
+    </Suspense>
+  );
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card) p-[var(--pad-card)]">
@@ -48,8 +40,7 @@ function namesFromSeries(series: Series[]): string[] {
   for (const s of series) {
     if (s.name) out.push(s.name);
     for (const p of s.points) {
-      const named = (p as { name?: unknown }).name;
-      if (typeof named === "string" && named.trim()) out.push(named);
+      if (typeof p.name === "string" && p.name.trim()) out.push(p.name);
       if (typeof p.x === "string" && p.x.trim()) out.push(p.x);
     }
   }
@@ -58,7 +49,9 @@ function namesFromSeries(series: Series[]): string[] {
 
 /** Name-matched fish focus — rendered only when a specimen resolves. */
 function ChartFishHits({ series }: { series: Series[] }) {
-  const layout = useLayoutStore((s) => s.workingLayout);
+  const renderedLayout = useRenderedLayout();
+  const workingLayout = useLayoutStore((s) => s.workingLayout);
+  const layout = renderedLayout ?? workingLayout;
   const fish = useMemo(
     () => (layout ? sceneFromLayout(layout).fish : []),
     [layout],
