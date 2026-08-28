@@ -59,8 +59,8 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Spatial audio (HRTF panner, waterline filter) + its math | `fish/fishAudio.ts`, `fish/audioMath.ts` |
 | Sonar / bathymetry projection (pure) | `fish/sonarProjection.ts`, `fish/bathymetry.ts` |
 | Transient UI: scene, chrome, query, domain, bake dim, depth lock, sonar | `store/fishTankSlice.ts` (non-persisted; rAF smoothstep dive/surface) |
-| Controller composing all of the above | `hooks/useFishTank.ts` |
-| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber}.tsx` |
+| Controller & hotkeys composing all of the above | `hooks/{useFishTank,useTankHotkeys}.ts` |
+| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber,ShortcutsModal}.tsx` |
 | WebGL only — sole importer of `three` | `blocks/FishTankCanvas.tsx` (lazy chunk; `manualChunks` splits `three` out of index) |
 | Registry block | `blocks/FishTank.tsx` → registry `fishTank` |
 

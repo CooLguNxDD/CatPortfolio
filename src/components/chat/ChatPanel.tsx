@@ -28,6 +28,13 @@ import { bestFishForQuestion } from "@/fish/matchFish";
 import { sceneFromLayout } from "@/fish/sceneFromLayout";
 import type { Layout } from "@/content/schema";
 
+const FAUX_PHASES = [
+  "Routing intent…",
+  "Searching context…",
+  "Patching blocks…",
+  "Composing answer…",
+] as const;
+
 /** The client skeleton an ask turn needs: block identity, not block content. */
 export interface AskContext {
   view: "tank" | "text";
@@ -224,6 +231,21 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   const pendingPrompt = useChatStore((s) => s.pendingPrompt);
   const setPendingPrompt = useChatStore((s) => s.setPendingPrompt);
 
+  const [copied, setCopied] = useState(false);
+  const [phaseIndex, setPhaseIndex] = useState(0);
+
+  // Display phases during long LLM/MCP generation (purely client-side UX pacing, not server events).
+  useEffect(() => {
+    if (!pending) {
+      setPhaseIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setPhaseIndex((prev) => Math.min(prev + 1, FAUX_PHASES.length - 1));
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [pending]);
+
   // Keep bake chip in sync when Home seeded a ?j= demo session.
   useEffect(() => {
     if (demoShortId) setLastBakeId(demoShortId);
@@ -240,6 +262,25 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   });
 
   const isOnline = isSuccess && !!tools;
+
+  const lastAssistantMsg = messages.filter((m) => m.role === "assistant").slice(-1)[0];
+
+  const handleCopy = async () => {
+    if (!lastAssistantMsg?.markdown || typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(lastAssistantMsg.markdown);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard write failed
+    }
+  };
+
+  const handleClear = () => {
+    setMessages([]);
+    setCliMeta(null);
+    setDiscoveryJob(null);
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -525,27 +566,50 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           )}
         </div>
 
-        {isOnline && tools && (
-          <details className="group/details text-xs max-w-md w-full md:w-auto">
-            <summary className="cursor-pointer text-(--fg-subtle) hover:text-(--fg) transition-colors font-mono select-none flex items-center gap-1 list-none justify-end">
-              <span>[</span>
-              <span className="underline underline-offset-2">preview capabilities</span>
-              <span>]</span>
-            </summary>
-            <div className="mt-2 bg-background border border-(--hairline) rounded-xl p-3 max-h-48 overflow-y-auto space-y-2 text-left shadow-inner">
-              {tools.map((t) => (
-                <div key={t.name} className="border-b border-(--hairline) last:border-0 pb-1.5 last:pb-0">
-                  <div className="font-mono text-xs font-semibold text-(--fg)">{t.name}</div>
-                  {t.description && (
-                    <div className="text-[11px] text-(--fg-muted) mt-0.5 leading-normal">
-                      {t.description}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
+        <div className="flex items-center gap-2 self-end md:self-auto">
+          {messages.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleCopy()}
+                disabled={!lastAssistantMsg}
+                title="Copy the latest answer markdown to clipboard"
+                className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-1 text-xs font-mono text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                {copied ? "✓ Copied" : "📋 Copy answer"}
+              </button>
+              <button
+                type="button"
+                onClick={handleClear}
+                title="Clear conversation log (keeps session ID)"
+                className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-1 text-xs font-mono text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) transition-colors cursor-pointer"
+              >
+                🗑️ Clear
+              </button>
+            </>
+          )}
+          {isOnline && tools && (
+            <details className="group/details text-xs max-w-md w-full md:w-auto">
+              <summary className="cursor-pointer text-(--fg-subtle) hover:text-(--fg) transition-colors font-mono select-none flex items-center gap-1 list-none justify-end">
+                <span>[</span>
+                <span className="underline underline-offset-2">preview capabilities</span>
+                <span>]</span>
+              </summary>
+              <div className="mt-2 bg-background border border-(--hairline) rounded-xl p-3 max-h-48 overflow-y-auto space-y-2 text-left shadow-inner">
+                {tools.map((t) => (
+                  <div key={t.name} className="border-b border-(--hairline) last:border-0 pb-1.5 last:pb-0">
+                    <div className="font-mono text-xs font-semibold text-(--fg)">{t.name}</div>
+                    {t.description && (
+                      <div className="text-[11px] text-(--fg-muted) mt-0.5 leading-normal">
+                        {t.description}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
       </div>
 
       <div
@@ -555,28 +619,74 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
         aria-atomic="false"
       >
         {messages.length === 0 ? (
-          <div className="h-48 flex flex-col items-center justify-center text-center p-4 gap-3">
+          <div className="min-h-48 flex flex-col items-center justify-center text-center p-4 gap-4">
             <p className="text-sm text-(--fg-muted) max-w-sm">
               {isOnline
                 ? "Ask about experience, projects, or a job fit — the page re-renders live from fragments while the agent answers. Questions are stored (capped) in an ask-turn audit; the layout overlay is not."
                 : "OpenCat Tunnel connection is currently unavailable. Chat will activate when the server comes online."}
             </p>
             {isOnline && (
-              <div className="flex flex-wrap justify-center gap-2 max-w-md">
-                {[
-                  "Show me your infra / SRE work",
-                  "What is the deepest system you built?",
-                  "Bake a portfolio for an AI Developer role at DummyAI Labs",
-                ].map((chip) => (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => void sendText(chip)}
-                    className="rounded-full border border-(--border) bg-(--bg-elevated) px-3 py-1 text-xs text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors"
-                  >
-                    {chip}
-                  </button>
-                ))}
+              <div className="space-y-3 w-full max-w-md text-left">
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-(--fg-subtle) text-center">
+                    Architecture & systems
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {[
+                      "Show me your infra / SRE work",
+                      "What is the deepest system you built?",
+                    ].map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => void sendText(chip)}
+                        className="rounded-full border border-(--border) bg-(--bg-elevated) px-3 py-1 text-xs text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors cursor-pointer"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-(--fg-subtle) text-center">
+                    Live tank spawning
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {[
+                      "Show all MCP agent tooling",
+                    ].map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => void sendText(chip)}
+                        className="rounded-full border border-(--border) bg-(--bg-elevated) px-3 py-1 text-xs text-(--fg-muted) hover:border-(--neon) hover:text-(--neon) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--neon) transition-colors cursor-pointer"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-(--fg-subtle) text-center">
+                    Job tailoring
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {[
+                      "Bake a portfolio for an AI Developer role at DummyAI Labs",
+                    ].map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => void sendText(chip)}
+                        className="rounded-full border border-(--border) bg-(--bg-elevated) px-3 py-1 text-xs text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors cursor-pointer"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -603,7 +713,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce [animation-delay:-0.15s]" />
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce" />
               <span className="ml-1 text-[11px] font-mono text-(--fg-muted)">
-                composing fragments…
+                {FAUX_PHASES[phaseIndex]}
               </span>
             </div>
           </div>

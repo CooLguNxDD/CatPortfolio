@@ -133,6 +133,9 @@ function extractMarkdownRaw(result: OctToolResult): string {
     if (typeof obj.message === "string" && obj.message.trim()) {
       return obj.message;
     }
+    if (typeof obj.text === "string" && obj.text.trim()) {
+      return obj.text;
+    }
     if (obj.response) {
       const resp = obj.response;
       if (typeof resp === "object" && resp !== null) {
@@ -141,6 +144,9 @@ function extractMarkdownRaw(result: OctToolResult): string {
         }
         if (typeof resp.message === "string" && resp.message.trim()) {
           return resp.message;
+        }
+        if (typeof resp.text === "string" && resp.text.trim()) {
+          return resp.text;
         }
         if (resp.message) {
           const msg = resp.message;

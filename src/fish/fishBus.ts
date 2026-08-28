@@ -52,6 +52,8 @@ export type FishEvents = {
   "filter:domain": string
   "bake:apply": void
   "bake:dismiss": void
+  "shortcuts:toggle": void
+  "search:focus": void
   "ask:toggle": void
   "ask:open": { prompt?: string } | void
   "ask:close": void

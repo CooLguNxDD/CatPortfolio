@@ -217,12 +217,44 @@
   }
 }
 
+/* Action chips in Chat */
+.ft-chip-add {
+  border-color: color-mix(in oklab, var(--neon) 45%, transparent) !important;
+  color: var(--neon) !important;
+  background-color: color-mix(in oklab, var(--neon) 8%, var(--bg-elevated)) !important;
+  box-shadow: 0 0 10px -3px color-mix(in oklab, var(--neon) 35%, transparent);
+}
+.ft-chip-add:hover {
+  border-color: var(--neon) !important;
+  background-color: color-mix(in oklab, var(--neon) 16%, var(--bg-elevated)) !important;
+}
+
+.ft-chip-ask {
+  border-color: color-mix(in oklab, var(--amber) 45%, transparent) !important;
+  color: var(--amber) !important;
+  background-color: color-mix(in oklab, var(--amber) 8%, var(--bg-elevated)) !important;
+}
+.ft-chip-ask:hover {
+  border-color: var(--amber) !important;
+  background-color: color-mix(in oklab, var(--amber) 16%, var(--bg-elevated)) !important;
+}
+
+.ft-chip-focus {
+  border-color: color-mix(in oklab, var(--accent-devops, var(--neon)) 35%, transparent) !important;
+}
+.ft-chip-focus:hover {
+  border-color: var(--accent-devops, var(--neon)) !important;
+}
+
 @media print {
   canvas,
   .ft-canvas-host,
   .ft-stage,
   [data-ask-panel],
   .ft-ask-dock,
+  .ft-dock,
+  .ft-shortcuts-modal,
+  .ft-shortcuts-backdrop,
   .ft-view-pills {
     display: none !important;
   }
