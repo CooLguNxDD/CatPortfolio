@@ -12,6 +12,7 @@ import {
   sanitizeAskMarkdown,
   type BlockPatchResult,
   type CliMeta,
+  type FishPoolItem,
   type PendingJob,
 } from "@/api/harness";
 import { loadJobLayout } from "@/content/loadLayout";
@@ -122,6 +123,7 @@ export function buildMessageActions(
   focusSlug: string | null,
   highlightSlugs: string[],
   patch: BlockPatchResult | null,
+  pool?: FishPoolItem[] | null,
 ): MessageAction[] {
   const actions: MessageAction[] = [];
   const seenFocus = new Set<string>();
@@ -141,6 +143,13 @@ export function buildMessageActions(
     if (fishTankIds.has(id) || seenView.has(id)) continue;
     seenView.add(id);
     actions.push({ kind: "view", target: id, label: id });
+  }
+  const seenSpawn = new Set<string>();
+  for (const item of pool ?? []) {
+    if (actions.length >= 4) break;
+    if (!item.slug || seenFocus.has(item.slug) || seenView.has(item.slug) || seenSpawn.has(item.slug)) continue;
+    seenSpawn.add(item.slug);
+    actions.push({ kind: "spawn", target: item.slug, label: `Add ${item.name}` });
   }
   return actions;
 }

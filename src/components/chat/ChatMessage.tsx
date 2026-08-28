@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 
 /** A follow-up the visitor can take on what this turn changed. */
 export interface MessageAction {
-  kind: "focus" | "view";
-  /** Fish slug for `focus`, block id for `view`. */
+  kind: "focus" | "view" | "spawn";
+  /** Fish slug for `focus` and `spawn`, block id for `view`. */
   target: string;
   label: string;
 }
@@ -20,6 +20,10 @@ export interface Message {
   isError?: boolean;
   /** Chips rendered under an assistant bubble (focus a fish / jump to a block). */
   actions?: MessageAction[];
+}
+
+export interface ChatMessageProps extends Message {
+  onSpawn?: (action: MessageAction) => void;
 }
 
 // Destructure `node` (react-markdown AST) so it is not spread onto DOM elements.
@@ -103,12 +107,17 @@ export const ChatMessage = memo(function ChatMessage({
   markdown,
   isError,
   actions,
-}: Message) {
+  onSpawn,
+}: ChatMessageProps) {
   const isUser = role === "user";
   const navigate = useNavigate();
 
   /** Focus a specimen or jump to a patched block without re-asking. */
   const runAction = (action: MessageAction) => {
+    if (action.kind === "spawn") {
+      onSpawn?.(action);
+      return;
+    }
     if (action.kind === "focus") {
       useFishTankStore.getState().setFocus(action.target);
       void navigate({
@@ -163,6 +172,7 @@ export const ChatMessage = memo(function ChatMessage({
                 type="button"
                 onClick={() => runAction(action)}
                 data-slug={action.kind === "focus" ? action.target : undefined}
+                data-action={action.kind === "spawn" ? "spawn" : undefined}
                 className="rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors"
               >
                 {action.label}
