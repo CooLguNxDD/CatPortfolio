@@ -11,6 +11,7 @@ import { usePageLayout } from "@/hooks/usePageLayout"
 import { sceneFromLayout } from "@/fish/sceneFromLayout"
 import { FishTankStage } from "@/components/FishTankStage"
 import { FishTankErrorBoundary } from "@/components/FishTankErrorBoundary"
+import { FishFlatGrid } from "@/components/fish/FishFlatGrid"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AgentStatusPill } from "@/components/AgentStatusPill"
 import { fishBus } from "@/fish/fishBus"
@@ -270,11 +271,31 @@ export function HomePage() {
         </span>
       </div>
 
+      <p className="text-[11px] font-mono text-(--fg-subtle)" data-ask-persist-notice>
+        Ask questions are stored in <code>portfolio_ask_turns</code> (length-capped).
+        That is not consent to keep a conversation — overlays die on reload.
+      </p>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:items-start">
-        <aside className="lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card)/40 p-3">
+        <aside
+          data-ask-panel
+          className="lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card)/40 p-3"
+        >
           <ChatPanel layout={layout} view="text" />
         </aside>
-        <div className="min-w-0">{matrix}</div>
+        <div className="min-w-0 space-y-6" data-print-root>
+          {scene.fish.length > 0 ? (
+            <FishFlatGrid
+              fish={scene.fish}
+              highlightSlugs={
+                layout.meta?.highlightSlugs ?? scene.highlightSlugs
+              }
+              curationLabel={scene.curationLabel}
+              onSelect={(slug) => fishBus.emit("fish:pick", { slug })}
+            />
+          ) : null}
+          {matrix}
+        </div>
       </div>
     </div>
   )

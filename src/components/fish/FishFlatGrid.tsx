@@ -10,7 +10,7 @@ import {
   SPECIES_TOKEN,
   SPECIES_FALLBACK_HEX,
 } from "@/blocks/fishTankTokens"
-import { domainsInSchool, filterFish } from "@/fish/matchFish"
+import { domainsInSchool, filterFish, orderFishForRecruiter, yearRangeLabel } from "@/fish/matchFish"
 import type { DomainIdType } from "@/content/schema"
 import { cn } from "@/lib/utils"
 
@@ -19,6 +19,8 @@ export interface FishFlatGridProps {
   onSelect?: (slug: string) => void
   curationLabel?: string
   className?: string
+  /** Bake / ask highlight set — recruiter order only, not a filter. */
+  highlightSlugs?: string[]
 }
 
 /** Recruiter fast view — filterable card grid from fish[]. */
@@ -27,14 +29,20 @@ export function FishFlatGrid({
   onSelect,
   curationLabel,
   className,
+  highlightSlugs,
 }: FishFlatGridProps) {
   // Local UI for standalone block use; stage prefers controller via props later.
   const [q, setQ] = useState("")
   const [domain, setDomain] = useState<string | null>(null)
 
+  const ordered = useMemo(
+    () => orderFishForRecruiter(fish, highlightSlugs),
+    [fish, highlightSlugs],
+  )
+
   const filtered = useMemo(
-    () => filterFish(fish, { query: q, domain }),
-    [fish, q, domain],
+    () => filterFish(ordered, { query: q, domain }),
+    [ordered, q, domain],
   )
 
   const domainsPresent = useMemo(() => domainsInSchool(fish), [fish])
@@ -103,6 +111,7 @@ export function FishFlatGrid({
           return (
             <article
               key={f.slug}
+              data-slug={f.slug}
               className="ft-card glass"
               role={onSelect ? "button" : undefined}
               tabIndex={onSelect ? 0 : undefined}
@@ -129,6 +138,11 @@ export function FishFlatGrid({
                 </span>
               </div>
               <h3>{f.title}</h3>
+              {yearRangeLabel(f) ? (
+                <p className="ft-ref">
+                  {DOMAIN_LABEL[f.species] || f.species} · {yearRangeLabel(f)}
+                </p>
+              ) : null}
               {f.blurb ? <p>{f.blurb}</p> : null}
               {(f.metrics?.length ?? 0) > 0 ? (
                 <div className="ft-kv">

@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest"
 import {
   bestFishForQuestion,
+  compareRecruiterOrder,
   domainsInSchool,
   filterFish,
   fishLitFactor,
+  highlightSet,
   matchesFish,
+  matchFishByName,
   normalizeQuery,
+  orderFishForRecruiter,
   questionTokens,
+  yearRangeLabel,
 } from "../matchFish"
 import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
 
@@ -35,6 +40,20 @@ const sample: FishSpecimenInput[] = [
     tags: ["Terraform", "AWS"],
   },
 ]
+
+describe("highlightSet", () => {
+  it("normalizes and filters empty/whitespace highlight slugs", () => {
+    const set = highlightSet([" Weltel-AI ", "WELTEL-DEVOPS", "   ", ""])
+    expect(set.has("weltel-ai")).toBe(true)
+    expect(set.has("weltel-devops")).toBe(true)
+    expect(set.size).toBe(2)
+  })
+
+  it("handles null and undefined input", () => {
+    expect(highlightSet(null).size).toBe(0)
+    expect(highlightSet(undefined).size).toBe(0)
+  })
+})
 
 describe("matchFish", () => {
   it("normalizes query", () => {
@@ -103,6 +122,64 @@ describe("bestFishForQuestion", () => {
 
   it("handles an empty tank", () => {
     expect(bestFishForQuestion([], "devops")).toBeNull()
+  })
+})
+
+describe("matchFishByName", () => {
+  it("resolves exact title and unique substring", () => {
+    expect(matchFishByName(sample, "WelTel MCP")?.slug).toBe("weltel-ai")
+    expect(matchFishByName(sample, "EKS")?.slug).toBe("weltel-devops")
+    expect(matchFishByName(sample, "WelTel")).toBeNull()
+  })
+})
+
+describe("orderFishForRecruiter", () => {
+  it("puts highlight slugs first, then newest year", () => {
+    const dated = [
+      { ...sample[0], startYear: 2022 },
+      { ...sample[1], startYear: 2025 },
+    ]
+    expect(orderFishForRecruiter(dated, ["weltel-ai"]).map((f) => f.slug)).toEqual([
+      "weltel-ai",
+      "weltel-devops",
+    ])
+    expect(orderFishForRecruiter(dated, []).map((f) => f.slug)).toEqual([
+      "weltel-devops",
+      "weltel-ai",
+    ])
+  })
+
+  it("returns 0 (never NaN) for two undated specimens", () => {
+    const res = compareRecruiterOrder(
+      { slug: "undated-a" },
+      { slug: "undated-b" },
+      [],
+    )
+    expect(res).toBe(0)
+    expect(Number.isNaN(res)).toBe(false)
+  })
+
+  it("returns a stable complete permutation over mixed dated and undated list", () => {
+    const mixed = [
+      { ...sample[0], slug: "undated-1" },
+      { ...sample[1], slug: "dated-2025", startYear: 2025 },
+      { ...sample[0], slug: "undated-2" },
+      { ...sample[1], slug: "dated-2022", startYear: 2022 },
+    ]
+    const result = orderFishForRecruiter(mixed, [])
+    expect(result).toHaveLength(mixed.length)
+    expect(result.map((f) => f.slug)).toEqual([
+      "dated-2025",
+      "dated-2022",
+      "undated-1",
+      "undated-2",
+    ])
+  })
+
+  it("formats year ranges", () => {
+    expect(yearRangeLabel({ startYear: 2024.7, endYear: 2026 })).toBe("2024–2026")
+    expect(yearRangeLabel({ startYear: 2025 })).toBe("2025–now")
+    expect(yearRangeLabel({})).toBeNull()
   })
 })
 

@@ -29,6 +29,7 @@ import { useLayoutDag } from "@/hooks/useLayoutDag";
 import { AgenticHeader } from "@/components/AgenticHeader";
 import { SourceCitations } from "@/components/SourceCitations";
 import { cn } from "@/lib/utils";
+import { LayoutRenderContext } from "./layoutContext";
 import "@/styles/matrix.css";
 
 type Persona = "recruiter" | "architect" | "exec";
@@ -391,6 +392,7 @@ export function LayoutRenderer({
     );
 
   return (
+    <LayoutRenderContext.Provider value={layout}>
     <div
       className={cn(
         "w-full",
@@ -426,5 +428,6 @@ export function LayoutRenderer({
       )}
       <SourceCitations sources={layout.meta.sources} />
     </div>
+    </LayoutRenderContext.Provider>
   );
 }

@@ -216,3 +216,27 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  canvas,
+  .ft-canvas-host,
+  .ft-stage,
+  [data-ask-panel],
+  .ft-ask-dock,
+  .ft-view-pills {
+    display: none !important;
+  }
+  [data-fishtank-flat],
+  [data-print-root],
+  .layout-shell,
+  .layout-canvas {
+    display: block !important;
+  }
+  body::before {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}

@@ -32,6 +32,24 @@ describe("fishFromLayout", () => {
     expect(fish[0].species).toBe("ai")
   })
 
+  it("strips HTML comments before clamping body", () => {
+    const fish = fishFromLayout(
+      layout([
+        {
+          type: "card",
+          id: "card-commented",
+          props: {
+            title: "Commented",
+            domain: "platform",
+            body: "Real prose about the gateway. <!-- leftover that sliced to <!",
+          },
+        },
+      ]),
+    )
+    expect(fish[0].blurb).toContain("Real prose")
+    expect(fish[0].blurb).not.toMatch(/<!--|<!$/)
+  })
+
   it("uses projectGrid projects", () => {
     const fish = fishFromLayout(
       layout([

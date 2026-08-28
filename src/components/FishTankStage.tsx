@@ -187,6 +187,7 @@ export function FishTankStage({
       {tank.chrome === "flat" ? (
         <FishFlatGrid
           fish={tank.fish}
+          highlightSlugs={tank.scene.highlightSlugs}
           curationLabel={tank.curationLabel ?? undefined}
           onSelect={(slug) => fishBus.emit("fish:pick", { slug })}
         />
@@ -238,7 +239,7 @@ export function FishTankStage({
               ✕ Close
             </button>
           </div>
-          <div className="p-2 overflow-y-auto max-h-[calc(100svh-190px)]">
+          <div className="p-2 overflow-y-auto max-h-[calc(100svh-190px)]" data-ask-panel>
             <ChatPanel layout={layout} view="tank" />
           </div>
         </aside>

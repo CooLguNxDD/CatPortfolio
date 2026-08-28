@@ -152,6 +152,70 @@ export function bestFishForQuestion(
   return bestScore >= floor ? best : null
 }
 
+/**
+ * Resolve a chart series/point label to a specimen. Exact slug or title wins;
+ * a unique substring match is accepted. No match → no affordance.
+ */
+export function matchFishByName(
+  fish: FishSpecimenInput[],
+  name: string,
+): FishSpecimenInput | null {
+  const n = name.trim().toLowerCase()
+  if (!n || !fish.length) return null
+  const exact = fish.find(
+    (f) => f.slug.toLowerCase() === n || f.title.toLowerCase() === n,
+  )
+  if (exact) return exact
+  const hits = fish.filter(
+    (f) => f.slug.toLowerCase().includes(n) || f.title.toLowerCase().includes(n),
+  )
+  return hits.length === 1 ? hits[0] : null
+}
+
+/** Normalized highlight lookup for the recruiter sort. */
+export function highlightSet(highlightSlugs?: string[] | null): Set<string> {
+  return new Set((highlightSlugs ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean))
+}
+
+/** Recruiter sort: bake highlights first, then newest startYear/endYear. */
+export function compareRecruiterOrder(
+  a: { slug: string; startYear?: number; endYear?: number },
+  b: { slug: string; startYear?: number; endYear?: number },
+  highlightSlugs?: string[] | Set<string> | null,
+): number {
+  const hl = highlightSlugs instanceof Set ? highlightSlugs : highlightSet(highlightSlugs)
+  const ah = hl.has(a.slug.toLowerCase()) ? 0 : 1
+  const bh = hl.has(b.slug.toLowerCase()) ? 0 : 1
+  if (ah !== bh) return ah - bh
+  const year = (f: { startYear?: number; endYear?: number }) =>
+    f.startYear ?? f.endYear ?? Number.NEGATIVE_INFINITY
+  const ya = year(a)
+  const yb = year(b)
+  // Subtraction would yield NaN for two undated entries (-Inf - -Inf).
+  if (ya === yb) return 0
+  return yb > ya ? 1 : -1
+}
+
+/** Recruiter index: bake highlights first, then newest `startYear`/`endYear`. */
+export function orderFishForRecruiter(
+  fish: FishSpecimenInput[],
+  highlightSlugs?: string[] | null,
+): FishSpecimenInput[] {
+  const hl = highlightSet(highlightSlugs)
+  return [...fish].sort((a, b) => compareRecruiterOrder(a, b, hl))
+}
+
+/** Display range from fractional years (`2025.67` → `2025–now`). */
+export function yearRangeLabel(f: {
+  startYear?: number
+  endYear?: number
+}): string | null {
+  if (f.startYear == null && f.endYear == null) return null
+  const start = f.startYear != null ? String(Math.floor(f.startYear)) : "?"
+  const end = f.endYear != null ? String(Math.floor(f.endYear)) : "now"
+  return `${start}–${end}`
+}
+
 /** Domains present in the school (stable DomainId order optional via preferred). */
 export function domainsInSchool(
   fish: FishSpecimenInput[],
