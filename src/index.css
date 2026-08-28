@@ -34,6 +34,13 @@
   --accent-cyan: oklch(0.847 0.083 210);
   --accent-violet: oklch(0.787 0.119 305);
 
+  /* Series charts — aliases of theme chroma (shadcn ChartConfig / --color-<key>) */
+  --chart-1: var(--amber);
+  --chart-2: var(--pink);
+  --chart-3: var(--neon);
+  --chart-4: var(--cyan);
+  --chart-5: var(--violet);
+
   /* Domain accents (Open Design matrix system) — orthogonal to global accent picker */
   --accent-ai: oklch(0.787 0.119 305);
   --accent-ai-soft: oklch(0.320 0.054 305);
