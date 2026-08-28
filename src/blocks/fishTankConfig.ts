@@ -22,6 +22,14 @@
  *    roughness/opacity) from the same file DO move here, since those are
  *    exactly the "too shiny" class of knob this file exists for.
  *
+ * Specimen tags carry no styling here. A fish spawned from an ask-mode
+ * discovery or fish-pool recommendation arrives tagged `"discovered"` (and may
+ * later be tagged `"recommended"`), but tuning is theme-derived and per-scene,
+ * never per-fish — those tags render with default styling by design. Tags
+ * influence only schooling/size in `fishFromLayout.ts`. If a pooled specimen
+ * ever needs its own visual treatment, add the lookup there against a synonym
+ * set (`discovered` | `recommended`), not a single string compare.
+ *
  * Day/night split: the ~13 confirmed `light ? x : y` sites collapse into
  * `resolveFishTankTuning(light)`, mirroring `resolveTankThemePalette()`'s
  * shape. Call it once at scene build AND again inside `applyPalette()` so a
