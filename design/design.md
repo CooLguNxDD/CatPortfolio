@@ -51,6 +51,7 @@ fallback when the OCT MCP server is unreachable.
 - `archDiagram` prefers `kind: mermaid`; `svg` only for pre-rendered assets.
 - `codeSnippet` code must be real code from this repo or OCT, never invented.
 - `prose` is GitHub-flavored markdown (remark-gfm: tables OK).
+- `chart` kinds (`bar|line|area|donut|radar`) render via Recharts + `--chart-1..5` (aliases of theme chroma). Series names map to ChartConfig; do not hand-roll SVG.
 
 ## Level-row matrix (`meta.dag`)
 
