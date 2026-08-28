@@ -107,8 +107,10 @@ export class OctClient {
             },
           );
         });
-      } catch {
-        // ignore cleanup failures or close timeout so the original error rethrows
+      } catch (closeErr) {
+        console.warn("[octClient] cleanup failed during connect abort", {
+          error: closeErr instanceof Error ? closeErr.message : closeErr,
+        });
       }
       throw err;
     }

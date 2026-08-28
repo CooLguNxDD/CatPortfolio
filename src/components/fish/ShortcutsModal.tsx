@@ -57,7 +57,6 @@ export function ShortcutsModal({ open, onClose, className }: ShortcutsModalProps
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
-      role="presentation"
     >
       <div
         ref={modalRef}

@@ -513,7 +513,10 @@ function parseRateLimit(err: any): { isRateLimit: boolean; retryAfter?: number }
     let retryAfter: number | undefined;
     const match = msg.match(/(?:retry-after|retry_after)[:\s]+(\d+)/) || msg.match(/after\s+(\d+)\s+seconds/);
     if (match) {
-      retryAfter = parseInt(match[1], 10);
+      const n = parseInt(match[1], 10);
+      if (Number.isSafeInteger(n) && n > 0) {
+        retryAfter = Math.min(n, 3600);
+      }
     }
     return { isRateLimit: true, retryAfter };
   }

@@ -44,6 +44,7 @@ export function FishTankStage({
   const tank = useFishTank(layout)
   const [askOpen, setAskOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const stageRef = useRef<HTMLDivElement | null>(null)
   const askDockRef = useRef<HTMLElement | null>(null)
 
   useFocusTrap(askOpen, askDockRef)
@@ -146,9 +147,21 @@ export function FishTankStage({
 
   useEffect(() => {
     if (tank.chrome !== "3d") return
+    const stage = stageRef.current
+    if (!stage) return
     let lastWheelTime = 0
 
+    // Ask dock / dossier / shortcuts live inside #fish-tank. Ignore their
+    // scroll so a surfaced wheel over the overlay does not start a dive.
+    function isOverlayScroll(e: Event): boolean {
+      const t = e.target
+      return t instanceof Element && Boolean(
+        t.closest(".ft-ask-dock, .ft-modal, .ft-shortcuts-backdrop"),
+      )
+    }
+
     function onWheel(e: WheelEvent) {
+      if (isOverlayScroll(e)) return
       const now = performance.now()
       if (now - lastWheelTime < 250) return
 
@@ -163,11 +176,13 @@ export function FishTankStage({
 
     let touchStartY = 0
     function onTouchStart(e: TouchEvent) {
+      if (isOverlayScroll(e)) return
       if (e.touches.length === 1) {
         touchStartY = e.touches[0].clientY
       }
     }
     function onTouchEnd(e: TouchEvent) {
+      if (isOverlayScroll(e)) return
       if (e.changedTouches.length === 1) {
         const touchEndY = e.changedTouches[0].clientY
         const diff = touchStartY - touchEndY // positive = swipe up / scroll down
@@ -177,18 +192,19 @@ export function FishTankStage({
       }
     }
 
-    window.addEventListener("wheel", onWheel, { passive: false })
-    window.addEventListener("touchstart", onTouchStart, { passive: true })
-    window.addEventListener("touchend", onTouchEnd, { passive: true })
+    stage.addEventListener("wheel", onWheel, { passive: false })
+    stage.addEventListener("touchstart", onTouchStart, { passive: true })
+    stage.addEventListener("touchend", onTouchEnd, { passive: true })
     return () => {
-      window.removeEventListener("wheel", onWheel)
-      window.removeEventListener("touchstart", onTouchStart)
-      window.removeEventListener("touchend", onTouchEnd)
+      stage.removeEventListener("wheel", onWheel)
+      stage.removeEventListener("touchstart", onTouchStart)
+      stage.removeEventListener("touchend", onTouchEnd)
     }
   }, [tank.chrome, tank.tankState])
 
   return (
     <div
+      ref={stageRef}
       id="fish-tank"
       className={cn("ft-stage", className)}
       data-view={tank.chrome}

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import type { PropsOf } from "@/render/registry";
 import type { CompositeNodeType } from "@/content/schema";
+import { LazyChunkBoundary } from "@/render/LazyChunkBoundary";
 import { Metric } from "./primitives/Metric";
 import { Sparkline } from "./primitives/Sparkline";
 import { BadgeCloud } from "./primitives/BadgeCloud";
@@ -105,9 +106,11 @@ function Leaf({ node }: { node: CompositeNodeType }) {
       const series = (Array.isArray(n.series) ? n.series : []) as Series[];
       const kind = typeof n.chartKind === "string" ? n.chartKind : "bar";
       return (
-        <Suspense fallback={<div className="h-40 w-full rounded bg-(--bg-sunken)" />}>
-          <RechartsBody kind={kind} series={series} />
-        </Suspense>
+        <LazyChunkBoundary label="composite-chart">
+          <Suspense fallback={<div className="h-40 w-full rounded bg-(--bg-sunken)" />}>
+            <RechartsBody kind={kind} series={series} />
+          </Suspense>
+        </LazyChunkBoundary>
       );
     }
     case "card":

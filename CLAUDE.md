@@ -98,7 +98,7 @@ Extensible 2D/3D skeletal rigging and procedural animation framework:
 
 - **Zero-Discontinuity Look-At**: Eliminates atan2 branch cuts along negative axes via forward-hemisphere projection and $\arcsin$ vector normalization.
 - **Rear Attention Attenuation**: When targets move behind the cat ($\Delta z < 0$), a cosine-based smoothstep falloff smoothly relaxes the head to neutral forward gaze, preventing singularity jitter when orbiting the camera around to the cat's back.
-- **Continuous Camera Unprojection**: `FishTankCanvas.tsx` continuously recalculates 3D cursor unprojection on camera orbit/pan/dive and emits `"camera:move"` on `fishBus`.
+- **Continuous Camera Unprojection**: `FishTankCanvas.tsx` continuously recalculates 3D cursor unprojection on camera orbit/pan/dive.
 
 ## Layout Contract
 
@@ -151,7 +151,8 @@ CatPortfolio/
 │   ├── render/
 │   │   ├── registry.ts         # type → component whitelist (`satisfies` completeness)
 │   │   ├── LayoutRenderer.tsx  # Matrix bands when meta.dag; else stagger + span grid
-│   │   └── BlockErrorBoundary.tsx
+│   │   ├── BlockErrorBoundary.tsx
+│   │   └── LazyChunkBoundary.tsx  # retryable Suspense isolate for lazy charts in Composite
 │   ├── blocks/                 # Whitelisted block components + barrel (index.ts)
 │   │   ├── Hero Card ProjectGrid StatStrip StarStory KpiGrid Timeline Comparison
 │   │   ├── Chart (+ charts/: toChartData, kinds registry, lazy RechartsBody) FlowAnim ArchDiagram MermaidDiagram (lazy) Prose CodeSnippet
