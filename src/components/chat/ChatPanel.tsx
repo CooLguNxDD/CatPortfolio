@@ -7,7 +7,10 @@ import {
   extractBlockPatch,
   extractCarryLayout,
   extractFocusSlug,
+  extractHighlightSlugs,
   extractPendingJob,
+  sanitizeAskMarkdown,
+  type BlockPatchResult,
   type CliMeta,
   type PendingJob,
 } from "@/api/harness";
@@ -107,6 +110,41 @@ function oneShotPillLabel(cli: CliMeta): string {
   return `one-shot cli · ${cli.agent}`;
 }
 
+/**
+ * Chip actions for an ask turn: focus pills for every relevant project, then
+ * "view" pills for patched blocks the visitor might want to jump to.
+ *
+ * The fishTank block is excluded from "view" pills — it's the live 3D scene
+ * itself, not a scrollable text card, so a pill for it would force `v=text`
+ * just to scroll to content already visible in tank mode.
+ */
+export function buildMessageActions(
+  focusSlug: string | null,
+  highlightSlugs: string[],
+  patch: BlockPatchResult | null,
+): MessageAction[] {
+  const actions: MessageAction[] = [];
+  const seenFocus = new Set<string>();
+  for (const slug of [focusSlug, ...highlightSlugs]) {
+    if (!slug || seenFocus.has(slug)) continue;
+    seenFocus.add(slug);
+    actions.push({ kind: "focus", target: slug, label: slug });
+  }
+  const fishTankIds = new Set(
+    (patch?.blocks ?? [])
+      .filter((b) => b.type === "fishTank")
+      .map((b) => b.id),
+  );
+  const seenView = new Set<string>();
+  for (const id of patch?.patchedIds ?? []) {
+    if (actions.length >= 4) break;
+    if (fishTankIds.has(id) || seenView.has(id)) continue;
+    seenView.add(id);
+    actions.push({ kind: "view", target: id, label: id });
+  }
+  return actions;
+}
+
 export interface ChatPanelProps {
   /** The layout currently on screen — the thing an ask turn patches. */
   layout?: Layout | null;
@@ -203,17 +241,11 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           // 1) Surgical overlay — the ask path. Changed blocks only.
           const patch = extractBlockPatch(result.raw);
           const focusSlug = extractFocusSlug(result.raw);
+          const highlightSlugs = extractHighlightSlugs(result.raw);
           const pendingJob = extractPendingJob(result.raw);
 
           // Chips let the visitor jump to what changed without re-asking.
-          const actions: MessageAction[] = [];
-          if (focusSlug) {
-            actions.push({ kind: "focus", target: focusSlug, label: focusSlug });
-          }
-          for (const id of patch?.patchedIds ?? []) {
-            if (actions.length >= 4) break;
-            actions.push({ kind: "view", target: id, label: id });
-          }
+          const actions = buildMessageActions(focusSlug, highlightSlugs, patch);
           // A dropped block means the agent's output was partially malformed —
           // tell the visitor rather than silently rendering fewer blocks than
           // it meant to (previously only a console.warn in extractBlockPatch).
@@ -225,7 +257,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
             ...prev,
             {
               role: "assistant",
-              markdown: result.markdown + droppedNote,
+              markdown: sanitizeAskMarkdown(result.markdown) + droppedNote,
               ...(actions.length ? { actions } : {}),
             },
           ]);
@@ -466,7 +498,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           <div className="h-48 flex flex-col items-center justify-center text-center p-4 gap-3">
             <p className="text-sm text-(--fg-muted) max-w-sm">
               {isOnline
-                ? "Ask about experience, projects, or a job fit — the page re-renders live from fragments while the agent answers."
+                ? "Ask about experience, projects, or a job fit — the page re-renders live from fragments while the agent answers. Questions are stored (capped) in an ask-turn audit; the layout overlay is not."
                 : "OpenCat Tunnel connection is currently unavailable. Chat will activate when the server comes online."}
             </p>
             {isOnline && (
@@ -540,6 +572,10 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           Send
         </Button>
       </div>
+      <p className="text-[11px] text-(--fg-subtle) font-mono">
+        The question is persisted in <code>portfolio_ask_turns</code> (length-capped).
+        That is not consent to keep a conversation — overlays die on reload.
+      </p>
     </div>
   );
 }

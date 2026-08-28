@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { askDirective, buildAskContext } from "../ChatPanel"
+import { askDirective, buildAskContext, buildMessageActions } from "../ChatPanel"
 import type { Layout } from "@/content/schema"
+import type { BlockPatchResult } from "@/api/harness"
 
 /**
  * `patchDirective` is gone: routing an ask turn used to be a prompt asking the
@@ -93,5 +94,39 @@ describe("askDirective", () => {
     expect(d).toContain("fish-tank-1")
     expect(d).toContain("weltel-devops")
     expect(d).toContain('"view":"tank"')
+  })
+})
+
+describe("buildMessageActions", () => {
+  it("never emits a view pill for the patched fishTank block", () => {
+    const patch: BlockPatchResult = {
+      blocks: LAYOUT.blocks as BlockPatchResult["blocks"],
+      patchedIds: ["fish-tank-1", "card-weltel-ai"],
+      dropped: 0,
+    }
+    const actions = buildMessageActions(null, [], patch)
+    expect(actions.some((a) => a.kind === "view" && a.target === "fish-tank-1")).toBe(false)
+    expect(actions.some((a) => a.kind === "view" && a.target === "card-weltel-ai")).toBe(true)
+  })
+
+  it("still lists focus pills for every relevant slug", () => {
+    const actions = buildMessageActions("weltel-ai", ["weltel-devops"], null)
+    expect(actions).toEqual([
+      { kind: "focus", target: "weltel-ai", label: "weltel-ai" },
+      { kind: "focus", target: "weltel-devops", label: "weltel-devops" },
+    ])
+  })
+
+  it("deduplicates patched ids in view actions", () => {
+    const patch: BlockPatchResult = {
+      blocks: [],
+      patchedIds: ["a", "a", "b"],
+      dropped: 0,
+    }
+    const actions = buildMessageActions(null, [], patch)
+    expect(actions).toEqual([
+      { kind: "view", target: "a", label: "a" },
+      { kind: "view", target: "b", label: "b" },
+    ])
   })
 })

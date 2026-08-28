@@ -115,6 +115,10 @@ function looksLikeToolPayload(obj: Record<string, unknown>): boolean {
  * Never dumps raw tool-result JSON (layout / steps) into the chat bubble.
  */
 export function extractMarkdown(result: OctToolResult): string {
+  return sanitizeAskMarkdown(extractMarkdownRaw(result));
+}
+
+function extractMarkdownRaw(result: OctToolResult): string {
   const data = result.data;
   if (!data) return "";
 
@@ -169,6 +173,17 @@ export function extractMarkdown(result: OctToolResult): string {
     return `\`\`\`json\n${JSON.stringify(extracted, null, 2)}\n\`\`\``;
   }
   return String(extracted);
+}
+
+const FLOW_DEBUG_RE = /^Flow '.+' (completed|failed)\b/;
+
+/** Never show the FlowSpec envelope debug line as visitor chat. */
+export function sanitizeAskMarkdown(md: string): string {
+  const t = (md || "").trim();
+  if (FLOW_DEBUG_RE.test(t)) {
+    return "I couldn't draft a readable answer for that — try asking about a specific project.";
+  }
+  return md;
 }
 
 /** Pull a candidate layout object from common run_graph envelope shapes. */
@@ -333,6 +348,25 @@ export function extractFocusSlug(data: unknown): string | null {
     if (typeof slug === "string" && slug.trim()) return slug.trim();
   }
   return null;
+}
+
+/** All highlight slugs from an ask envelope — independent of whether blocks patched. */
+export function extractHighlightSlugs(data: unknown): string[] {
+  if (!data || typeof data !== "object") return [];
+  const obj = data as Record<string, any>;
+  const bags: unknown[] = [obj?.response?.carry, obj?.carry, obj?.response, obj];
+  for (const bag of [obj?.data, obj?.step_results, obj?.response?.step_results]) {
+    if (Array.isArray(bag)) for (let i = bag.length - 1; i >= 0; i--) bags.push(bag[i]);
+  }
+  for (const b of bags) {
+    if (!b || typeof b !== "object") continue;
+    const e = b as Record<string, any>;
+    const raw = e.highlight_slugs ?? e.highlightSlugs;
+    if (Array.isArray(raw) && raw.length) {
+      return raw.map(String).map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
 }
 
 /** A queued discovery job token from an ask turn that found no match. */
