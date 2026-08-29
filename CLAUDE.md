@@ -38,7 +38,7 @@
 
 - `/` → `routes/HomePage.tsx` — `usePageLayout` resolves demo (`?j=`), live default, or a patched working copy. Tank mode renders `FishTankStage` (Ask dock + chrome); text mode is the two-column ask + matrix.
 - `/ask` → `beforeLoad` redirect onto `/` with the same search params. No page component.
-- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`).
+- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`). `data-accent` lives on this shell `<div>`, not `<html>` (ThemeProvider's inline theme vars on `documentElement` would beat an attribute selector there). Accent tokens are mode-aware: `html[data-light="true"]` in `index.css` tunes `--accent-*` for light themes that don't declare their own (only `paper` today). The fish tank reads CSS tokens from that same `[data-accent]` shell (`fishTankTokens.ts::accentScopeElement`), not `<html>`, so it inherits the picked accent instead of always seeing the theme's base amber.
 
 ## Fish Tank
 
