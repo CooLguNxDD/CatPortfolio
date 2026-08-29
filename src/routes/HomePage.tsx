@@ -13,6 +13,7 @@ import { FishTankStage } from "@/components/FishTankStage"
 import { FishTankErrorBoundary } from "@/components/FishTankErrorBoundary"
 import { FishFlatGrid } from "@/components/fish/FishFlatGrid"
 import { ChatPanel } from "@/components/chat/ChatPanel"
+import { AgentStatusPill } from "@/components/AgentStatusPill"
 import { fishBus } from "@/fish/fishBus"
 import { useFishTankStore } from "@/store"
 import {
@@ -21,17 +22,45 @@ import {
   resolveViewMode,
 } from "@/routes/viewMode"
 import { cn } from "@/lib/utils"
+import type { LayoutLoadResult } from "@/content/loadLayout"
 import type { DemoSearch } from "@/router"
 
 export { resolveViewMode } from "@/routes/viewMode"
+
+function sourceLabel(data: LayoutLoadResult): string {
+  const mode = data.layout?.meta?.mode
+  if (mode === "scoped") return "live · scoped GenUI"
+  if (mode === "template") return "live · template"
+  if (mode === "showcase") {
+    return data.shortId ? `demo · j=${data.shortId}` : "demo · showcase"
+  }
+  switch (data.source) {
+    case "fragments":
+      return data.fragments?.length
+        ? `live · fragments (${data.fragments.length})`
+        : "live · fragments"
+    case "bake":
+      return data.shortId ? `bake · j=${data.shortId}` : "bake"
+    case "live":
+      return mode ? `live · ${mode}` : "live"
+    default:
+      return `snapshot · ${data.layout.meta.generatedAt}`
+  }
+}
 
 /** `/` route component: resolves the active layout (live/baked/`?j=` demo) and renders it as the fish tank or the text matrix per `?v=`. See file header. */
 export function HomePage() {
   const navigate = useNavigate({ from: "/" })
   const search = useSearch({ from: "/" })
   const { j, v, f, scrollTo } = search
-  const { layout, isLoading } = usePageLayout(j)
+  const { data, layout, isLoading, shortId, isDemoSession } = usePageLayout(j)
   const [askOpen, setAskOpen] = useState(false)
+
+  const isLive = data.source !== "snapshot"
+  const isDemo =
+    data.source === "bake" ||
+    data.layout?.meta?.mode === "showcase" ||
+    (!!data.shortId && isDemoSession)
 
   const scene = useMemo(() => sceneFromLayout(layout), [layout])
   const caps = useMemo(
@@ -203,11 +232,43 @@ export function HomePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 md:py-8 space-y-8">
-      {/* 3D / Flat / Text view router pills */}
-      <div className="flex items-center justify-end">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 md:py-8 space-y-6">
+      {/* Top bar with status pills and 3D / Flat / Text view router pills */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono inline-flex items-center gap-2 w-fit">
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                data.source === "fragments"
+                  ? "bg-(--neon)"
+                  : isDemo || data.source === "bake"
+                    ? "bg-(--amber)"
+                    : isLive
+                      ? "bg-(--neon)"
+                      : "bg-(--amber)",
+              )}
+            />
+            <span>{sourceLabel(data)}</span>
+          </div>
+          {data.audience ? (
+            <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono text-(--fg-muted)">
+              audience · {data.audience}
+            </div>
+          ) : null}
+          {shortId ? (
+            <div className="rounded-full border border-(--amber)/30 px-3 py-1 text-xs font-mono text-(--amber)">
+              j={shortId}
+            </div>
+          ) : null}
+          <AgentStatusPill />
+          <span className="text-[11px] font-mono text-(--fg-subtle) hidden sm:inline">
+            live layout engine · chat patches the blocks it needs
+          </span>
+        </div>
+
         <div
-          className="ft-view-pills"
+          className="ft-view-pills shrink-0"
           role="group"
           aria-label="Tank view"
         >
@@ -241,71 +302,31 @@ export function HomePage() {
         </div>
       </div>
 
-      <main className="min-w-0 w-full space-y-8" data-print-root>
-        {scene.fish.length > 0 ? (
-          <FishFlatGrid
-            fish={scene.fish}
-            highlightSlugs={
-              layout.meta?.highlightSlugs ?? scene.highlightSlugs
-            }
-            curationLabel={scene.curationLabel}
-            onSelect={(slug) => fishBus.emit("fish:pick", { slug })}
-          />
-        ) : null}
-        {matrix}
-      </main>
+      <p className="text-[11px] font-mono text-(--fg-subtle)" data-ask-persist-notice>
+        Ask questions are stored in <code>portfolio_ask_turns</code> (length-capped).
+        That is not consent to keep a conversation — overlays die on reload.
+      </p>
 
-      {/* Floating Chatbot Dialog / Popup on Bottom-Right */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2.5 print:hidden">
-        {askOpen && (
-          <aside
-            data-ask-panel
-            className="w-[calc(100vw-2.5rem)] sm:w-[440px] max-h-[82vh] sm:max-h-[640px] rounded-2xl border border-(--hairline) bg-(--card)/85 backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-5 duration-200"
-            aria-label="Ask Agent Chatbot"
-          >
-            <div className="flex items-center justify-between border-b border-(--hairline) px-4 py-3 bg-(--card)/60">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-(--neon) animate-pulse" />
-                <span className="text-sm font-semibold font-mono text-(--fg) tracking-tight">
-                  Ask Portfolio Agent
-                </span>
-              </div>
-              <button
-                type="button"
-                className="rounded-full px-2.5 py-1 text-xs font-mono text-(--fg-muted) hover:text-(--fg) hover:bg-(--hairline)/50 transition-colors cursor-pointer"
-                onClick={() => setAskOpen(false)}
-                aria-label="Close Chatbot"
-                title="Close Chatbot (Esc)"
-              >
-                ✕ Close
-              </button>
-            </div>
-            <div className="p-3 overflow-y-auto max-h-[calc(82vh-3.5rem)] sm:max-h-[580px]">
-              <ChatPanel layout={layout} view="text" />
-            </div>
-          </aside>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setAskOpen((prev) => !prev)}
-          className={cn(
-            "group flex items-center gap-2.5 rounded-full px-4 py-3 shadow-2xl backdrop-blur-md transition-all duration-200 cursor-pointer",
-            "border border-(--amber)/35 bg-(--bg-elevated)/90 hover:bg-(--amber)/20 hover:border-(--amber) text-(--fg)",
-            askOpen && "bg-(--amber) text-(--bg) hover:bg-(--amber)/90 font-semibold border-(--amber)",
-          )}
-          aria-expanded={askOpen}
-          aria-label={askOpen ? "Close chat with AI Agent" : "Chat with AI Agent"}
-          title={askOpen ? "Close chat (Esc)" : "Ask Portfolio Agent"}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:items-start">
+        <aside
+          data-ask-panel
+          className="lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card)/40 p-3"
         >
-          <span className="text-base leading-none">{askOpen ? "✕" : "💬"}</span>
-          <span className="text-xs font-mono font-medium">
-            {askOpen ? "Close Agent" : "Ask Agent"}
-          </span>
-          {!askOpen && (
-            <span className="h-2 w-2 rounded-full bg-(--neon) animate-pulse shrink-0" />
-          )}
-        </button>
+          <ChatPanel layout={layout} view="text" />
+        </aside>
+        <main className="min-w-0 space-y-6" data-print-root>
+          {scene.fish.length > 0 ? (
+            <FishFlatGrid
+              fish={scene.fish}
+              highlightSlugs={
+                layout.meta?.highlightSlugs ?? scene.highlightSlugs
+              }
+              curationLabel={scene.curationLabel}
+              onSelect={(slug) => fishBus.emit("fish:pick", { slug })}
+            />
+          ) : null}
+          {matrix}
+        </main>
       </div>
     </div>
   )
