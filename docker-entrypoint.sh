@@ -3,9 +3,9 @@
 #
 # What it does:
 #   1. Writes public/config.json with non-secret runtime values (octBaseUrl,
-#      askTimeoutMs).  mcpApiKey is intentionally omitted — it is injected by
-#      nginx directly into the Authorization header on the /mcp proxy, so the
-#      key never travels to the browser.
+#      askTimeoutMs).  mcpApiKey is intentionally omitted — the SPA ignores
+#      that field even if planted in config.json. nginx injects Authorization
+#      on the /mcp proxy, so the key never travels to the browser.
 #   2. Templates nginx.conf via envsubst, substituting ${OCT_API_KEY} into
 #      the upstream Authorization header — the only place the key lives at
 #      runtime is inside the nginx worker process.
