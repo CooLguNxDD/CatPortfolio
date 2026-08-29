@@ -74,6 +74,13 @@ describe("loadJobLayout", () => {
     expect(result.layout).toStrictEqual(loadBaked());
   });
 
+  it("stamps shortId on the fallback result too, not just the success path", async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("network error")) as unknown as typeof fetch;
+
+    const result = await loadJobLayout("opencat_successor_992");
+    expect(result.shortId).toBe("opencat_successor_992");
+  });
+
   it("falls back to baked snapshot when the response fails schema validation", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,

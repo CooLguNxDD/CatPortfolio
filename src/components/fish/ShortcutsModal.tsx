@@ -54,6 +54,11 @@ export function ShortcutsModal({ open, onClose, className }: ShortcutsModalProps
         "ft-shortcuts-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm",
         className,
       )}
+      // Decorative dismiss target, not a control: the dialog itself (below)
+      // carries role="dialog"/aria-modal, closing is also reachable via Esc
+      // (hotkey layer) and the visible close button, so this stays
+      // click-only rather than being promoted to a focusable control.
+      aria-hidden="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}

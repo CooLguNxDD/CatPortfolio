@@ -76,7 +76,12 @@ export function useFocusTrap(
         document.contains(previouslyFocused) &&
         container.contains(document.activeElement)
       ) {
-        previouslyFocused.focus()
+        try {
+          previouslyFocused.focus()
+        } catch {
+          // Element became unfocusable between the checks above and this
+          // call (e.g. disabled/hidden during unmount) — never crash cleanup.
+        }
       }
     }
   }, [active, containerRef])

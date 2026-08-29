@@ -14,15 +14,18 @@ export interface RuntimeConfig {
   /**
    * Bearer token for the /mcp endpoint.
    *
+   * **Never read from config.json.** That file is unhashed and patchable
+   * post-deploy; a compromised copy must not be able to plant an
+   * `Authorization: Bearer` header on `/mcp` (same-origin or otherwise).
+   *
    * **Docker (localhost / ngrok)**: nginx injects `Authorization: Bearer <key>`
    * server-side via envsubst templating (see nginx.conf + docker-entrypoint.sh).
-   * The key is never written to config.json or sent to the browser — this field
-   * will be empty string in that deployment.
+   * This field is empty string in that deployment — the browser sends no key.
    *
    * **GitHub Pages**: no server-side injection is available, so the key is
    * baked into the JS bundle at build time via `VITE_OCT_API_KEY` (injected
-   * from a GitHub Actions secret in deploy.yml). `loadRuntimeConfig` falls back
-   * to `envFallback()` which reads `import.meta.env.VITE_OCT_API_KEY`.
+   * from a GitHub Actions secret in deploy.yml). `loadRuntimeConfig` reads it
+   * only from `envFallback()` / `import.meta.env.VITE_OCT_API_KEY`.
    *
    * In both cases the key is deny-all-scoped (`scopes: []`), so it can only
    * invoke gateway-always-visible tools (run_graph, discover_tools,
@@ -67,6 +70,33 @@ function parseTimeoutMs(value: unknown, fallback: number): number {
  * - empty / "same-origin" / "." → window.location.origin (nginx proxies /api + /mcp)
  * - absolute URL → use as-is (e.g. GitHub Pages pointing at a public OCT host)
  */
+/** `new URL(v).origin`, or "" if `v` isn't a parseable absolute URL. */
+function originOf(v: string | undefined | null): string {
+  if (!v) return "";
+  try {
+    return new URL(v).origin;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Origins config.json is allowed to point the browser at: same-origin
+ * (Docker/nginx proxy path) and whatever origin was baked in at build time
+ * via VITE_OCT_URL (GitHub Pages). Both are already trusted by this
+ * deployment; nothing else is, since config.json is unhashed and patchable
+ * post-deploy without a rebuild.
+ */
+function allowedOrigins(): Set<string> {
+  const origins = new Set<string>();
+  if (typeof window !== "undefined" && window.location?.origin) {
+    origins.add(window.location.origin);
+  }
+  const buildTimeOrigin = originOf(import.meta.env.VITE_OCT_URL as string | undefined);
+  if (buildTimeOrigin) origins.add(buildTimeOrigin);
+  return origins;
+}
+
 function resolveOctBaseUrl(raw: string | undefined | null): string {
   const v = (raw ?? "").trim();
   if (!v || v === "same-origin" || v === ".") {
@@ -76,15 +106,19 @@ function resolveOctBaseUrl(raw: string | undefined | null): string {
     return "";
   }
   const stripped = v.replace(/\/$/, "");
-  // Reject anything that isn't a well-formed http(s) URL — config.json is a
-  // patchable, unhashed static file, so this value isn't fully trusted the
-  // way a build-time env var is. It also becomes the target of an
-  // Authorization: Bearer header (see octClient.ts), so a malformed or
-  // non-http(s) scheme here must not be forwarded as a fetch origin.
+  // Reject anything that isn't a well-formed http(s) URL on an allowlisted
+  // origin — config.json is a patchable, unhashed static file, so this value
+  // isn't fully trusted the way a build-time env var is. It also becomes the
+  // target of an Authorization: Bearer header (see octClient.ts), so a
+  // compromised config.json must not be able to redirect that header to an
+  // arbitrary host — only to same-origin or the origin baked in at build time.
   try {
     const parsed = new URL(stripped);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       throw new Error(`unsupported scheme: ${parsed.protocol}`);
+    }
+    if (!allowedOrigins().has(parsed.origin)) {
+      throw new Error(`origin not allowlisted: ${parsed.origin}`);
     }
   } catch (err) {
     console.warn("resolveOctBaseUrl: rejecting invalid octBaseUrl, falling back to same-origin", stripped, err);
@@ -114,9 +148,10 @@ function envFallback(): RuntimeConfig {
  * see public/config.json) to discover the OCT backend base URL + timeout at
  * runtime, since GitHub Pages static hosting has no build-time env injection.
  *
- * mcpApiKey is NOT present in config.json for Docker deployments (nginx
- * injects the Authorization header server-side). For GitHub Pages it falls
- * back to VITE_OCT_API_KEY baked into the bundle at CI build time.
+ * mcpApiKey is never taken from config.json — even a non-empty field is
+ * ignored (and warned). Docker leaves the browser key empty (nginx injects
+ * Authorization server-side). GitHub Pages uses VITE_OCT_API_KEY baked into
+ * the bundle at CI build time.
  *
  * Falls back to VITE_OCT_URL/VITE_OCT_API_KEY/VITE_ASK_TIMEOUT_MS, then
  * defaults, on any fetch/parse failure.
@@ -133,10 +168,14 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
       const fallback = envFallback();
       const rawBase =
         typeof json?.octBaseUrl === "string" ? json.octBaseUrl : fallback.octBaseUrl;
+      if (typeof json?.mcpApiKey === "string" && json.mcpApiKey) {
+        console.warn(
+          "loadRuntimeConfig: ignoring mcpApiKey from config.json (unhashed, not trusted)",
+        );
+      }
       cached = {
         octBaseUrl: resolveOctBaseUrl(rawBase || fallback.octBaseUrl),
-        mcpApiKey:
-          typeof json?.mcpApiKey === "string" && json.mcpApiKey ? json.mcpApiKey : fallback.mcpApiKey,
+        mcpApiKey: fallback.mcpApiKey,
         askTimeoutMs:
           json?.askTimeoutMs !== undefined
             ? parseTimeoutMs(json.askTimeoutMs, fallback.askTimeoutMs)
