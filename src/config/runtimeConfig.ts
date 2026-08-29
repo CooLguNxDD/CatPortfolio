@@ -14,15 +14,18 @@ export interface RuntimeConfig {
   /**
    * Bearer token for the /mcp endpoint.
    *
+   * **Never read from config.json.** That file is unhashed and patchable
+   * post-deploy; a compromised copy must not be able to plant an
+   * `Authorization: Bearer` header on `/mcp` (same-origin or otherwise).
+   *
    * **Docker (localhost / ngrok)**: nginx injects `Authorization: Bearer <key>`
    * server-side via envsubst templating (see nginx.conf + docker-entrypoint.sh).
-   * The key is never written to config.json or sent to the browser — this field
-   * will be empty string in that deployment.
+   * This field is empty string in that deployment — the browser sends no key.
    *
    * **GitHub Pages**: no server-side injection is available, so the key is
    * baked into the JS bundle at build time via `VITE_OCT_API_KEY` (injected
-   * from a GitHub Actions secret in deploy.yml). `loadRuntimeConfig` falls back
-   * to `envFallback()` which reads `import.meta.env.VITE_OCT_API_KEY`.
+   * from a GitHub Actions secret in deploy.yml). `loadRuntimeConfig` reads it
+   * only from `envFallback()` / `import.meta.env.VITE_OCT_API_KEY`.
    *
    * In both cases the key is deny-all-scoped (`scopes: []`), so it can only
    * invoke gateway-always-visible tools (run_graph, discover_tools,
@@ -145,9 +148,10 @@ function envFallback(): RuntimeConfig {
  * see public/config.json) to discover the OCT backend base URL + timeout at
  * runtime, since GitHub Pages static hosting has no build-time env injection.
  *
- * mcpApiKey is NOT present in config.json for Docker deployments (nginx
- * injects the Authorization header server-side). For GitHub Pages it falls
- * back to VITE_OCT_API_KEY baked into the bundle at CI build time.
+ * mcpApiKey is never taken from config.json — even a non-empty field is
+ * ignored (and warned). Docker leaves the browser key empty (nginx injects
+ * Authorization server-side). GitHub Pages uses VITE_OCT_API_KEY baked into
+ * the bundle at CI build time.
  *
  * Falls back to VITE_OCT_URL/VITE_OCT_API_KEY/VITE_ASK_TIMEOUT_MS, then
  * defaults, on any fetch/parse failure.
@@ -164,10 +168,14 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
       const fallback = envFallback();
       const rawBase =
         typeof json?.octBaseUrl === "string" ? json.octBaseUrl : fallback.octBaseUrl;
+      if (typeof json?.mcpApiKey === "string" && json.mcpApiKey) {
+        console.warn(
+          "loadRuntimeConfig: ignoring mcpApiKey from config.json (unhashed, not trusted)",
+        );
+      }
       cached = {
         octBaseUrl: resolveOctBaseUrl(rawBase || fallback.octBaseUrl),
-        mcpApiKey:
-          typeof json?.mcpApiKey === "string" && json.mcpApiKey ? json.mcpApiKey : fallback.mcpApiKey,
+        mcpApiKey: fallback.mcpApiKey,
         askTimeoutMs:
           json?.askTimeoutMs !== undefined
             ? parseTimeoutMs(json.askTimeoutMs, fallback.askTimeoutMs)
