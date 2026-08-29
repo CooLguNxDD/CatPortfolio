@@ -35,7 +35,7 @@
         },
         {
           "level": 3,
-          "label": "Fish tank · WelTel aquarium",
+          "label": "Cat's aquarium",
           "at": 0.38,
           "nodes": [
             "fish-tank-1"
@@ -243,12 +243,6 @@
           "clinician-AI",
           "job"
         ],
-        "links": [
-          {
-            "label": "related mirror",
-            "href": "https://github.com/CooLguNxDD/Weltel-MCP"
-          }
-        ],
         "badges": [
           {
             "label": "Job track · AI assistant",
@@ -355,7 +349,7 @@
       "id": "fish-tank-1",
       "props": {
         "renderer": "webgl",
-        "title": "WelTel job tracks · aquarium",
+        "title": "Cat",
         "fish": [
           {
             "slug": "weltel-ai",
@@ -374,11 +368,7 @@
               "LangGraph"
             ],
             "blurb": "Greenfield AI gateway — 42 clinical tools, multi-provider Command Center, streaming specialist sub-agent.",
-            "description": "Primary builder of WelTel’s AI layer (secrets_projects/weltel_AI_contribution.md). Greenfield WelTel MCP Server (~395 commits) exposes 42 clinical tools as controlled skills; Clinician AI Assistant (“Command Center”) in the main product streams live tool calls and charts; multi-provider design (Gemini / OpenAI / offline) plus session memory and MCP external tools.",
-            "link": {
-              "label": "related mirror",
-              "href": "https://github.com/CooLguNxDD/Weltel-MCP"
-            },
+            "description": "Primary builder of WelTel’s AI layer — Greenfield WelTel MCP Server (~395 commits) exposes 42 clinical tools as controlled skills; Clinician AI Assistant (“Command Center”) in the main product streams live tool calls and charts; multi-provider design (Gemini / OpenAI / offline) plus session memory and MCP external tools.",
             "metrics": [
               {
                 "label": "MCP commits",
@@ -411,7 +401,7 @@
               "job"
             ],
             "blurb": "Self-hosted org runners, multi-AZ VPC, AWS monthly bill $4k+ → ~$2.8k (−30%).",
-            "description": "DevOps track from secrets_projects/weltel_DevOps_contribution.md — ~570+ infra commits covering self-hosted GitHub runners, Terraform multi-AZ VPC, and cloud cost reduction that cut WelTel’s AWS bill by about $1.2k/mo while keeping clinical deploys reliable.",
+            "description": "DevOps track — ~570+ infra commits covering self-hosted GitHub runners, Terraform multi-AZ VPC, and cloud cost reduction that cut WelTel’s AWS bill by about $1.2k/mo while keeping clinical deploys reliable.",
             "metrics": [
               {
                 "label": "infra commits",
@@ -444,7 +434,7 @@
               "job"
             ],
             "blurb": "Mobile foundation, Amplify GraphQL real-time chat, media & push deep-links — 531+ commits · 39+ tickets.",
-            "description": "Mobile track from secrets_projects/weltel_mobile_contribution.md — React Native + Amplify GraphQL foundation for clinical mobile over ~9 months: real-time chat, media, push deep-links, 531+ commits and 39+ tickets shipping patient/clinician workflows on device.",
+            "description": "Mobile track — React Native + Amplify GraphQL foundation for clinical mobile over ~9 months: real-time chat, media, push deep-links, 531+ commits and 39+ tickets shipping patient/clinician workflows on device.",
             "metrics": [
               {
                 "label": "mobile commits",
@@ -477,7 +467,7 @@
               "job"
             ],
             "blurb": "SMS request→Axios across 5 gateways, patient portal test results, clinical UI production fixes (~105 commits).",
-            "description": "Platform track from secrets_projects/weltel_platform_contribution.md — messaging modernization (request → Axios across Africa’s Talking, Oxygen8, SMSGateway, Mixed2, …), patient portal test results, search debounce, task-queue and clinical UI fixes — ~105 commits of end-to-end full-stack platform work.",
+            "description": "Platform track — messaging modernization (request → Axios across Africa’s Talking, Oxygen8, SMSGateway, Mixed2, …), patient portal test results, search debounce, task-queue and clinical UI fixes — ~105 commits of end-to-end full-stack platform work.",
             "metrics": [
               {
                 "label": "platform commits",
@@ -498,7 +488,7 @@
           "weltel-ai",
           "weltel-devops"
         ],
-        "curationLabel": "From secrets_projects contribution reports",
+        "curationLabel": "Employer contribution reports",
         "caption": "Four employer job tracks as specimens — size/glow from impact depth, school groups WelTel work. Text view keeps the matrix cards below."
       }
     },

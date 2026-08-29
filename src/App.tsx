@@ -194,7 +194,7 @@ function App() {
               ))}
             </div>
             <div
-              className="flex items-center gap-1"
+              className="hidden md:flex items-center gap-1"
               role="group"
               aria-label="Color mode"
             >
@@ -221,7 +221,7 @@ function App() {
                 <select
                   id="theme-select"
                   aria-label="Theme"
-                  className="h-7 max-w-[12rem] appearance-none rounded-md border border-(--hairline) bg-(--bg-elevated) px-2 pr-7 text-xs text-(--fg)"
+                  className="h-7 max-w-[7.5rem] sm:max-w-[12rem] appearance-none rounded-md border border-(--hairline) bg-(--bg-elevated) px-2 pr-6 text-xs text-(--fg)"
                   value={selectValue}
                   onChange={(e) => handleThemeClick(e.target.value)}
                 >
@@ -245,6 +245,7 @@ function App() {
                 variant={showCompanion ? "default" : "outline"}
                 onClick={() => setShowCompanion(!showCompanion)}
                 title="Toggle 3D Interactive Cat Companion (Dev only)"
+                className="hidden sm:inline-flex"
               >
                 🐾 Companion
               </Button>
