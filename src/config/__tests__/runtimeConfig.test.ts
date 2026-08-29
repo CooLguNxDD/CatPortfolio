@@ -56,6 +56,7 @@ describe("runtimeConfig", () => {
     it("rejects an octBaseUrl on a foreign origin and falls back instead of trusting it", async () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       vi.stubEnv("VITE_OCT_URL", "https://trusted.example.com");
+      vi.stubEnv("VITE_OCT_API_KEY", "");
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -66,6 +67,7 @@ describe("runtimeConfig", () => {
 
       const config = await loadRuntimeConfig();
       expect(config.octBaseUrl).not.toBe("https://evil.example.com");
+      expect(getMcpApiKey()).not.toBe("octk_should_not_leak_here");
       expect(warn).toHaveBeenCalled();
       warn.mockRestore();
     });
@@ -116,17 +118,36 @@ describe("runtimeConfig", () => {
     expect(() => getOctBaseUrl()).toThrow("runtime_config_not_loaded");
   });
 
-  it("resolves mcpApiKey from a successful /config.json fetch", async () => {
+  it("ignores mcpApiKey in config.json and uses the build-time env key instead", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("VITE_OCT_API_KEY", "octk_env_fallback");
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ octBaseUrl: "https://api.example.com", mcpApiKey: "octk_test123" }),
     }) as unknown as typeof fetch;
 
     await loadRuntimeConfig();
-    expect(getMcpApiKey()).toBe("octk_test123");
+    expect(getMcpApiKey()).toBe("octk_env_fallback");
+    expect(getMcpApiKey()).not.toBe("octk_test123");
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
-  it("falls back to VITE_OCT_API_KEY when config.json omits mcpApiKey", async () => {
+  it("leaves mcpApiKey empty when config.json plants a key and env is unset", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("VITE_OCT_API_KEY", "");
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ octBaseUrl: "https://api.example.com", mcpApiKey: "octk_should_not_leak_here" }),
+    }) as unknown as typeof fetch;
+
+    await loadRuntimeConfig();
+    expect(getMcpApiKey()).toBe("");
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("uses VITE_OCT_API_KEY when config.json omits mcpApiKey", async () => {
     vi.stubEnv("VITE_OCT_API_KEY", "octk_env_fallback");
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,

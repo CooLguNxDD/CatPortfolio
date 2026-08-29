@@ -116,7 +116,7 @@ Extensible 2D/3D skeletal rigging and procedural animation framework:
 
 ## Backend Integration (OCT)
 
-`src/config/runtimeConfig.ts` fetches unhashed `public/config.json` before first render (`octBaseUrl`, `mcpApiKey`, `askTimeoutMs`, default 600000). Patchable post-deploy without a rebuild — GitHub Pages has no build-time env injection. Falls back to `VITE_OCT_URL` / `VITE_OCT_API_KEY` / `VITE_ASK_TIMEOUT_MS`, then safe defaults. Docker injects the same fields via `docker-entrypoint.sh` (`OCT_BASE_URL`, `OCT_API_KEY`, `OCT_ASK_TIMEOUT_MS`).
+`src/config/runtimeConfig.ts` fetches unhashed `public/config.json` before first render (`octBaseUrl`, `askTimeoutMs`, default 600000). Patchable post-deploy without a rebuild — GitHub Pages has no build-time env injection. `octBaseUrl` is origin-allowlisted (same-origin or `VITE_OCT_URL`); `mcpApiKey` is never read from config.json (warn + ignore) — Docker leaves it empty (nginx injects Authorization) and GitHub Pages uses `VITE_OCT_API_KEY` baked into the bundle. Falls back to `VITE_OCT_URL` / `VITE_OCT_API_KEY` / `VITE_ASK_TIMEOUT_MS`, then safe defaults. Docker injects backend URL + key via `docker-entrypoint.sh` (`OCT_BASE_URL`, `OCT_API_KEY`, `OCT_ASK_TIMEOUT_MS`) into nginx only.
 
 Loaders in `src/content/loadLayout.ts` — every one falls back to `loadBaked()`:
 
@@ -143,7 +143,7 @@ CatPortfolio/
 │   ├── router.tsx              # Route / + /ask→/ redirect, demoSearchSchema (j / v / f)
 │   ├── App.tsx                 # Shell: nav, theme + accent switcher, demo chip, Outlet
 │   ├── index.css               # Tailwind v4 CSS-first config + OKLCH tokens + shadcn bridge
-│   ├── config/runtimeConfig.ts # public/config.json fetch (octBaseUrl, mcpApiKey, askTimeoutMs)
+│   ├── config/runtimeConfig.ts # public/config.json fetch (octBaseUrl, askTimeoutMs; mcpApiKey from env only)
 │   ├── content/
 │   │   ├── schema.ts           # Zod LayoutSchema — 19-block union + meta
 │   │   ├── layout.json         # Compiled, committed, gated (never hand-edit)
