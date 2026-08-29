@@ -46,7 +46,7 @@ const DEFAULT_NOTIFICATIONS: NotificationPreferences = {
  * a hand-edited or stale-version value should fall back per-field to a safe
  * default, never crash the store on read.
  */
-function sanitizePersistedPreferences(persistedState: unknown): Partial<PreferencesStore> {
+export function sanitizePersistedPreferences(persistedState: unknown): Partial<PreferencesStore> {
   const raw = (persistedState ?? {}) as Record<string, unknown>
 
   const theme = typeof raw.theme === "string" && raw.theme.length > 0 ? raw.theme : DEFAULT_THEME_ID
@@ -82,6 +82,14 @@ export const usePreferencesStore = create<PreferencesStore>()(
       migrate: (persistedState: unknown, _version: number) => {
         return sanitizePersistedPreferences(persistedState) as PreferencesStore
       },
+      // migrate() only runs on a version mismatch — a same-version blob (e.g.
+      // hand-edited in DevTools) would otherwise skip sanitizePersistedPreferences
+      // entirely. merge() runs on every rehydrate, so route every persisted read
+      // through the same validation regardless of version.
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...sanitizePersistedPreferences(persistedState),
+      }),
       partialize: (state) => ({
         theme: state.theme,
         accent: state.accent,

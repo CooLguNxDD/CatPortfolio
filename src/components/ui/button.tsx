@@ -57,12 +57,18 @@ function Button({
     asChild?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
+  // local: default to type="button" for the native <button> case — a bare
+  // <Button> would otherwise render type="submit". No <form> exists in this
+  // codebase today, but this keeps a future one from getting an implicit
+  // submit for free. Keep this deviation if re-syncing from upstream shadcn.
+  const type = asChild ? undefined : (props.type ?? "button")
 
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      type={type}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

@@ -67,6 +67,33 @@ function parseTimeoutMs(value: unknown, fallback: number): number {
  * - empty / "same-origin" / "." → window.location.origin (nginx proxies /api + /mcp)
  * - absolute URL → use as-is (e.g. GitHub Pages pointing at a public OCT host)
  */
+/** `new URL(v).origin`, or "" if `v` isn't a parseable absolute URL. */
+function originOf(v: string | undefined | null): string {
+  if (!v) return "";
+  try {
+    return new URL(v).origin;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Origins config.json is allowed to point the browser at: same-origin
+ * (Docker/nginx proxy path) and whatever origin was baked in at build time
+ * via VITE_OCT_URL (GitHub Pages). Both are already trusted by this
+ * deployment; nothing else is, since config.json is unhashed and patchable
+ * post-deploy without a rebuild.
+ */
+function allowedOrigins(): Set<string> {
+  const origins = new Set<string>();
+  if (typeof window !== "undefined" && window.location?.origin) {
+    origins.add(window.location.origin);
+  }
+  const buildTimeOrigin = originOf(import.meta.env.VITE_OCT_URL as string | undefined);
+  if (buildTimeOrigin) origins.add(buildTimeOrigin);
+  return origins;
+}
+
 function resolveOctBaseUrl(raw: string | undefined | null): string {
   const v = (raw ?? "").trim();
   if (!v || v === "same-origin" || v === ".") {
@@ -76,15 +103,19 @@ function resolveOctBaseUrl(raw: string | undefined | null): string {
     return "";
   }
   const stripped = v.replace(/\/$/, "");
-  // Reject anything that isn't a well-formed http(s) URL — config.json is a
-  // patchable, unhashed static file, so this value isn't fully trusted the
-  // way a build-time env var is. It also becomes the target of an
-  // Authorization: Bearer header (see octClient.ts), so a malformed or
-  // non-http(s) scheme here must not be forwarded as a fetch origin.
+  // Reject anything that isn't a well-formed http(s) URL on an allowlisted
+  // origin — config.json is a patchable, unhashed static file, so this value
+  // isn't fully trusted the way a build-time env var is. It also becomes the
+  // target of an Authorization: Bearer header (see octClient.ts), so a
+  // compromised config.json must not be able to redirect that header to an
+  // arbitrary host — only to same-origin or the origin baked in at build time.
   try {
     const parsed = new URL(stripped);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       throw new Error(`unsupported scheme: ${parsed.protocol}`);
+    }
+    if (!allowedOrigins().has(parsed.origin)) {
+      throw new Error(`origin not allowlisted: ${parsed.origin}`);
     }
   } catch (err) {
     console.warn("resolveOctBaseUrl: rejecting invalid octBaseUrl, falling back to same-origin", stripped, err);
