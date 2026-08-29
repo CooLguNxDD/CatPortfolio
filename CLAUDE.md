@@ -260,7 +260,7 @@ Two modes, one contract — both end in a PR, never a push to `main`:
 
 ## Content Streams (do not mix)
 
-- **WelTel job work** (employer; AI / DevOps / Mobile / Platform tracks — the default tank school, sourced from `Secret/secrets_projects/*_contribution.md`)
+- **WelTel job work** (employer; AI / DevOps / Mobile / Platform tracks — the default tank school, sourced from employer contribution reports)
 - **OpenCat Tunnel** (personal OSS backend/MCP platform)
 - **CatPortfolio** (this SPA)
 

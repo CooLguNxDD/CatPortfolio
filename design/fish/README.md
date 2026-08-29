@@ -19,7 +19,7 @@ Ported from Open Design **CatPortfolio Fish Tank** (`tank3d.html` + `schema.md` 
 
 ## Default WelTel school
 
-Authored in `design/layout.yaml` as `fish-tank-1` from `secrets_projects` contribution reports:
+Authored in `design/layout.yaml` as `fish-tank-1` from employer contribution reports:
 
 | slug | domain |
 |---|---|
