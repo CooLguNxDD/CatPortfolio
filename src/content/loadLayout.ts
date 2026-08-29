@@ -13,6 +13,21 @@ export function loadBaked(): Layout {
   return BAKED_LAYOUT;
 }
 
+/**
+ * Resolves the OCT base URL for a fetch, with the trailing slash stripped.
+ * Returns null (never throws) when no backend is configured/reachable, so
+ * every loader below can short-circuit to the baked snapshot the same way.
+ */
+function resolveBase(): string | null {
+  let base: string;
+  try {
+    base = getOctBaseUrl();
+  } catch {
+    return null;
+  }
+  return base ? base.replace(/\/$/, "") : null;
+}
+
 export type LayoutSource = "live" | "snapshot" | "fragments" | "bake";
 
 export type LayoutLoadResult = {
@@ -58,16 +73,11 @@ function parseLayoutPayload(json: unknown): LayoutLoadResult | null {
 
 /** Loads a live layout from the backend with detailed load status. */
 export async function loadLiveWithStatus(audience: string): Promise<LayoutLoadResult> {
-  let base: string;
-  try {
-    base = getOctBaseUrl();
-  } catch {
-    return { layout: loadBaked(), source: "snapshot" };
-  }
+  const base = resolveBase();
   if (!base) return { layout: loadBaked(), source: "snapshot" };
   try {
     const res = await fetch(
-      `${base.replace(/\/$/, "")}/portfolio/layout?audience=${encodeURIComponent(audience)}`,
+      `${base}/portfolio/layout?audience=${encodeURIComponent(audience)}`,
       { signal: AbortSignal.timeout(4000) },
     );
     if (!res.ok) throw new Error(String(res.status));
@@ -89,16 +99,11 @@ export async function loadLayoutForQuery(
   query: string,
   opts?: { timeoutMs?: number },
 ): Promise<LayoutLoadResult> {
-  let base: string;
-  try {
-    base = getOctBaseUrl();
-  } catch {
-    return { layout: loadBaked(), source: "snapshot" };
-  }
+  const base = resolveBase();
   if (!base) return { layout: loadBaked(), source: "snapshot" };
   try {
     const res = await fetch(
-      `${base.replace(/\/$/, "")}/api/portfolio/public/layout-for-query?query=${encodeURIComponent(query)}`,
+      `${base}/api/portfolio/public/layout-for-query?query=${encodeURIComponent(query)}`,
       { signal: AbortSignal.timeout(opts?.timeoutMs ?? 8000) },
     );
     if (!res.ok) throw new Error(String(res.status));
@@ -123,15 +128,10 @@ export async function composeLayoutLive(
   },
   opts?: { timeoutMs?: number },
 ): Promise<LayoutLoadResult> {
-  let base: string;
-  try {
-    base = getOctBaseUrl();
-  } catch {
-    return { layout: loadBaked(), source: "snapshot" };
-  }
+  const base = resolveBase();
   if (!base) return { layout: loadBaked(), source: "snapshot" };
   try {
-    const res = await fetch(`${base.replace(/\/$/, "")}/api/portfolio/public/compose`, {
+    const res = await fetch(`${base}/api/portfolio/public/compose`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -161,16 +161,11 @@ export async function loadJobLayout(
   if (!JOB_ID_PATTERN.test(jobId)) {
     return { layout: loadBaked(), source: "snapshot" };
   }
-  let base: string;
-  try {
-    base = getOctBaseUrl();
-  } catch {
-    return { layout: loadBaked(), source: "snapshot" };
-  }
+  const base = resolveBase();
   if (!base) return { layout: loadBaked(), source: "snapshot" };
   try {
     const res = await fetch(
-      `${base.replace(/\/$/, "")}/api/portfolio/public/layout/${encodeURIComponent(jobId)}`,
+      `${base}/api/portfolio/public/layout/${encodeURIComponent(jobId)}`,
       { signal: AbortSignal.timeout(opts?.timeoutMs ?? 4000) },
     );
     if (!res.ok) throw new Error(String(res.status));
