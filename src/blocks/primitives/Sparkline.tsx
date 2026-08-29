@@ -23,7 +23,7 @@ export function Sparkline({
   const d = `M ${coords.join(" L ")}`;
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden>
-      <path d={d} fill="none" stroke="var(--amber)" strokeWidth={1.5} />
+      <path d={d} fill="none" stroke="var(--card-accent, var(--amber))" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

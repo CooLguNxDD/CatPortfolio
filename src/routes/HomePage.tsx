@@ -4,7 +4,7 @@
  * column. Tank chrome opens the same ChatPanel as a dock.
  */
 
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import { LayoutRenderer } from "@/render/LayoutRenderer"
 import { usePageLayout } from "@/hooks/usePageLayout"
@@ -54,6 +54,13 @@ export function HomePage() {
   const search = useSearch({ from: "/" })
   const { j, v, f, scrollTo } = search
   const { data, layout, isLoading, shortId, isDemoSession } = usePageLayout(j)
+  const [askOpen, setAskOpen] = useState(false)
+
+  const isLive = data.source !== "snapshot"
+  const isDemo =
+    data.source === "bake" ||
+    data.layout?.meta?.mode === "showcase" ||
+    (!!data.shortId && isDemoSession)
 
   const scene = useMemo(() => sceneFromLayout(layout), [layout])
   const caps = useMemo(
@@ -64,16 +71,6 @@ export function HomePage() {
     [],
   )
   const mode = resolveViewMode({ v }, caps, scene.fish.length, scene.hasAuthoredTank)
-  const canShowTank =
-    (scene.fish.length > 0 || scene.hasAuthoredTank) &&
-    caps.webgl2 &&
-    !caps.reducedMotion
-
-  const isLive = data.source !== "snapshot"
-  const isDemo =
-    data.source === "bake" ||
-    data.layout?.meta?.mode === "showcase" ||
-    (!!data.shortId && isDemoSession)
 
   const demoSearch: DemoSearch = {
     ...(j ? { j } : {}),
@@ -111,6 +108,28 @@ export function HomePage() {
       fishBus.off("fish:release", release)
     }
   }, [navigate])
+
+  useEffect(() => {
+    const onAskOpen = () => setAskOpen(true)
+    const onAskClose = () => setAskOpen(false)
+    fishBus.on("ask:open", onAskOpen)
+    fishBus.on("ask:close", onAskClose)
+    return () => {
+      fishBus.off("ask:open", onAskOpen)
+      fishBus.off("ask:close", onAskClose)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!askOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setAskOpen(false)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [askOpen])
 
   // Chat view-actions encode the block id in `?scrollTo=`; wait until the
   // matrix has actually mounted `[data-block-id]` before scrolling, then
@@ -213,62 +232,74 @@ export function HomePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 md:py-8 space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono inline-flex items-center gap-2 w-fit">
-          <span
-            className={cn(
-              "h-2 w-2 rounded-full",
-              data.source === "fragments"
-                ? "bg-(--neon)"
-                : isDemo || data.source === "bake"
-                  ? "bg-(--amber)"
-                  : isLive
-                    ? "bg-(--neon)"
-                    : "bg-(--amber)",
-            )}
-          />
-          <span>{sourceLabel(data)}</span>
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 md:py-8 space-y-6">
+      {/* Top bar with status pills and 3D / Flat / Text view router pills */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono inline-flex items-center gap-2 w-fit">
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                data.source === "fragments"
+                  ? "bg-(--neon)"
+                  : isDemo || data.source === "bake"
+                    ? "bg-(--amber)"
+                    : isLive
+                      ? "bg-(--neon)"
+                      : "bg-(--amber)",
+              )}
+            />
+            <span>{sourceLabel(data)}</span>
+          </div>
+          {data.audience ? (
+            <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono text-(--fg-muted)">
+              audience · {data.audience}
+            </div>
+          ) : null}
+          {shortId ? (
+            <div className="rounded-full border border-(--amber)/30 px-3 py-1 text-xs font-mono text-(--amber)">
+              j={shortId}
+            </div>
+          ) : null}
+          <AgentStatusPill />
+          <span className="text-[11px] font-mono text-(--fg-subtle) hidden sm:inline">
+            live layout engine · chat patches the blocks it needs
+          </span>
         </div>
-        {data.audience ? (
-          <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono text-(--fg-muted)">
-            audience · {data.audience}
-          </div>
-        ) : null}
-        {shortId ? (
-          <div className="rounded-full border border-(--amber)/30 px-3 py-1 text-xs font-mono text-(--amber)">
-            j={shortId}
-          </div>
-        ) : null}
-        <AgentStatusPill />
-        {canShowTank ? (
-          <div
-            className="inline-flex rounded-full border border-(--hairline) p-0.5 text-xs font-mono"
-            role="radiogroup"
-            aria-label="Canvas view"
+
+        <div
+          className="ft-view-pills shrink-0"
+          role="group"
+          aria-label="Tank view"
+        >
+          <button
+            type="button"
+            className="ft-chip-btn"
+            onClick={() => {
+              useFishTankStore.getState().setChrome("3d")
+              setView("tank")
+            }}
           >
-            {(["tank", "text"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="radio"
-                aria-checked={mode === option}
-                onClick={() => setView(option)}
-                className={cn(
-                  "rounded-full px-3 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber)",
-                  mode === option
-                    ? "bg-(--amber)/15 text-(--amber)"
-                    : "text-(--fg-muted) hover:text-(--fg)",
-                )}
-              >
-                {option === "tank" ? "3D tank" : "matrix"}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <span className="text-[11px] font-mono text-(--fg-subtle)">
-          live layout engine · chat patches the blocks it needs
-        </span>
+            3D
+          </button>
+          <button
+            type="button"
+            className="ft-chip-btn"
+            onClick={() => {
+              useFishTankStore.getState().setChrome("flat")
+              setView("tank")
+            }}
+          >
+            Flat
+          </button>
+          <button
+            type="button"
+            className="ft-chip-btn is-on"
+            aria-pressed="true"
+          >
+            Text
+          </button>
+        </div>
       </div>
 
       <p className="text-[11px] font-mono text-(--fg-subtle)" data-ask-persist-notice>
@@ -283,7 +314,7 @@ export function HomePage() {
         >
           <ChatPanel layout={layout} view="text" />
         </aside>
-        <div className="min-w-0 space-y-6" data-print-root>
+        <main className="min-w-0 space-y-6" data-print-root>
           {scene.fish.length > 0 ? (
             <FishFlatGrid
               fish={scene.fish}
@@ -295,7 +326,7 @@ export function HomePage() {
             />
           ) : null}
           {matrix}
-        </div>
+        </main>
       </div>
     </div>
   )

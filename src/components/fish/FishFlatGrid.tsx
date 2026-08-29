@@ -49,7 +49,9 @@ export function FishFlatGrid({
 
   return (
     <main className={cn("ft-flat", className)} data-fishtank-flat>
-      <span className="ft-eyebrow">⚡ Recruiter fast view · no WebGL required</span>
+      <div className="mb-3">
+        <span className="ft-eyebrow">⚡ Recruiter fast view · no WebGL required</span>
+      </div>
       <h2>Project index</h2>
       <p className="ft-lead">
         Same specimens as the 3D tank — size, depth, glow, and domain live in the

@@ -38,7 +38,7 @@
 
 - `/` → `routes/HomePage.tsx` — `usePageLayout` resolves demo (`?j=`), live default, or a patched working copy. Tank mode renders `FishTankStage` (Ask dock + chrome); text mode is the two-column ask + matrix.
 - `/ask` → `beforeLoad` redirect onto `/` with the same search params. No page component.
-- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`).
+- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`). `data-accent` lives on this shell `<div>`, not `<html>` (ThemeProvider's inline theme vars on `documentElement` would beat an attribute selector there). Accent tokens are mode-aware: `html[data-light="true"]` in `index.css` tunes `--accent-*` for light themes that don't declare their own (only `paper` today). The fish tank reads CSS tokens from that same `[data-accent]` shell (`fishTankTokens.ts::accentScopeElement`), not `<html>`, so it inherits the picked accent instead of always seeing the theme's base amber.
 
 ## Fish Tank
 
@@ -116,7 +116,7 @@ Extensible 2D/3D skeletal rigging and procedural animation framework:
 
 ## Backend Integration (OCT)
 
-`src/config/runtimeConfig.ts` fetches unhashed `public/config.json` before first render (`octBaseUrl`, `mcpApiKey`, `askTimeoutMs`, default 600000). Patchable post-deploy without a rebuild — GitHub Pages has no build-time env injection. Falls back to `VITE_OCT_URL` / `VITE_OCT_API_KEY` / `VITE_ASK_TIMEOUT_MS`, then safe defaults. Docker injects the same fields via `docker-entrypoint.sh` (`OCT_BASE_URL`, `OCT_API_KEY`, `OCT_ASK_TIMEOUT_MS`).
+`src/config/runtimeConfig.ts` fetches unhashed `public/config.json` before first render (`octBaseUrl`, `askTimeoutMs`, default 600000). Patchable post-deploy without a rebuild — GitHub Pages has no build-time env injection. `octBaseUrl` is origin-allowlisted (same-origin or `VITE_OCT_URL`); `mcpApiKey` is never read from config.json (warn + ignore) — Docker leaves it empty (nginx injects Authorization) and GitHub Pages uses `VITE_OCT_API_KEY` baked into the bundle. Falls back to `VITE_OCT_URL` / `VITE_OCT_API_KEY` / `VITE_ASK_TIMEOUT_MS`, then safe defaults. Docker injects backend URL + key via `docker-entrypoint.sh` (`OCT_BASE_URL`, `OCT_API_KEY`, `OCT_ASK_TIMEOUT_MS`) into nginx only.
 
 Loaders in `src/content/loadLayout.ts` — every one falls back to `loadBaked()`:
 
@@ -143,7 +143,7 @@ CatPortfolio/
 │   ├── router.tsx              # Route / + /ask→/ redirect, demoSearchSchema (j / v / f)
 │   ├── App.tsx                 # Shell: nav, theme + accent switcher, demo chip, Outlet
 │   ├── index.css               # Tailwind v4 CSS-first config + OKLCH tokens + shadcn bridge
-│   ├── config/runtimeConfig.ts # public/config.json fetch (octBaseUrl, mcpApiKey, askTimeoutMs)
+│   ├── config/runtimeConfig.ts # public/config.json fetch (octBaseUrl, askTimeoutMs; mcpApiKey from env only)
 │   ├── content/
 │   │   ├── schema.ts           # Zod LayoutSchema — 19-block union + meta
 │   │   ├── layout.json         # Compiled, committed, gated (never hand-edit)
@@ -260,7 +260,7 @@ Two modes, one contract — both end in a PR, never a push to `main`:
 
 ## Content Streams (do not mix)
 
-- **WelTel job work** (employer; AI / DevOps / Mobile / Platform tracks — the default tank school, sourced from `Secret/secrets_projects/*_contribution.md`)
+- **WelTel job work** (employer; AI / DevOps / Mobile / Platform tracks — the default tank school, sourced from employer contribution reports)
 - **OpenCat Tunnel** (personal OSS backend/MCP platform)
 - **CatPortfolio** (this SPA)
 

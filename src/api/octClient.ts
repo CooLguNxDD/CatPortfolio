@@ -153,7 +153,10 @@ export class OctClient {
     if (!this.client) {
       throw new Error("client_not_connected");
     }
-    await this.client.ping();
+    // Explicit timeout (SDK default is 60s) — no in-repo caller today, but
+    // this is public API surface and shouldn't hang a future caller for a
+    // full minute on a half-dead connection.
+    await this.client.ping({ timeout: 5000 });
   }
 
   async listTools(): Promise<Pick<Tool, "name" | "description" | "inputSchema">[]> {
