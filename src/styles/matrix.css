@@ -37,13 +37,24 @@
 
 /* ── Page frame ── */
 .matrix-home .matrix-page {
-  /* Centered: ~10% padding each side → ~80% content width */
   width: 100%;
-  max-width: none;
+  max-width: 1400px;
   margin: 0 auto;
   box-sizing: border-box;
-  padding: 0 10% 4.5rem;
+  padding: 0 1rem 4rem;
   position: relative;
+}
+
+@media (min-width: 768px) {
+  .matrix-home .matrix-page {
+    padding: 0 1.5rem 4.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .matrix-home .matrix-page {
+    padding: 0 3rem 4.5rem;
+  }
 }
 
 /* Sticky chrome under app header — glass surface (grok proto 1.0) */
@@ -183,10 +194,11 @@
   align-items: center;
   gap: 0.5rem;
   font-family: var(--mono), ui-monospace, monospace;
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--fg-subtle);
+  color: var(--fg-muted);
+  font-weight: 600;
 }
 
 .matrix-home .dag-level-meta .lvl-idx {
@@ -194,13 +206,13 @@
   align-items: center;
   justify-content: center;
   min-width: 1.6rem;
-  height: 1.25rem;
-  padding: 0 0.35rem;
-  border-radius: 4px;
-  border: 1px solid var(--hairline);
+  height: 1.35rem;
+  padding: 0 0.4rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
   background: var(--bg-elevated);
   color: var(--card-accent, var(--amber));
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .matrix-home .dag-level-nodes {
@@ -211,43 +223,48 @@
 }
 
 .matrix-home .dag-level-nodes.cols-1 { grid-template-columns: 1fr; }
-.matrix-home .dag-level-nodes.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.matrix-home .dag-level-nodes.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.matrix-home .dag-level-nodes.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.matrix-home .dag-level-nodes.cols-2 { grid-template-columns: 1fr; }
+.matrix-home .dag-level-nodes.cols-3 { grid-template-columns: 1fr; }
+.matrix-home .dag-level-nodes.cols-4 { grid-template-columns: 1fr; }
 
-@media (max-width: 900px) {
-  .matrix-home .dag-level-nodes.cols-2,
-  .matrix-home .dag-level-nodes.cols-3,
-  .matrix-home .dag-level-nodes.cols-4 {
-    grid-template-columns: 1fr;
+@media (min-width: 640px) {
+  .matrix-home .dag-level-nodes.cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-@media (min-width: 901px) and (max-width: 1100px) {
+  .matrix-home .dag-level-nodes.cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .matrix-home .dag-level-nodes.cols-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
+@media (min-width: 1024px) {
+  .matrix-home .dag-level-nodes.cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .matrix-home .dag-level-nodes.cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 .matrix-home .dag-level:not(.is-lit) [data-dag-id] {
-  opacity: 0.55;
-  transform: translateY(6px);
-  filter: saturate(0.75);
+  opacity: 0.88;
+  transform: translateY(4px);
   transition:
     opacity var(--dag-dur) var(--dag-ease),
     transform var(--dag-dur) var(--dag-ease),
-    filter var(--dag-dur) var(--dag-ease),
     box-shadow var(--dag-dur) var(--dag-ease);
+}
+
+html[data-light="true"] .matrix-home .dag-level:not(.is-lit) [data-dag-id] {
+  opacity: 0.95;
 }
 
 .matrix-home .dag-level.is-lit [data-dag-id] {
   opacity: 1;
   transform: none;
   filter: none;
-}
-
-.matrix-home .dag-level.is-current [data-dag-id].is-current {
-  box-shadow: var(--shadow-lift);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -263,14 +280,13 @@
 .mx-card {
   --dag-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --shadow-lift:
-    0 0 0 1px color-mix(in oklch, var(--card-accent, var(--amber)) 45%, transparent),
-    0 18px 44px -18px rgba(0, 0, 0, 0.7),
-    0 0 28px -8px color-mix(in oklch, var(--card-accent, var(--amber)) 35%, transparent);
+    0 18px 44px -18px rgba(0, 0, 0, 0.4),
+    0 0 24px -6px color-mix(in oklch, var(--card-accent, var(--amber)) 35%, transparent);
   position: relative;
   height: 100%;
   background: color-mix(in oklch, var(--card) 92%, transparent);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg, 0.875rem);
+  border-radius: 20px;
   box-shadow: var(--shadow-card);
   padding: 1.25rem 1.35rem;
   overflow: hidden;
@@ -281,25 +297,10 @@
     filter 0.28s var(--dag-ease);
 }
 
-.mx-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--card-accent, var(--amber));
-  opacity: 0.85;
-  transition: width 0.28s var(--dag-ease), opacity 0.28s var(--dag-ease);
-}
-
 .mx-card:hover {
   transform: translateY(-3px);
-  border-color: color-mix(in oklch, var(--card-accent, var(--amber)) 40%, var(--hairline));
+  border-color: color-mix(in oklch, var(--card-accent, var(--amber)) 50%, var(--hairline));
   box-shadow: var(--shadow-lift);
-}
-
-.mx-card:hover::before {
-  width: 4px;
-  opacity: 1;
 }
 
 .mx-card.featured {
@@ -374,10 +375,10 @@
   --shadow-lift:
     0 0 0 1px color-mix(in oklch, var(--card-accent, var(--amber)) 45%, transparent),
     0 18px 44px -18px rgba(0, 0, 0, 0.7);
-  background: color-mix(in oklch, var(--card) 88%, transparent);
-  border: 1px solid var(--hairline);
-  border-radius: 12px;
-  padding: 0.9rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1.15rem 1.3rem;
   box-shadow: var(--shadow-card);
   height: 100%;
   transition:
@@ -389,31 +390,33 @@
 .mx-kpi:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
-  border-color: color-mix(in oklch, var(--card-accent, var(--amber)) 35%, var(--hairline));
+  border-color: color-mix(in oklch, var(--card-accent, var(--amber)) 50%, var(--border));
 }
 
 .mx-kpi .kpi-label {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--fg-subtle);
+  letter-spacing: 0.1em;
+  color: var(--fg);
+  font-weight: 700;
   font-family: var(--mono), ui-monospace, monospace;
 }
 
 .mx-kpi .kpi-value {
-  margin-top: 0.35rem;
+  margin-top: 0.4rem;
   font-family: var(--mono), ui-monospace, monospace;
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.4rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--card-accent, var(--amber));
 }
 
 .mx-kpi .kpi-delta {
-  margin-top: 0.2rem;
-  font-size: 0.72rem;
-  color: var(--neon);
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--fg-muted);
   font-family: var(--mono), ui-monospace, monospace;
+  font-weight: 500;
 }
 
 /* ── Persona bar ── */
@@ -629,7 +632,7 @@
 }
 
 [data-block-id].is-patched {
-  border-radius: var(--radius-lg, 14px);
+  border-radius: 20px;
   animation: patch-glow 2.1s ease-out 1;
 }
 

@@ -61,12 +61,29 @@ export const SPECIES_FALLBACK_HEX: Record<DomainIdType, string> = {
 
 export const ALL_DOMAIN_IDS: DomainIdType[] = ["ai", "devops", "mobile", "platform"]
 
-/** Read a CSS custom property from :root (name without leading --). */
-export function readCssToken(name: string, fallback = ""): string {
+/**
+ * Element whose computed style carries both theme vars (inherited from
+ * <html>) and the picked accent — App.tsx puts `data-accent` on the app
+ * shell `<div>`, not `<html>` (ThemeProvider's inline theme vars on
+ * documentElement would otherwise beat an attribute selector there), so
+ * this is where --amber actually resolves to the visitor's chosen accent.
+ * Falls back to <html> when the shell hasn't mounted yet (tests / SSR).
+ */
+export function accentScopeElement(): HTMLElement {
+  const shell =
+    typeof document.querySelector === "function"
+      ? document.querySelector<HTMLElement>("[data-accent]")
+      : null
+  return shell ?? document.documentElement
+}
+
+/** Read a CSS custom property from the accent scope (name without leading --). */
+export function readCssToken(name: string, fallback = "", el?: HTMLElement): string {
   if (typeof getComputedStyle !== "function" || typeof document === "undefined") {
     return fallback
   }
-  const v = getComputedStyle(document.documentElement)
+  const target = el ?? accentScopeElement()
+  const v = getComputedStyle(target)
     .getPropertyValue(name.startsWith("--") ? name : `--${name}`)
     .trim()
   return v || fallback

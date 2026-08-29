@@ -29,10 +29,20 @@
 
   /* 5-accent palette (picker swatches + data-accent rebind of --amber) */
   --accent-amber: oklch(0.824 0.101 53);
+  --accent-amber-glow: var(--amber-glow);
+  --accent-amber-soft: var(--amber-soft);
   --accent-pink: oklch(0.870 0.075 336);
+  --accent-pink-glow: oklch(0.84 0.14 350);
+  --accent-pink-soft: oklch(0.28 0.08 350);
   --accent-neon: oklch(0.858 0.109 143);
+  --accent-neon-glow: oklch(0.90 0.16 145);
+  --accent-neon-soft: oklch(0.26 0.07 145);
   --accent-cyan: oklch(0.847 0.083 210);
+  --accent-cyan-glow: oklch(0.88 0.11 200);
+  --accent-cyan-soft: oklch(0.26 0.06 200);
   --accent-violet: oklch(0.787 0.119 305);
+  --accent-violet-glow: oklch(0.80 0.12 300);
+  --accent-violet-soft: oklch(0.28 0.07 300);
 
   /* Series charts — aliases of theme chroma (shadcn ChartConfig / --color-<key>) */
   --chart-1: var(--amber);
@@ -121,30 +131,70 @@
  * Accent axis: components keep consuming --amber; data-accent re-points it.
  * Must live on a *descendant* of <html> (App shell), because ThemeProvider
  * writes theme vars as inline style on documentElement (beats attribute rules).
+ * Each accent has one definition site (--accent-<id>(-glow|-soft) above,
+ * mode-tuned by html[data-light="true"] below) — these rules only re-point.
  */
 [data-accent="pink"] {
   --amber: var(--accent-pink);
-  --amber-glow: oklch(0.84 0.14 350);
-  --amber-soft: oklch(0.28 0.08 350);
+  --amber-glow: var(--accent-pink-glow);
+  --amber-soft: var(--accent-pink-soft);
   --primary: var(--accent-pink);
 }
 [data-accent="neon"] {
   --amber: var(--accent-neon);
-  --amber-glow: oklch(0.90 0.16 145);
-  --amber-soft: oklch(0.26 0.07 145);
+  --amber-glow: var(--accent-neon-glow);
+  --amber-soft: var(--accent-neon-soft);
   --primary: var(--accent-neon);
 }
 [data-accent="cyan"] {
   --amber: var(--accent-cyan);
-  --amber-glow: oklch(0.88 0.11 200);
-  --amber-soft: oklch(0.26 0.06 200);
+  --amber-glow: var(--accent-cyan-glow);
+  --amber-soft: var(--accent-cyan-soft);
   --primary: var(--accent-cyan);
 }
 [data-accent="violet"] {
   --amber: var(--accent-violet);
-  --amber-glow: oklch(0.80 0.12 300);
-  --amber-soft: oklch(0.28 0.07 300);
+  --amber-glow: var(--accent-violet-glow);
+  --amber-soft: var(--accent-violet-soft);
   --primary: var(--accent-violet);
+}
+
+/*
+ * Light-mode tuning. ThemeProvider only ever writes vars a theme JSON
+ * declares (src/themes/*.theme.json, synced via `npm run gen:themes` —
+ * never hand-edit light accent values into those files). No theme declares
+ * --accent-<picker id> or --violet, and paper declares no domain --accent-*
+ * at all, so this rule wins uncontested for those and is a no-op everywhere
+ * else. Values reuse latte's oklch numbers for the matching hue.
+ */
+html[data-light="true"] {
+  --accent-amber: oklch(0.520 0.190 42);
+  --accent-amber-glow: oklch(0.620 0.150 68);
+  --accent-amber-soft: oklch(0.920 0.060 42);
+  --accent-pink: oklch(0.540 0.180 338);
+  --accent-pink-glow: oklch(0.640 0.150 338);
+  --accent-pink-soft: oklch(0.920 0.060 338);
+  --accent-neon: oklch(0.460 0.165 140);
+  --accent-neon-glow: oklch(0.560 0.150 140);
+  --accent-neon-soft: oklch(0.920 0.060 140);
+  --accent-cyan: oklch(0.460 0.130 218);
+  --accent-cyan-glow: oklch(0.580 0.110 218);
+  --accent-cyan-soft: oklch(0.920 0.045 218);
+  --violet: oklch(0.480 0.220 297);
+  --accent-violet: oklch(0.480 0.220 297);
+  --accent-violet-glow: oklch(0.580 0.190 297);
+  --accent-violet-soft: oklch(0.920 0.060 297);
+
+  --accent-ai: oklch(0.480 0.220 297);
+  --accent-ai-soft: oklch(0.920 0.060 297);
+  --accent-devops: oklch(0.460 0.165 140);
+  --accent-devops-soft: oklch(0.920 0.060 140);
+  --accent-mobile: oklch(0.540 0.180 338);
+  --accent-mobile-soft: oklch(0.920 0.060 338);
+  --accent-platform: oklch(0.460 0.130 218);
+  --accent-platform-soft: oklch(0.920 0.045 218);
+  --neon: oklch(0.460 0.165 140);
+  --neon-dim: oklch(0.500 0.130 140);
 }
 
 /* Domain tint for matrix cards / KPI tiles (Open Design). */

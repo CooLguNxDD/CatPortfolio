@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  accentScopeElement,
   liftHex,
   mixHex,
   isLightSurface,
   oklchLightness,
+  readCssToken,
   resolveTankQuality,
 } from "../fishTankTokens"
 
@@ -25,6 +27,64 @@ describe("fishTankTokens colour helpers", () => {
   it("mixes hex colours", () => {
     expect(mixHex(0x000000, 0xffffff, 0.5)).toBe(0x808080)
     expect(mixHex(0xff0000, 0x0000ff, 0)).toBe(0xff0000)
+  })
+})
+
+/**
+ * This test file runs in vitest's default "node" environment (no jsdom
+ * dependency installed) — build the minimal fake DOM surface
+ * `accentScopeElement` / `readCssToken` actually touch: a document with
+ * `querySelector` + `documentElement`, elements carrying a settable style
+ * map, and a `getComputedStyle` that reads that map.
+ */
+type FakeEl = {
+  vars: Map<string, string>
+  attr?: string
+  style: { setProperty: (k: string, v: string) => void }
+}
+
+function makeFakeEl(attr?: string): FakeEl {
+  const vars = new Map<string, string>()
+  return { vars, attr, style: { setProperty: (k, v) => vars.set(k, v) } }
+}
+
+describe("accent scope", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("reads --amber from the [data-accent] shell, not <html>", () => {
+    const html = makeFakeEl()
+    const shell = makeFakeEl("cyan")
+    html.style.setProperty("--amber", "oklch(0.8 0.1 50)")
+    shell.style.setProperty("--amber", "oklch(0.85 0.08 210)")
+
+    vi.stubGlobal("document", {
+      documentElement: html,
+      querySelector: (sel: string) => (sel === "[data-accent]" ? shell : null),
+    })
+    vi.stubGlobal("getComputedStyle", (el: FakeEl) => ({
+      getPropertyValue: (name: string) => el.vars.get(name) ?? "",
+    }))
+
+    expect(accentScopeElement()).toBe(shell)
+    expect(readCssToken("amber")).toBe("oklch(0.85 0.08 210)")
+  })
+
+  it("falls back to <html> when no [data-accent] shell is mounted", () => {
+    const html = makeFakeEl()
+    html.style.setProperty("--amber", "oklch(0.8 0.1 50)")
+
+    vi.stubGlobal("document", {
+      documentElement: html,
+      querySelector: () => null,
+    })
+    vi.stubGlobal("getComputedStyle", (el: FakeEl) => ({
+      getPropertyValue: (name: string) => el.vars.get(name) ?? "",
+    }))
+
+    expect(accentScopeElement()).toBe(html)
+    expect(readCssToken("amber")).toBe("oklch(0.8 0.1 50)")
   })
 })
 

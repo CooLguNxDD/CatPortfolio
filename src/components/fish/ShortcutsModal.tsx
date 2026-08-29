@@ -51,7 +51,7 @@ export function ShortcutsModal({ open, onClose, className }: ShortcutsModalProps
   return (
     <div
       className={cn(
-        "ft-shortcuts-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs",
+        "ft-shortcuts-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm",
         className,
       )}
       onClick={(e) => {
