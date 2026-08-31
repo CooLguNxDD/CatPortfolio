@@ -77,7 +77,7 @@ export async function loadLiveWithStatus(audience: string): Promise<LayoutLoadRe
   if (!base) return { layout: loadBaked(), source: "snapshot" };
   try {
     const res = await fetch(
-      `${base}/portfolio/layout?audience=${encodeURIComponent(audience)}`,
+      `${base}/api/portfolio/public/layout?audience=${encodeURIComponent(audience)}&tank=1`,
       { signal: AbortSignal.timeout(4000) },
     );
     if (!res.ok) throw new Error(String(res.status));

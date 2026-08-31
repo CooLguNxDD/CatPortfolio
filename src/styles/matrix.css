@@ -57,24 +57,32 @@
   }
 }
 
-/* Sticky chrome under app header — glass surface (grok proto 1.0) */
+/* Sticky chrome under app header — opaque so the L0 hero cannot bleed through. */
 .matrix-home .matrix-sticky-chrome {
   position: sticky;
   top: 3.5rem; /* app header h-14 */
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  margin: 0 0 1rem;
-  padding: 0.55rem 0.65rem 0.65rem;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+  padding: 0.45rem 0.65rem 0.5rem;
   border-radius: var(--radius-md);
   border: 1px solid color-mix(in oklch, var(--hairline) 90%, transparent);
-  background: color-mix(in oklch, var(--bg) 78%, transparent);
-  backdrop-filter: blur(16px) saturate(1.12);
-  -webkit-backdrop-filter: blur(16px) saturate(1.12);
+  background: color-mix(in oklch, var(--bg) 96%, transparent);
+  backdrop-filter: blur(12px) saturate(1.08);
+  -webkit-backdrop-filter: blur(12px) saturate(1.08);
   box-shadow:
     0 0 0 1px color-mix(in oklch, var(--fg) 3%, transparent),
     0 12px 32px -24px rgba(0, 0, 0, 0.55);
+}
+
+/* Persona + tech: in-flow, not sticky — they are filters, not navigation. */
+.matrix-home .matrix-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0 0 1rem;
 }
 
 /* ── Sticky level minimap ── */
@@ -154,8 +162,8 @@
     opacity var(--dag-dur) var(--dag-ease),
     transform var(--dag-dur) var(--dag-ease),
     filter var(--dag-dur) var(--dag-ease);
-  /* Leave room for sticky header + matrix chrome when jumping */
-  scroll-margin-top: 11rem;
+  /* Header 3.5rem + sticky minimap (~3.5rem). Persona/tech are no longer sticky. */
+  scroll-margin-top: 7.5rem;
   scroll-margin-bottom: 12vh;
 }
 

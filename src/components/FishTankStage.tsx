@@ -258,7 +258,11 @@ export function FishTankStage({
         <FishFlatGrid
           fish={tank.fish}
           highlightSlugs={tank.scene.highlightSlugs}
-          curationLabel={tank.curationLabel ?? undefined}
+          curationLabel={
+            layout.meta?.tailored || demoSearch.j
+              ? (tank.curationLabel ?? undefined)
+              : undefined
+          }
           onSelect={(slug) => fishBus.emit("fish:pick", { slug })}
         />
       ) : (
@@ -275,7 +279,12 @@ export function FishTankStage({
             litCount={tank.litCount}
             total={tank.fish.length}
             domains={tank.domains}
-            curationLabel={tank.curationLabel}
+            curationLabel={
+              layout.meta?.tailored || demoSearch.j
+                ? tank.curationLabel
+                : null
+            }
+            showBake={Boolean(layout.meta?.tailored || demoSearch.j)}
           />
           <SonarMiniMap fish={tank.fish} />
           <DepthScrubber />

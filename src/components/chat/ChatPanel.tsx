@@ -285,6 +285,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   };
 
   useEffect(() => {
+    if (messages.length === 0) return;
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }

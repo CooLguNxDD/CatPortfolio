@@ -145,7 +145,8 @@ function MatrixLevels({
   return (
     <div className="matrix-home" data-persona={persona}>
       <div className="matrix-page">
-        {/* Sticky OD shell: minimap + persona + tech filter */}
+        {/* Sticky: minimap only. Persona + tech sit in normal flow so they
+            cannot paint over the L0 hero (translucent 3-row chrome did). */}
         <div className="matrix-sticky-chrome">
           <div className="dag-minimap" aria-label="Story level minimap">
             <div className="dag-minimap-title">
@@ -177,7 +178,9 @@ function MatrixLevels({
               ))}
             </div>
           </div>
+        </div>
 
+        <div className="matrix-filters">
           <nav className="persona-bar" aria-label="Visitor persona">
             {(
               [

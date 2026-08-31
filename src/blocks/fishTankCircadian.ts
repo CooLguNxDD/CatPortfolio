@@ -15,16 +15,18 @@ import { mixHex, type CircadianPhase, type TankThemePalette } from "./fishTankTo
  * the medium darkens toward indigo, and the fauna slow to a drift — the glow
  * has to come from the meshes themselves.
  *
- * The sky dome is deliberately NOT part of this cycle — it's keyed by theme
- * mode (light/dark) in `resolveTankThemePalette`, not the visitor's clock, so
- * a baked layout's sky stays whatever the theme says regardless of the
- * ☀️/🌙/🕓 circadian chip.
+ * The sky dome is keyed by theme mode in `resolveTankThemePalette`, not the
+ * clock. Light themes also skip the night water/key dim so Latte/Paper keep
+ * a lagoon column under a light HUD (the ☀️/🌙/🕓 chip still cycles).
  */
 export function applyCircadian(
   palette: TankThemePalette,
   phase: CircadianPhase,
 ): TankThemePalette {
-  if (phase === "day") {
+  // Light themes keep lagoon water — night circadian on Latte/Paper is what
+  // left a dark tank under a light HUD. Clock/chip still exist; they just
+  // do not darken a paper sky.
+  if (phase === "day" || palette.light) {
     return { ...palette, phase: "day", faunaTimeScale: 1 }
   }
   const abyss = mixHex(palette.deep, 0x040a1a, 0.55)

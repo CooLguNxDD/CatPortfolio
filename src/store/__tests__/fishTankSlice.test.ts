@@ -100,4 +100,12 @@ describe("fishTankSlice", () => {
     expect(useStore.getState().chrome).toBe("3d")
     expect(useStore.getState().state).toBe("surface")
   })
+
+  it("resetFishTankUi zeros leftover dive progress", () => {
+    useStore.getState().dive()
+    expect(useStore.getState().getProgress()).toBe(1)
+    useStore.getState().resetFishTankUi()
+    expect(useStore.getState().getProgress()).toBe(0)
+    expect(useStore.getState().state).toBe("surface")
+  })
 })

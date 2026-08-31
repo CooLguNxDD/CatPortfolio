@@ -48,7 +48,11 @@ export function FishFlatGrid({
   const domainsPresent = useMemo(() => domainsInSchool(fish), [fish])
 
   return (
-    <main className={cn("ft-flat", className)} data-fishtank-flat>
+    <section
+      className={cn("ft-flat", className)}
+      data-fishtank-flat
+      aria-label="Project index"
+    >
       <div className="mb-3">
         <span className="ft-eyebrow">⚡ Recruiter fast view · no WebGL required</span>
       </div>
@@ -171,9 +175,19 @@ export function FishFlatGrid({
       </div>
       {filtered.length === 0 ? (
         <p className="ft-lead" style={{ marginTop: 24 }}>
-          No specimens match this filter.
+          No specimens match this filter.{" "}
+          <button
+            type="button"
+            className="ft-chip-btn"
+            onClick={() => {
+              setQ("")
+              setDomain(null)
+            }}
+          >
+            Clear filters
+          </button>
         </p>
       ) : null}
-    </main>
+    </section>
   )
 }

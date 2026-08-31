@@ -31,10 +31,15 @@ export async function fetchAgentStatus(opts?: {
       `${base.replace(/\/$/, "")}/api/portfolio/public/agent-status${params}`,
       { signal: AbortSignal.timeout(opts?.timeoutMs ?? 4000) }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      throw new Error(`agent-status ${res.status}`);
+    }
     const json = await res.json();
     return (json?.activity as AgentActivity | null) ?? null;
   } catch (err) {
+    if (err instanceof Error && err.message.startsWith("agent-status ")) {
+      throw err;
+    }
     console.warn("fetchAgentStatus failed", err);
     return null;
   }
