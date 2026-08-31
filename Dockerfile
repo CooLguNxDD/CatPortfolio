@@ -35,16 +35,16 @@ COPY nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Least privilege: web root stays root-owned/read-only for the nginx worker.
-# Only config.json needs to be writable (docker-entrypoint.sh rewrites it as
-# `nginx` on every container start); caches/logs/conf.d need write for nginx
-# to run at all. PID file moves to /tmp (writable by any user) instead of
-# /run/nginx.pid — nginx deletes its pid file on graceful stop and can't
-# recreate one under root-owned /run as a non-root user, which crash-loops
-# restarts. `pid` is a main-context-only directive already set in the base
-# image's nginx.conf, so it's patched in place rather than duplicated via -g.
+# Least privilege: web root stays root-owned/read-only. Runtime config.json
+# is written by docker-entrypoint.sh into /var/cache/nginx (already nginx-
+# writable) and aliased from nginx.conf — never into the static html tree.
+# caches/logs/conf.d need write for nginx to run at all. PID file moves to
+# /tmp (writable by any user) instead of /run/nginx.pid — nginx deletes its
+# pid file on graceful stop and can't recreate one under root-owned /run as
+# a non-root user, which crash-loops restarts. `pid` is a main-context-only
+# directive already set in the base image's nginx.conf, so it's patched in
+# place rather than duplicated via -g.
 RUN chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx/conf.d && \
-    chown nginx:nginx /usr/share/nginx/html/config.json && \
     sed -i 's#pid \+/run/nginx.pid;#pid /tmp/nginx.pid;#' /etc/nginx/nginx.conf
 
 USER nginx

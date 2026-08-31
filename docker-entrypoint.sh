@@ -13,7 +13,12 @@
 # See nginx.conf (proxy_set_header Authorization) and .env.example.
 set -eu
 
-CONFIG_PATH="/usr/share/nginx/html/config.json"
+# Runtime config lives in nginx's cache dir (chowned to `nginx` in the
+# image). The static web root stays root-owned/read-only; writing
+# /usr/share/nginx/html/config.json as USER nginx crash-loops the
+# container the moment that file's writable-layer copy is not owned
+# by uid 101 (Docker Desktop + a stale container layer is enough).
+CONFIG_PATH="/var/cache/nginx/config.json"
 NGINX_TEMPLATE="/etc/nginx/conf.d/default.conf.template"
 NGINX_CONF="/etc/nginx/conf.d/default.conf"
 
