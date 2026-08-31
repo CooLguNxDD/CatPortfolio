@@ -5,7 +5,11 @@ vi.mock("../../config/runtimeConfig", () => ({
 }))
 
 import { getOctBaseUrl } from "../../config/runtimeConfig"
-import { loadBaked, loadLiveWithStatus } from "../loadLayout"
+import {
+  LIVE_LAYOUT_TIMEOUT_MS,
+  loadBaked,
+  loadLiveWithStatus,
+} from "../loadLayout"
 
 describe("loadLiveWithStatus URL", () => {
   const originalFetch = globalThis.fetch
@@ -31,5 +35,6 @@ describe("loadLiveWithStatus URL", () => {
       "http://localhost:11000/api/portfolio/public/layout?audience=default&tank=1",
       expect.any(Object),
     )
+    expect(LIVE_LAYOUT_TIMEOUT_MS).toBeGreaterThanOrEqual(15_000)
   })
 })

@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, type CSSProperties } from "react"
+import { ExternalLink } from "lucide-react"
 import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
 import {
   DOMAIN_LABEL,
@@ -203,7 +204,7 @@ export function FishDossier({
               </div>
               <div className="ft-kv grid grid-cols-3 gap-2">
                 {fish.metrics!.map((m) => (
-                  <div key={`${m.label}-${m.value}`} className="p-2 rounded bg-(--card)/40 border border-(--hairline)/50">
+                  <div key={`${m.label}-${m.value}`} className="p-2 rounded bg-(--card)/85 border border-(--hairline)">
                     <span className="text-[10px] text-(--fg-muted) block truncate">{m.label}</span>
                     <b className="text-base text-(--fg) font-semibold block">{m.value}</b>
                   </div>
@@ -238,12 +239,17 @@ export function FishDossier({
           <div className="ft-foot flex items-center justify-between pt-3 border-t border-(--hairline)">
             {href ? (
               <a
-                className="ft-btn ft-cta text-xs px-3 py-1.5 rounded-md font-mono"
+                className="inline-flex items-center gap-1.5 rounded-full border border-(--hairline) bg-(--card)/85 px-3 py-1.5 text-xs font-mono text-(--fg) hover:border-(--ft-panel-accent) hover:text-(--ft-panel-accent)"
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Repository ↗
+                <ExternalLink className="size-3.5" aria-hidden />
+                {typeof fish.link === "object" && fish.link?.label
+                  ? fish.link.label
+                  : /github\.com/i.test(href)
+                    ? "GitHub"
+                    : "Open"}
               </a>
             ) : null}
             <span className="ft-ref font-mono text-[10px] opacity-60">{fish.slug}</span>

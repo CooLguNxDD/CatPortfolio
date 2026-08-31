@@ -236,7 +236,14 @@ export function HomePage() {
       {/* Top bar with status pills and 3D / Flat / Text view router pills */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono inline-flex items-center gap-2 w-fit">
+          <div
+            className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono inline-flex items-center gap-2 w-fit"
+            title={
+              data.source === "snapshot"
+                ? "Using cached layout snapshot (live layout unreachable)"
+                : undefined
+            }
+          >
             <span
               className={cn(
                 "h-2 w-2 rounded-full",
