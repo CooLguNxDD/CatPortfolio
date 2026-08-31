@@ -71,14 +71,17 @@ function parseLayoutPayload(json: unknown): LayoutLoadResult | null {
   return { layout: bare.data, source: "live" };
 }
 
+/** Idle abort for the public floor layout. OCT compose can exceed 4s. */
+export const LIVE_LAYOUT_TIMEOUT_MS = 15_000
+
 /** Loads a live layout from the backend with detailed load status. */
 export async function loadLiveWithStatus(audience: string): Promise<LayoutLoadResult> {
   const base = resolveBase();
   if (!base) return { layout: loadBaked(), source: "snapshot" };
   try {
     const res = await fetch(
-      `${base}/portfolio/layout?audience=${encodeURIComponent(audience)}`,
-      { signal: AbortSignal.timeout(4000) },
+      `${base}/api/portfolio/public/layout?audience=${encodeURIComponent(audience)}&tank=1`,
+      { signal: AbortSignal.timeout(LIVE_LAYOUT_TIMEOUT_MS) },
     );
     if (!res.ok) throw new Error(String(res.status));
     const json = await res.json();

@@ -142,16 +142,6 @@ function App() {
             >
               🐱 Cat Portfolio
             </Link>
-            <nav className="flex items-center gap-4 text-sm font-medium">
-              <Link
-                to="/"
-                search={demoSearch}
-                activeProps={{ className: "text-(--amber)" }}
-                className="text-(--fg-muted) hover:text-(--fg)"
-              >
-                Home
-              </Link>
-            </nav>
             {isDemoSession && shortId ? (
               <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-(--amber)/40 bg-(--amber)/10 px-2.5 py-0.5 text-[11px] font-mono text-(--amber) max-w-[14rem] truncate">
                 <span className="truncate" title={shortId}>
@@ -184,8 +174,8 @@ function App() {
                   onClick={() => setAccent(a.id)}
                   className={
                     accent === a.id
-                      ? "h-4 w-4 rounded-full ring-2 ring-(--fg) ring-offset-1 ring-offset-(--bg)"
-                      : "h-4 w-4 rounded-full opacity-70 hover:opacity-100"
+                      ? "h-5 w-5 rounded-full ring-2 ring-(--fg) ring-offset-1 ring-offset-(--bg)"
+                      : "h-5 w-5 rounded-full opacity-70 hover:opacity-100"
                   }
                   style={{
                     background: `var(--accent-${a.id})`,
@@ -221,7 +211,7 @@ function App() {
                 <select
                   id="theme-select"
                   aria-label="Theme"
-                  className="h-7 max-w-[7.5rem] sm:max-w-[12rem] appearance-none rounded-md border border-(--hairline) bg-(--bg-elevated) px-2 pr-6 text-xs text-(--fg)"
+                  className="h-7 max-w-[10rem] sm:max-w-[14rem] appearance-none rounded-md border border-(--hairline) bg-(--bg-elevated) px-2 pr-6 text-xs text-(--fg)"
                   value={selectValue}
                   onChange={(e) => handleThemeClick(e.target.value)}
                 >

@@ -110,40 +110,38 @@ export function SonarMiniMap({ fish }: SonarMiniMapProps) {
             className="ft-sonar-sweep"
           />
           {fish.map((f) => (
-            // <circle role="button"> is poorly supported by some older
-            // screen readers — wrap it in a <g> so the interactive role and
-            // keyboard handling sit on an element assistive tech expects,
-            // and leave the circle itself purely presentational.
-            <g
+            <circle
               key={f.slug}
-              role="button"
-              tabIndex={0}
-              aria-label={f.title}
-              className="ft-sonar-blip"
-              onClick={() => fishBus.emit("fish:pick", { slug: f.slug })}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  fishBus.emit("fish:pick", { slug: f.slug })
-                }
+              ref={(el) => {
+                if (el) blipRefs.current.set(f.slug, el)
+                else blipRefs.current.delete(f.slug)
               }}
+              cx={SIZE / 2}
+              cy={SIZE / 2}
+              r={3}
+              fill={speciesHex(f.species)}
+              className="ft-sonar-blip"
+              pointerEvents="none"
             >
-              <circle
-                ref={(el) => {
-                  if (el) blipRefs.current.set(f.slug, el)
-                  else blipRefs.current.delete(f.slug)
-                }}
-                cx={SIZE / 2}
-                cy={SIZE / 2}
-                r={3}
-                fill={speciesHex(f.species)}
-                className="ft-sonar-blip"
-              >
-                <title>{f.title}</title>
-              </circle>
-            </g>
+              <title>{f.title}</title>
+            </circle>
           ))}
         </svg>
+      ) : null}
+      {open ? (
+        <ul className="ft-sonar-legend" aria-label="Pick a specimen">
+          {fish.map((f) => (
+            <li key={f.slug}>
+              <button
+                type="button"
+                className="ft-sonar-legend-btn"
+                onClick={() => fishBus.emit("fish:pick", { slug: f.slug })}
+              >
+                {f.title}
+              </button>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   )

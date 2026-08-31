@@ -440,6 +440,27 @@
   .ft-dock-btn {
     padding: 6px 8px;
   }
+  /* Keep pills top-right; drop the rim card below them so `clear` stays tappable. */
+  .ft-waterline {
+    top: 52px;
+    left: 12px;
+    width: min(320px, calc(100vw - 24px));
+  }
+  .ft-toolbar-row1 {
+    flex-wrap: wrap;
+  }
+  .ft-input {
+    min-width: 0;
+    width: 100%;
+    flex: 1 1 100%;
+  }
+  .ft-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Audio Equalizer */
@@ -631,9 +652,10 @@
 
 /* Both HUD widgets belong to the submerged scene only. */
 .ft-stage[data-fishtank-stage="surface"] .ft-bathymetry,
-.ft-stage[data-fishtank-stage="surface"] .ft-sonar {
+.ft-stage[data-fishtank-stage="surface"] .ft-sonar,
+.ft-stage[data-fishtank-stage="surface"] .ft-sonar * {
   opacity: 0;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 .ft-stage[data-view="flat"] .ft-bathymetry,
@@ -701,20 +723,44 @@
 }
 
 .ft-sonar-blip {
-  cursor: pointer;
+  pointer-events: none;
   transition: r 0.2s;
 }
 
-.ft-sonar-blip:hover {
-  stroke: #fff;
-  stroke-width: 1.5;
+.ft-sonar-legend {
+  pointer-events: auto;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 9rem;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  border: 1px solid var(--ft-line);
+  backdrop-filter: blur(12px);
 }
 
-.ft-sonar-blip:focus-visible {
-  stroke: #fff;
-  stroke-width: 2;
-  outline: 2px solid var(--ft-accent, #22d3ee);
-  outline-offset: 3px;
+.ft-sonar-legend-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--ft-mono);
+  font-size: 10px;
+  color: var(--ft-ink, var(--fg));
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.ft-sonar-legend-btn:hover,
+.ft-sonar-legend-btn:focus-visible {
+  background: color-mix(in oklab, var(--cyan, #22d3ee) 16%, transparent);
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -765,7 +811,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: color-mix(in oklab, var(--card) 60%, transparent);
+  background: color-mix(in oklab, var(--card) 88%, transparent);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--ft-line);
@@ -1031,7 +1077,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: color-mix(in oklab, var(--card) 65%, transparent);
+  background: color-mix(in oklab, var(--card) 88%, transparent);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--ft-line);

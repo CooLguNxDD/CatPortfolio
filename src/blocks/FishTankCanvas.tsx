@@ -60,6 +60,7 @@ import {
   tokenToHex,
   SPECIES_FALLBACK_HEX,
   SPECIES_TOKEN,
+  speciesTicker,
   resolveTankQuality,
   SUN_DIR,
   type CircadianMode,
@@ -791,7 +792,7 @@ export default function FishTankCanvas({
       pill.style.boxShadow = LABEL_CONFIG.pillShadow
 
       const tick = document.createElement("span")
-      tick.textContent = specimen.species.slice(0, LABEL_CONFIG.tickerLength).toUpperCase()
+      tick.textContent = speciesTicker(specimen.species)
       tick.className = "text-[8px] opacity-75 font-bold uppercase"
       pill.appendChild(tick)
 

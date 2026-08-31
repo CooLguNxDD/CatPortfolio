@@ -1,5 +1,5 @@
 // Seed a layout draft from OCT's deterministic composer — NEVER runs in CI.
-// Fetches ${OCT_URL}/portfolio/layout, validates, writes design/layout.yaml
+// Fetches ${OCT_URL}/api/portfolio/public/layout, validates, writes design/layout.yaml
 // (the source of truth), then compiles it to src/content/layout.json.
 // The commit is still the gate: review the diff before committing.
 // Run manually: npm run gen:layout [-- --audience=<recruiter|hiring-manager|peer|default>]
@@ -23,7 +23,7 @@ const audienceArg = process.argv
 const audience = audienceArg ? audienceArg.split("=")[1] : "default";
 
 async function main() {
-  const url = `${base}/portfolio/layout?audience=${audience}`;
+  const url = `${base}/api/portfolio/public/layout?audience=${audience}&tank=1`;
 
   let res: Response;
   try {

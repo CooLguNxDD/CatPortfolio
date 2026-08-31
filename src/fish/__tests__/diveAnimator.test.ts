@@ -78,4 +78,16 @@ describe("diveAnimator (rAF stubbed — exercises the smoothstep ramp)", () => {
 
     expect(cancelSpy).toHaveBeenCalledWith(42)
   })
+
+  it("reset() emits 0 and leaves progress at the surface", () => {
+    const bus = createFishBus()
+    const progressEvents: number[] = []
+    bus.on("tank:progress", (v) => progressEvents.push(v))
+    const animator = createDiveAnimator(bus)
+    animator.animateTo(1, 1100)
+    expect(animator.progress()).toBe(1)
+    animator.reset()
+    expect(animator.progress()).toBe(0)
+    expect(progressEvents.at(-1)).toBe(0)
+  })
 })
