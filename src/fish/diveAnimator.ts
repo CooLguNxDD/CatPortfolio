@@ -12,6 +12,8 @@ export interface DiveAnimator {
   animateTo: (target: 0 | 1, durationMs: number, onArrive?: () => void) => void
   /** Cancel any in-flight animation without emitting a final value. */
   cancel: () => void
+  /** Cancel in-flight work and emit progress 0 (surface). Used by store reset. */
+  reset: () => void
   /** Current progress (0..1), for a late-mounting subscriber's seed value. */
   progress: () => number
 }
@@ -36,6 +38,12 @@ export function createDiveAnimator(bus: FishBus): DiveAnimator {
     if (typeof cancelAnimationFrame !== "undefined") {
       cancelAnimationFrame(rafHandle)
     }
+    rafHandle = 0
+  }
+
+  function reset() {
+    cancel()
+    emit(0)
   }
 
   function animateTo(target: 0 | 1, durationMs: number, onArrive?: () => void) {
@@ -71,6 +79,7 @@ export function createDiveAnimator(bus: FishBus): DiveAnimator {
   return {
     animateTo,
     cancel,
+    reset,
     progress: () => current,
   }
 }

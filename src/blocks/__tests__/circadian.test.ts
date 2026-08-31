@@ -55,6 +55,17 @@ describe("applyCircadian", () => {
     expect(day.keyIntensity).toBe(base.keyIntensity)
   })
 
+  it("does not darken a light-theme palette at night", () => {
+    stubSurface(LIGHT_BG)
+    const base = resolveTankThemePalette()
+    expect(base.light).toBe(true)
+    const night = applyCircadian(base, "night")
+    expect(night.phase).toBe("day")
+    expect(night.water).toBe(base.water)
+    expect(night.keyIntensity).toBe(base.keyIntensity)
+    vi.unstubAllGlobals()
+  })
+
   it("dims the key light and slows the fauna at night", () => {
     const base = resolveTankThemePalette()
     const night = applyCircadian(base, "night")

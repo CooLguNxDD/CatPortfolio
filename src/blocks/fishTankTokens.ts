@@ -24,6 +24,24 @@ export const DOMAIN_LABEL: Record<string, string> = {
   data: "Data",
 }
 
+/**
+ * 3-letter nameplate tickers. Do not slice `species` — `devops`.slice(0,3)
+ * is `DEV` and reads as a build badge on the public tank.
+ */
+export const SPECIES_TICKER: Record<string, string> = {
+  ai: "AI",
+  devops: "OPS",
+  mobile: "APP",
+  platform: "PLT",
+  infra: "OPS",
+  web: "WEB",
+  data: "DAT",
+}
+
+export function speciesTicker(species: string): string {
+  return SPECIES_TICKER[species] || species.slice(0, 3).toUpperCase()
+}
+
 /** Soft fin variant token for a species. */
 export function speciesSoftToken(species: DomainIdType): string {
   return `${SPECIES_TOKEN[species]}-soft`

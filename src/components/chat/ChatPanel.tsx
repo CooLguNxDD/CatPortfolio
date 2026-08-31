@@ -285,6 +285,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   };
 
   useEffect(() => {
+    if (messages.length === 0) return;
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
@@ -583,7 +584,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
               </button>
             </>
           )}
-          <span className="rounded-full border border-(--hairline) bg-(--card)/40 px-2 py-0.5 text-[10px] font-mono text-(--fg-subtle) uppercase tracking-wider select-none shrink-0">
+          <span className="rounded-full border border-(--hairline) bg-(--card)/85 px-2 py-0.5 text-[10px] font-mono text-(--fg-subtle) uppercase tracking-wider select-none shrink-0">
             preview
           </span>
         </div>

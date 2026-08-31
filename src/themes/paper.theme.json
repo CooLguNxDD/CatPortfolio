@@ -12,12 +12,12 @@
     "card-soft": "oklch(0.96 0.012 78)",
 
     "fg": "oklch(0.22 0.030 40)",
-    "fg-muted": "oklch(0.46 0.025 50)",
-    "fg-subtle": "oklch(0.60 0.022 55)",
+    "fg-muted": "oklch(0.40 0.028 50)",
+    "fg-subtle": "oklch(0.48 0.024 55)",
 
-    "border": "oklch(0.86 0.014 75)",
-    "border-strong": "oklch(0.74 0.020 70)",
-    "hairline": "oklch(0.90 0.012 78)",
+    "border": "oklch(0.80 0.016 75)",
+    "border-strong": "oklch(0.68 0.022 70)",
+    "hairline": "oklch(0.82 0.014 78)",
 
     "amber": "oklch(0.62 0.155 55)",
     "amber-soft": "oklch(0.88 0.090 65)",

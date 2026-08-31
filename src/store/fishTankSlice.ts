@@ -235,7 +235,7 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
     },
 
     resetFishTankUi: () => {
-      animator.cancel()
+      animator.reset()
       set({ ...DEFAULTS })
     },
 
