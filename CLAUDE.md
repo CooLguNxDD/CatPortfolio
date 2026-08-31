@@ -123,7 +123,7 @@ Loaders in `src/content/loadLayout.ts` — every one falls back to `loadBaked()`
 | Function | Call |
 |---|---|
 | `loadBaked()` | Committed `layout.json` singleton |
-| `loadLiveWithStatus(audience)` | `GET {VITE_OCT_URL}/portfolio/layout?audience=` (build-time env only — no runtime config, returns snapshot when unset) |
+| `loadLiveWithStatus(audience)` | `GET {octBaseUrl}/api/portfolio/public/layout?audience=&tank=1` (`getOctBaseUrl()` from runtime config; snapshot on any failure) |
 | `loadLayoutForQuery(text)` | `GET /api/portfolio/public/layout-for-query` — fast REST, server-side audience inference |
 | `composeLayoutLive(body)` | `POST /api/portfolio/public/compose` — fragment compose, no MCP auth |
 | `loadJobLayout(jobId)` | `GET /api/portfolio/public/layout/{jobId}` — accepts bare layout or `{layout, …}` envelope |

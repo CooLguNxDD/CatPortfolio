@@ -302,31 +302,30 @@ export function HomePage() {
         </div>
       </div>
 
-      <p className="text-[11px] font-mono text-(--fg-subtle)" data-ask-persist-notice>
-        Ask questions are stored in <code>portfolio_ask_turns</code> (length-capped).
-        That is not consent to keep a conversation — overlays die on reload.
-      </p>
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:items-start">
-        <aside
-          data-ask-panel
-          className="lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card)/40 p-3"
-        >
-          <ChatPanel layout={layout} view="text" />
-        </aside>
-        <main className="min-w-0 space-y-6" data-print-root>
-          {scene.fish.length > 0 ? (
+        {scene.fish.length > 0 ? (
+          <div className="order-1 min-w-0 lg:col-start-2">
             <FishFlatGrid
               fish={scene.fish}
               highlightSlugs={
                 layout.meta?.highlightSlugs ?? scene.highlightSlugs
               }
-              curationLabel={scene.curationLabel}
+              curationLabel={
+                layout.meta?.tailored || j ? scene.curationLabel : undefined
+              }
               onSelect={(slug) => fishBus.emit("fish:pick", { slug })}
             />
-          ) : null}
+          </div>
+        ) : null}
+        <aside
+          data-ask-panel
+          className="order-2 rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card)/40 p-3 lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-16"
+        >
+          <ChatPanel layout={layout} view="text" />
+        </aside>
+        <div className="order-3 min-w-0 space-y-6 lg:col-start-2" data-print-root>
           {matrix}
-        </main>
+        </div>
       </div>
     </div>
   )

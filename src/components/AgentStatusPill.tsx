@@ -8,8 +8,8 @@ export function AgentStatusPill() {
   const { data } = useQuery({
     queryKey: ["agent-status"],
     queryFn: () => fetchAgentStatus(),
-    refetchInterval: POLL_INTERVAL_MS,
-    retry: false,
+    refetchInterval: (query) => (query.state.error ? false : POLL_INTERVAL_MS),
+    retry: 1,
   })
 
   if (!data) return null

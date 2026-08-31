@@ -69,9 +69,9 @@ describe("fetchAgentStatus", () => {
     expect(await fetchAgentStatus()).toBeNull();
   });
 
-  it("returns null on a non-ok response", async () => {
+  it("throws on a non-ok response so the pill can stop polling", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503 }) as unknown as typeof fetch;
-    expect(await fetchAgentStatus()).toBeNull();
+    await expect(fetchAgentStatus()).rejects.toThrow("agent-status 503");
   });
 
   it("returns null on a network error", async () => {
