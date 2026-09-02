@@ -156,11 +156,12 @@ export const CAUSTIC_CONFIG = {
   insetZ: 0.6,
   yAboveFloor: 0.35,
   // World-space caustic injection on other materials (floor, rocks, flora,
-  // minnows, fish). Fish now carry real atlas albedo, so this is the main
-  // cue that a fish is under moving water rather than lit flat — raised from
-  // the old value tuned for a near-black fish surface where the pattern was
-  // barely visible.
-  surfaceStrengthMul: 0.8,
+  // minnows, fish) — additive, and the caustic color is palette.sun, which
+  // is deliberately cyan-leaning at night. That was invisible riding the old
+  // black-albedo fish, so 0.8 (tried first, once fish carried real albedo)
+  // washed every fish cyan instead of reading as a subtle water-ripple cue.
+  // Lower than the pre-restore value (0.55) since it is now visible at all.
+  surfaceStrengthMul: 0.35,
 } as const
 
 export const GODRAY_CONFIG = {
