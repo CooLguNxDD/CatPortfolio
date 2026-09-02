@@ -171,19 +171,16 @@ export async function loadFishModelInstance(
 
       const mat = new THREE.MeshStandardMaterial({
         map: paletteTex,
-        roughness: 0.55,
-        metalness: 0.08,
+        emissiveMap: paletteTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.6,
+        roughness: 0.35,
+        metalness: 0.05,
         flatShading: true,
       })
 
       // Preserve full RGB color texture from Color.png atlas
       mat.color.set(0xffffff)
-
-      // Apply subtle domain-tinted emissive glow for underwater visibility
-      if (options.tintColor) {
-        mat.emissive.set(options.tintColor)
-        mat.emissiveIntensity = 0.15 + (options.emissiveGlow ?? 0.3) * 0.25
-      }
 
       mesh.material = mat
       materials.push(mat)
@@ -258,7 +255,10 @@ export async function loadPropModelInstance(
 
       const mat = new THREE.MeshStandardMaterial({
         map: paletteTex,
-        roughness: 0.8,
+        emissiveMap: paletteTex,
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.35,
+        roughness: 0.6,
         metalness: 0.05,
         flatShading: true,
       })
@@ -268,7 +268,7 @@ export async function loadPropModelInstance(
 
       if (options.tintColor) {
         mat.emissive.set(options.tintColor)
-        mat.emissiveIntensity = 0.12
+        mat.emissiveIntensity = 0.25
       }
 
       mesh.material = mat
