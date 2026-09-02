@@ -7,6 +7,9 @@ import * as THREE from "three"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js"
 import { FISH_CATALOG_METADATA, type ModelMetadata } from "./fishCatalogMetadata"
+import { applyRigFacing, isCreatureRig, type CreatureRig } from "./gltfFacing"
+import { assetRegistry, ensureAssetManifest } from "./assetRegistry"
+import { FISH_GLTF_CONFIG } from "@/blocks/fishTankConfig"
 
 export interface LoadedFishInstance {
   group: THREE.Group
@@ -78,25 +81,36 @@ export function loadSharedPaletteTexture(): Promise<THREE.Texture> {
 /**
  * Parses or fetches a GLTF asset template from public/models/
  */
+function loadGltfOnce(fullUrl: string): Promise<{ scene: THREE.Group; animations: THREE.AnimationClip[] }> {
+  return new Promise((resolve, reject) => {
+    gltfLoader.load(
+      fullUrl,
+      (gltf) => {
+        resolve({
+          scene: gltf.scene,
+          animations: (gltf.animations as THREE.AnimationClip[]) || [],
+        })
+      },
+      undefined,
+      (err) => reject(err),
+    )
+  })
+}
+
 function fetchGltfTemplate(relPath: string): Promise<{ scene: THREE.Group; animations: THREE.AnimationClip[] }> {
   let cachedPromise = gltfCache.get(relPath)
   if (!cachedPromise) {
     const fullUrl = `${getBaseUrl()}${relPath}`
-    cachedPromise = new Promise((resolve, reject) => {
-      gltfLoader.load(
-        fullUrl,
-        (gltf) => {
-          resolve({
-            scene: gltf.scene,
-            animations: (gltf.animations as THREE.AnimationClip[]) || [],
-          })
-        },
-        undefined,
-        (err) => {
-          console.warn(`[ModelLoader] Failed to load ${fullUrl}:`, err)
-          reject(err)
-        },
-      )
+    cachedPromise = loadGltfOnce(fullUrl).catch(async (err) => {
+      // Vite's SPA fallback can win a race on the first .glb request and
+      // return index.html. Do not cache that failure — retry once.
+      console.warn(`[ModelLoader] Failed to load ${fullUrl}, retrying:`, err)
+      await new Promise((r) => setTimeout(r, 120))
+      return loadGltfOnce(fullUrl)
+    }).catch((err) => {
+      gltfCache.delete(relPath)
+      console.warn(`[ModelLoader] Failed to load ${fullUrl}:`, err)
+      throw err
     })
     gltfCache.set(relPath, cachedPromise)
   }
@@ -105,17 +119,14 @@ function fetchGltfTemplate(relPath: string): Promise<{ scene: THREE.Group; anima
 
 /**
  * Maps a domain ID (ai, devops, mobile, platform) or custom species slug to a concrete model ID.
+ * Prefers the manifest-backed `assetRegistry`; catalog metadata fills display-name gaps.
  */
 export function resolveModelId(speciesOrDomain: string): string {
+  const fromRegistry = assetRegistry.resolve(speciesOrDomain)
+  // Domain aliases + heuristics resolve before the manifest fetch.
+  if (fromRegistry !== "AchilesTang") return fromRegistry
+
   const norm = speciesOrDomain.toLowerCase().replace(/[-_\s]/g, "")
-
-  // 1. Portfolio Domain Mappings
-  if (norm === "ai" || norm === "agent" || norm === "agents") return "MantaRay"
-  if (norm === "devops" || norm === "infra" || norm === "cloud") return "GreateWhiteShark"
-  if (norm === "mobile" || norm === "app" || norm === "ios" || norm === "android") return "Clownfish"
-  if (norm === "platform" || norm === "backend" || norm === "systems") return "GreenTurtle"
-
-  // 2. Direct lookup across all catalog groups
   for (const group of Object.values(FISH_CATALOG_METADATA)) {
     for (const model of group.models) {
       const mNorm = model.id.toLowerCase().replace(/[-_\s]/g, "")
@@ -126,19 +137,7 @@ export function resolveModelId(speciesOrDomain: string): string {
     }
   }
 
-  // 3. Fallback defaults
-  if (norm.includes("shark")) return "AngelShark"
-  if (norm.includes("ray")) return "SpottedEagleRay"
-  if (norm.includes("seahorse")) return "ZebraSeahorse"
-  if (norm.includes("turtle")) return "HawksbillTurtle"
-  if (norm.includes("dolphin")) return "PinkDolphin"
-  if (norm.includes("lobster")) return "BlueLobster"
-  if (norm.includes("angelfish") || norm.includes("angel")) return "QueenAngelfish"
-  if (norm.includes("butterfly")) return "CopperbandButterflyfish"
-  if (norm.includes("tang")) return "YellowTang"
-  if (norm.includes("clown")) return "TomatoClownfish"
-
-  return "AchilesTang"
+  return fromRegistry
 }
 
 /**
@@ -147,12 +146,12 @@ export function resolveModelId(speciesOrDomain: string): string {
 export async function loadFishModelInstance(
   modelId: string,
   options: {
-    tintColor?: THREE.Color
     emissiveGlow?: number
   } = {},
 ): Promise<LoadedFishInstance> {
+  await ensureAssetManifest()
   const concreteId = resolveModelId(modelId)
-  const relPath = `models/fish/${concreteId}.glb`
+  const relPath = assetRegistry.pathFor(concreteId, "creature")
 
   const [template, paletteTex] = await Promise.all([
     fetchGltfTemplate(relPath),
@@ -162,6 +161,7 @@ export async function loadFishModelInstance(
   // Clone hierarchy safely with bone bindings
   const clone = SkeletonUtils.clone(template.scene) as THREE.Group
   const materials: THREE.MeshStandardMaterial[] = []
+  const glow = options.emissiveGlow ?? 0
 
   clone.traverse((child) => {
     if ((child as THREE.Mesh).isMesh || (child as THREE.SkinnedMesh).isSkinnedMesh) {
@@ -170,17 +170,21 @@ export async function loadFishModelInstance(
       mesh.receiveShadow = true
 
       const mat = new THREE.MeshStandardMaterial({
+        // Albedo is the LayerLab atlas — the default fish texture. Emissive
+        // stays white: a hue-neutral bloom lift over that atlas, never a
+        // domain tint (domain identity lives in the species/model, not a
+        // color written onto or around it).
         map: paletteTex,
+        color: 0xffffff,
         emissiveMap: paletteTex,
         emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: 0.6,
-        roughness: 0.35,
-        metalness: 0.05,
+        emissiveIntensity: FISH_GLTF_CONFIG.emissiveFloor + glow * FISH_GLTF_CONFIG.emissiveGlowMul,
+        roughness: FISH_GLTF_CONFIG.roughness,
+        metalness: FISH_GLTF_CONFIG.metalness,
         flatShading: true,
+        transparent: false,
+        opacity: 1,
       })
-
-      // Preserve full RGB color texture from Color.png atlas
-      mat.color.set(0xffffff)
 
       mesh.material = mat
       materials.push(mat)
@@ -207,24 +211,41 @@ export async function loadFishModelInstance(
     action.play()
   }
 
-  // Find metadata if available
-  let metadata: ModelMetadata | undefined
-  for (const group of Object.values(FISH_CATALOG_METADATA)) {
-    const found = group.models.find((m) => m.id === concreteId)
-    if (found) {
-      metadata = found
-      break
-    }
-  }
+  const metadata = findModelMetadata(concreteId)
+  const rig = rigForModelId(concreteId)
+  const facingRoot = new THREE.Group()
+  facingRoot.name = "gltf_facing"
+  facingRoot.add(clone)
+  applyRigFacing(facingRoot, rig)
 
   return {
-    group: clone,
+    group: facingRoot,
     mixer,
     action,
     materials,
     metadata,
     isGltf: true,
   }
+}
+
+function findModelMetadata(modelId: string): ModelMetadata | undefined {
+  for (const group of Object.values(FISH_CATALOG_METADATA)) {
+    const found = group.models.find((m) => m.id === modelId)
+    if (found) return found
+  }
+  return undefined
+}
+
+export function rigForModelId(modelId: string): CreatureRig {
+  const concreteId = resolveModelId(modelId)
+  const registered = assetRegistry.get(concreteId)
+  if (registered && isCreatureRig(registered.rig)) return registered.rig
+  for (const group of Object.values(FISH_CATALOG_METADATA)) {
+    if (group.models.some((m) => m.id === concreteId) && isCreatureRig(group.rig)) {
+      return group.rig
+    }
+  }
+  return "fish"
 }
 
 /**
@@ -237,7 +258,8 @@ export async function loadPropModelInstance(
     scale?: number
   } = {},
 ): Promise<LoadedPropInstance> {
-  const relPath = `models/props/${propId}.glb`
+  await ensureAssetManifest()
+  const relPath = assetRegistry.pathFor(propId, "prop")
 
   const [template, paletteTex] = await Promise.all([
     fetchGltfTemplate(relPath),
@@ -261,6 +283,8 @@ export async function loadPropModelInstance(
         roughness: 0.6,
         metalness: 0.05,
         flatShading: true,
+        transparent: true,
+        opacity: 1,
       })
 
       // Preserve authentic coral/rock texture colors

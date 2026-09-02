@@ -16,7 +16,8 @@
     "compile:layout": "tsx scripts/compile-layout.ts",
     "check:layout": "tsx scripts/compile-layout.ts --check",
     "gen:themes": "tsx scripts/gen-themes.ts",
-    "check:themes": "tsx scripts/gen-themes.ts --check"
+    "check:themes": "tsx scripts/gen-themes.ts --check",
+    "convert:fish": "node scripts/convert-fish-assets.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",

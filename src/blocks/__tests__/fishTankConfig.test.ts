@@ -15,7 +15,6 @@ const TUNING_KEYS = [
   "fishBodyEmissiveMul",
   "fishFinEmissiveFloor",
   "fishFinEmissiveMul",
-  "fishGlowMul",
 ] as const satisfies readonly (keyof FishTankTuning)[]
 
 describe("resolveFishTankTuning", () => {
@@ -43,7 +42,6 @@ describe("resolveFishTankTuning", () => {
       fishBodyEmissiveMul: 0.6,
       fishFinEmissiveFloor: 0.16,
       fishFinEmissiveMul: 0.6,
-      fishGlowMul: 0.75,
     } satisfies FishTankTuning)
   })
 
@@ -62,7 +60,6 @@ describe("resolveFishTankTuning", () => {
       fishBodyEmissiveMul: 1.1,
       fishFinEmissiveFloor: 0.35,
       fishFinEmissiveMul: 1.25,
-      fishGlowMul: 1.25,
     } satisfies FishTankTuning)
   })
 
@@ -73,6 +70,5 @@ describe("resolveFishTankTuning", () => {
     expect(night.fishBodyEmissiveMul).toBeGreaterThanOrEqual(day.fishBodyEmissiveMul)
     expect(night.fishFinEmissiveFloor).toBeGreaterThanOrEqual(day.fishFinEmissiveFloor)
     expect(night.fishFinEmissiveMul).toBeGreaterThanOrEqual(day.fishFinEmissiveMul)
-    expect(night.fishGlowMul).toBeGreaterThanOrEqual(day.fishGlowMul)
   })
 })

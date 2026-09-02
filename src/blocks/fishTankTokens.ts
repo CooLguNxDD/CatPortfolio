@@ -319,18 +319,22 @@ export function resolveTankThemePalette(): TankThemePalette {
     // light  = shallow sunlit lagoon: high key, thin haze, bright sand.
     // dark   = night dive: dim ambient, hard cyan shaft, bioluminescent accents.
     ambientColor: light ? liftHex(water, 0.45) : mixHex(water, cyan, 0.3),
-    ambientIntensity: light ? 1.2 : 0.85,
+    ambientIntensity: light ? 1.3 : 0.9,
     keyColor: sun,
-    // Fish materials carry a floor emissiveIntensity for the night bioluminescent
-    // read (see speciesMeshes.ts::makeMaterials); at the old daylight key
-    // (2.6 * 1.2 = 3.12) that floor plus a hard directional specular blew
-    // scales out to a washed-out shine instead of a sunlit sheen.
-    keyIntensity: light ? 1.7 : 1.9,
+    // These were pulled down specifically because fish materials had a fixed
+    // black albedo (color: 0x000000) plus a floor emissiveIntensity for the
+    // night bioluminescent read — a hard directional specular against that
+    // combo blew scales out to a washed-out shine instead of a sunlit sheen.
+    // Fish now carry real atlas albedo (modelLoader.ts) and the renderer runs
+    // ACESFilmicToneMapping, which compresses that highlight on its own — so
+    // key/fill/hemi can sit closer to what the lagoon/night-dive brief calls
+    // for instead of being clamped down for a material that no longer exists.
+    keyIntensity: light ? 1.9 : 2.1,
     fillColor: light ? liftHex(water, 0.3) : mixHex(deep, cyan, 0.35),
-    fillIntensity: light ? 0.9 : 1.35,
+    fillIntensity: light ? 1.0 : 1.45,
     hemiSky: light ? liftHex(sun, 0.35) : liftHex(cyan, 0.25),
     hemiGround: light ? liftHex(water, 0.15) : deep,
-    hemiIntensity: light ? 1.1 : 0.75,
+    hemiIntensity: light ? 1.2 : 0.85,
     fogColor: light ? liftHex(water, 0.22) : deep,
     // Haze thickens with depth in the shader-free way: FogExp2 + a deep backdrop.
     fogDensity: light ? 0.011 : 0.019,
@@ -393,6 +397,8 @@ export interface TankQuality {
   wobble: boolean
   /** Multiplier on shader time — 0 freezes animation for reduce-motion users. */
   timeScale: number
+  /** Shadow map resolution; 0 disables the shadow map entirely (low tier). */
+  shadowMapSize: number
 }
 
 const HIGH_QUALITY: TankQuality = {
@@ -402,6 +408,7 @@ const HIGH_QUALITY: TankQuality = {
   waterSegments: [64, 48],
   wobble: true,
   timeScale: 1,
+  shadowMapSize: 1024,
 }
 
 const LOW_QUALITY: TankQuality = {
@@ -411,6 +418,7 @@ const LOW_QUALITY: TankQuality = {
   waterSegments: [32, 24],
   wobble: false,
   timeScale: 1,
+  shadowMapSize: 0,
 }
 
 /** Safe media-query probe — SSR and bare-node tests have no matchMedia. */

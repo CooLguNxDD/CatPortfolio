@@ -25,7 +25,6 @@ export interface BuiltFish {
   group: THREE.Group
   body: THREE.MeshStandardMaterial
   fin: THREE.MeshStandardMaterial
-  glow: THREE.PointLight
   form: FishForm
   spineSegments: THREE.Object3D[]
   pecL?: THREE.Object3D
@@ -33,12 +32,24 @@ export interface BuiltFish {
   tentacles?: THREE.Object3D[]
   mixer?: THREE.AnimationMixer
   isGltf?: boolean
+  gltfMaterials: THREE.MeshStandardMaterial[]
+  cancelGltf: () => void
 }
 
-function makeMaterials(color: THREE.Color, glow: number) {
+export interface BuildFishMeshOptions {
+  /** High-tier only. Low tier never fetches a GLB. Default true. */
+  loadGltf?: boolean
+  onGltfReady?: (built: BuiltFish) => void
+  onGltfSettled?: (built: BuiltFish) => void
+}
+
+// Procedural fallback (tier: "low" or a failed GLB fetch never has the atlas
+// UVs) — a neutral base color instead of the black occluder the GLTF path
+// used to share, so it doesn't go dark while that path is textured.
+function makeMaterials(_color: THREE.Color, glow: number) {
   const body = new THREE.MeshStandardMaterial({
-    color,
-    emissive: color,
+    color: FISH_MATERIAL_CONFIG.bodyColor,
+    emissive: new THREE.Color(0xffffff),
     emissiveIntensity: Math.max(FISH_MATERIAL_CONFIG.bodyEmissiveFloor, glow * FISH_MATERIAL_CONFIG.bodyEmissiveGlowMul),
     roughness: FISH_MATERIAL_CONFIG.bodyRoughness,
     metalness: FISH_MATERIAL_CONFIG.bodyMetalness,
@@ -47,8 +58,8 @@ function makeMaterials(color: THREE.Color, glow: number) {
     flatShading: true,
   })
   const fin = new THREE.MeshStandardMaterial({
-    color,
-    emissive: color,
+    color: FISH_MATERIAL_CONFIG.finColor,
+    emissive: new THREE.Color(0xffffff),
     emissiveIntensity: Math.max(FISH_MATERIAL_CONFIG.finEmissiveFloor, glow * FISH_MATERIAL_CONFIG.finEmissiveGlowMul),
     transparent: true,
     opacity: FISH_MATERIAL_CONFIG.finOpacity,
@@ -332,38 +343,57 @@ function buildForm(
 export function buildFishMesh(
   data: FishSpecimenInput,
   color: THREE.Color,
+  options: BuildFishMeshOptions = {},
 ): BuiltFish {
   const form = resolveFishForm(data.species)
   const { body, fin } = makeMaterials(color, data.glow)
   const { group, spineSegments, pecL, pecR, tentacles } = buildForm(form, body, fin)
-  const glow = new THREE.PointLight(
-    color,
-    Math.max(FISH_MATERIAL_CONFIG.glowIntensityFloor, data.glow * FISH_MATERIAL_CONFIG.glowIntensityMul),
-    FISH_MATERIAL_CONFIG.glowDistance,
-  )
-  group.add(glow)
   group.userData = { slug: data.slug, data, form }
 
-  const built: BuiltFish = { group, body, fin, glow, form, spineSegments, pecL, pecR, tentacles }
+  const abort = new AbortController()
+  const built: BuiltFish = {
+    group,
+    body,
+    fin,
+    form,
+    spineSegments,
+    pecL,
+    pecR,
+    tentacles,
+    gltfMaterials: [],
+    cancelGltf: () => abort.abort(),
+  }
 
-  // Asynchronously attempt loading real 3D GLB model
+  if (options.loadGltf === false) {
+    return built
+  }
+
   loadFishModelInstance(data.species, {
-    tintColor: color,
     emissiveGlow: data.glow,
   })
     .then((gltfInstance) => {
-      // Hide procedural fallback sub-meshes except glow & hit sphere
+      if (abort.signal.aborted) {
+        gltfInstance.mixer?.stopAllAction()
+        return
+      }
+      // Hide procedural fallback sub-meshes except the hit sphere
       group.children.forEach((c) => {
-        if (c !== glow && c.name !== "hit") {
+        if (c.name !== "hit") {
           c.visible = false
         }
       })
+      gltfInstance.group.name = "gltf_hero"
       group.add(gltfInstance.group)
       built.mixer = gltfInstance.mixer
+      built.gltfMaterials = gltfInstance.materials
       built.isGltf = true
+      options.onGltfReady?.(built)
     })
     .catch(() => {
       // Silently keep procedural geometry on any network or WebGL fallback
+    })
+    .finally(() => {
+      options.onGltfSettled?.(built)
     })
 
   return built
