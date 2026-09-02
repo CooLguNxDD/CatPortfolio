@@ -56,7 +56,14 @@ export function loadSharedPaletteTexture(): Promise<THREE.Texture> {
           tex.colorSpace = THREE.SRGBColorSpace
           tex.magFilter = THREE.NearestFilter
           tex.minFilter = THREE.NearestFilter
-          tex.flipY = false
+          // flipY stays at three's default (true). This atlas's UVs come from
+          // the GLB meshes (glTF's v=0-at-top convention); flipY=false was
+          // sampling the wrong row for nearly every species — verified by
+          // decoding color.png directly against each model's UV bounds:
+          // Clownfish's swatch is orange, BlueTang's is blue, only with the
+          // default flip applied. It went unnoticed while fish were
+          // black-albedo/emissive-only, since any bright swatch read as
+          // "vivid," correct or not.
           resolve(tex)
         },
         undefined,
