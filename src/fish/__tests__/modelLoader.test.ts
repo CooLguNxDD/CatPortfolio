@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { resolveModelId } from "../modelLoader"
+import { resolveModelId, rigForModelId } from "../modelLoader"
 import { FISH_CATALOG_METADATA } from "../fishCatalogMetadata"
 
 describe("3D Model Loader & Catalog Metadata", () => {
@@ -8,6 +8,15 @@ describe("3D Model Loader & Catalog Metadata", () => {
     expect(resolveModelId("devops")).toBe("GreateWhiteShark")
     expect(resolveModelId("mobile")).toBe("Clownfish")
     expect(resolveModelId("platform")).toBe("GreenTurtle")
+  })
+
+  it("maps flagship models onto catalog rigs", () => {
+    expect(rigForModelId("ai")).toBe("ray")
+    expect(rigForModelId("devops")).toBe("shark")
+    expect(rigForModelId("mobile")).toBe("fish")
+    expect(rigForModelId("platform")).toBe("turtle")
+    expect(rigForModelId("zebra-seahorse")).toBe("seahorse")
+    expect(rigForModelId("blue-lobster")).toBe("lobster")
   })
 
   it("resolves direct species slugs and display names", () => {

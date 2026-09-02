@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
@@ -25,12 +26,13 @@ if (typeof FileReader === 'undefined') {
   };
 }
 
-const SOURCE_BASE = 'E:/code_project/OSS/CatOSSWorks/3D Characters-Fish';
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const TARGET_BASE = path.resolve(SCRIPT_DIR, '..');
+const SOURCE_BASE = path.resolve(TARGET_BASE, '..', '3D Characters-Fish');
 const FBX_DIR = path.join(SOURCE_BASE, 'Fish', 'FBX');
 const ANI_DIR = path.join(SOURCE_BASE, 'Fish', 'Ani');
 const TEX_DIR = path.join(SOURCE_BASE, 'Fish', 'Texture');
 
-const TARGET_BASE = 'E:/code_project/OSS/CatOSSWorks/CatPortfolio';
 const OUT_FISH_DIR = path.join(TARGET_BASE, 'public', 'models', 'fish');
 const OUT_PROP_DIR = path.join(TARGET_BASE, 'public', 'models', 'props');
 const OUT_TEX_DIR = path.join(TARGET_BASE, 'public', 'models', 'textures');
@@ -153,10 +155,30 @@ async function convertAll() {
     const outDir = isCreature ? OUT_FISH_DIR : OUT_PROP_DIR;
     const outGlbPath = path.join(outDir, `${name}.glb`);
 
-    // Attach animation if rigged creature
+    // Attach animation if rigged creature and idle tracks actually name bones
+    // on this mesh. Three's GLTFExporter silently drops clips whose targets
+    // are a different object graph — baking those is dead weight.
     const animations = [];
     if (isCreature && animationMap.has(rig)) {
-      animations.push(animationMap.get(rig));
+      const clip = animationMap.get(rig);
+      const boneNames = new Set();
+      group.traverse((obj) => {
+        if (obj.isBone) boneNames.add(obj.name);
+      });
+      const trackRoots = new Set(
+        (clip.tracks || []).map((t) => String(t.name).split('.')[0]),
+      );
+      let hits = 0;
+      for (const root of trackRoots) {
+        if (boneNames.has(root)) hits += 1;
+      }
+      if (hits > 0) {
+        animations.push(clip);
+      } else {
+        console.warn(
+          `\n  ⚠ Idle clip for ${name} (${rig}) has no bone-name overlap; skipping bake`,
+        );
+      }
     }
 
     try {
@@ -191,9 +213,14 @@ async function convertAll() {
   console.log(`  - Static Props: ${convertedProps} (public/models/props/*.glb)`);
   console.log('========================================');
 
+  const manifestJson = JSON.stringify(manifest, null, 2);
   const manifestPath = path.join(TARGET_BASE, 'public', 'models', 'fish-manifest.json');
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  const bundledPath = path.join(TARGET_BASE, 'src', 'fish', 'generated', 'fish-manifest.json');
+  fs.mkdirSync(path.dirname(bundledPath), { recursive: true });
+  fs.writeFileSync(manifestPath, manifestJson);
+  fs.writeFileSync(bundledPath, manifestJson);
   console.log(`[Manifest] Saved ${manifestPath}`);
+  console.log(`[Manifest] Bundled ${bundledPath} (imported by src/fish/assetRegistry.ts)`);
 }
 
 convertAll().catch(err => {

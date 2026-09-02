@@ -17,6 +17,8 @@ export interface SeabedDecorConfig {
     cyan: string | number
     weed: string | number
   }
+  signal?: AbortSignal
+  onMaterial?: (mat: THREE.MeshStandardMaterial) => void
 }
 
 // Curated selection of 3D environmental props from the 55 available models
@@ -52,12 +54,27 @@ const SEABED_DETAIL_IDS = [
   "ShellC",
 ]
 
+const SEAWEED_PROP_IDS = ["SeaweedA", "SeaweedB", "SeaweedC", "SeaweedD"]
+
 /**
  * Spawns an authentic 3D coral reef landscape on the aquarium seafloor.
  */
+function attachProp(
+  config: SeabedDecorConfig,
+  decorGroup: THREE.Group,
+  instance: { group: THREE.Group; materials: THREE.MeshStandardMaterial[] },
+  place: (group: THREE.Group) => void,
+) {
+  if (config.signal?.aborted) return
+  for (const mat of instance.materials) config.onMaterial?.(mat)
+  place(instance.group)
+  decorGroup.add(instance.group)
+}
+
 export async function populateSeabedDecor(config: SeabedDecorConfig): Promise<THREE.Group> {
   const decorGroup = new THREE.Group()
   decorGroup.name = "seabed_3d_decor"
+  if (config.signal?.aborted) return decorGroup
   config.tank.add(decorGroup)
 
   const coralColors = [
@@ -75,13 +92,13 @@ export async function populateSeabedDecor(config: SeabedDecorConfig): Promise<TH
 
     loadPropModelInstance(propId, { tintColor: col, scale })
       .then((instance) => {
-        const xFrac = (i / (coralCount - 1) - 0.5) * 1.6
-        const x = xFrac * config.halfWidth + (i % 2 === 0 ? 0.8 : -0.8)
-        const z = ((i % 3) - 1) * (config.halfDepth * 0.55) + (i % 2 === 0 ? 0.5 : -0.5)
-
-        instance.group.position.set(x, config.floorY + 0.1, z)
-        instance.group.rotation.y = (i * Math.PI) / 3
-        decorGroup.add(instance.group)
+        attachProp(config, decorGroup, instance, (group) => {
+          const xFrac = (i / (coralCount - 1) - 0.5) * 1.6
+          const x = xFrac * config.halfWidth + (i % 2 === 0 ? 0.8 : -0.8)
+          const z = ((i % 3) - 1) * (config.halfDepth * 0.55) + (i % 2 === 0 ? 0.5 : -0.5)
+          group.position.set(x, config.floorY + 0.1, z)
+          group.rotation.y = (i * Math.PI) / 3
+        })
       })
       .catch(() => {})
   }
@@ -94,12 +111,12 @@ export async function populateSeabedDecor(config: SeabedDecorConfig): Promise<TH
 
     loadPropModelInstance(propId, { scale })
       .then((instance) => {
-        const x = ((i / (rockCount - 1) - 0.5) * 1.8) * config.halfWidth
-        const z = (((i + 1) % 3) - 1) * (config.halfDepth * 0.65)
-
-        instance.group.position.set(x, config.floorY, z)
-        instance.group.rotation.y = i * 1.2
-        decorGroup.add(instance.group)
+        attachProp(config, decorGroup, instance, (group) => {
+          const x = ((i / (rockCount - 1) - 0.5) * 1.8) * config.halfWidth
+          const z = (((i + 1) % 3) - 1) * (config.halfDepth * 0.65)
+          group.position.set(x, config.floorY, z)
+          group.rotation.y = i * 1.2
+        })
       })
       .catch(() => {})
   }
@@ -112,12 +129,28 @@ export async function populateSeabedDecor(config: SeabedDecorConfig): Promise<TH
 
     loadPropModelInstance(propId, { scale })
       .then((instance) => {
-        const x = ((i / (detailCount - 1) - 0.5) * 1.7) * config.halfWidth + (i % 2 ? 0.3 : -0.3)
-        const z = (((i * 2) % 5) / 2 - 1) * (config.halfDepth * 0.7)
+        attachProp(config, decorGroup, instance, (group) => {
+          const x = ((i / (detailCount - 1) - 0.5) * 1.7) * config.halfWidth + (i % 2 ? 0.3 : -0.3)
+          const z = (((i * 2) % 5) / 2 - 1) * (config.halfDepth * 0.7)
+          group.position.set(x, config.floorY + 0.05, z)
+          group.rotation.y = i * 0.9
+        })
+      })
+      .catch(() => {})
+  }
 
-        instance.group.position.set(x, config.floorY + 0.05, z)
-        instance.group.rotation.y = i * 0.9
-        decorGroup.add(instance.group)
+  const seaweedCount = 6
+  for (let i = 0; i < seaweedCount; i++) {
+    const propId = SEAWEED_PROP_IDS[i % SEAWEED_PROP_IDS.length]!
+    const scale = 0.04 + (i % 3) * 0.012
+    loadPropModelInstance(propId, { scale })
+      .then((instance) => {
+        attachProp(config, decorGroup, instance, (group) => {
+          const x = ((i / (seaweedCount - 1) - 0.5) * 1.5) * config.halfWidth
+          const z = (((i + 2) % 3) - 1) * (config.halfDepth * 0.5)
+          group.position.set(x, config.floorY, z)
+          group.rotation.y = i * 0.7
+        })
       })
       .catch(() => {})
   }

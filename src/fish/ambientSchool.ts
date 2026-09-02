@@ -6,6 +6,7 @@
 
 import * as THREE from "three"
 import { loadFishModelInstance, type LoadedFishInstance } from "./modelLoader"
+import { shouldLoadGltfAmbient } from "./gltfQuality"
 
 export interface AmbientShoalConfig {
   tank: THREE.Group
@@ -14,6 +15,7 @@ export interface AmbientShoalConfig {
   swimMaxY: number
   halfWidth: number
   halfDepth: number
+  signal?: AbortSignal
 }
 
 interface AmbientCreature {
@@ -54,12 +56,13 @@ export class AmbientFishShoal {
     this.group = new THREE.Group()
     this.group.name = "ambient_3d_shoal"
     this.config.tank.add(this.group)
-    this.spawnCreatures()
+    if (shouldLoadGltfAmbient(config.qualityTier)) {
+      this.spawnCreatures()
+    }
   }
 
   private async spawnCreatures() {
-    const isHigh = this.config.qualityTier === "high"
-    const count = isHigh ? 10 : 5
+    const count = 10
 
     const { swimMinY, swimMaxY, halfWidth } = this.config
     const tankHeight = swimMaxY - swimMinY
@@ -85,10 +88,16 @@ export class AmbientFishShoal {
 
       const species = speciesList[i % speciesList.length]!
 
+      if (this.config.signal?.aborted) return
+
       try {
         const instance = await loadFishModelInstance(species, {
           emissiveGlow: 0.2,
         })
+        if (this.config.signal?.aborted) {
+          instance.mixer?.stopAllAction()
+          continue
+        }
 
         // Scale ambient creatures with natural size distribution (~1.8 - 2.5 units)
         const ambientScale = 0.8 + (i % 3) * 0.15

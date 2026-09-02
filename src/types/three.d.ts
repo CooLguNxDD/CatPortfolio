@@ -114,6 +114,10 @@ declare module "three" {
     constructor(fov?: number, aspect?: number, near?: number, far?: number)
   }
   export class OrthographicCamera extends Camera {
+    left: number
+    right: number
+    top: number
+    bottom: number
     constructor(
       left?: number,
       right?: number,
@@ -128,6 +132,7 @@ declare module "three" {
     outputColorSpace: string
     toneMapping: number
     toneMappingExposure: number
+    shadowMap: { enabled: boolean; type: number }
     constructor(params?: Record<string, unknown>)
     setPixelRatio(n: number): void
     getPixelRatio(): number
@@ -205,6 +210,8 @@ declare module "three" {
   export class Material {
     needsUpdate: boolean
     transparent: boolean
+    /** Whether this material is affected by scene.fog — true by default on most materials. */
+    fog: boolean
     onBeforeCompile?: (shader: WebGLShaderPatch, renderer: WebGLRenderer) => void
     customProgramCacheKey?: () => string
     clone(): this
@@ -380,7 +387,16 @@ declare module "three" {
   export class AmbientLight extends Light {
     constructor(color?: number, intensity?: number)
   }
+  export class DirectionalLightShadow {
+    mapSize: Vector2
+    bias: number
+    normalBias: number
+    camera: OrthographicCamera
+  }
   export class DirectionalLight extends Light {
+    target: Object3D
+    castShadow: boolean
+    shadow: DirectionalLightShadow
     constructor(color?: number, intensity?: number)
   }
   export class PointLight extends Light {
@@ -533,6 +549,9 @@ declare module "three" {
   export const ClampToEdgeWrapping: number
   export const LoopRepeat: number
   export const LoopOnce: number
+  export const NoToneMapping: number
+  export const ACESFilmicToneMapping: number
+  export const PCFSoftShadowMap: number
 }
 
 declare module "three/examples/jsm/utils/SkeletonUtils.js" {

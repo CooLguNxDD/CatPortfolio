@@ -93,6 +93,8 @@ import {
   POST_CONFIG,
   ANCHOR_CONFIG,
   SONAR_CONFIG,
+  FISH_GLTF_CONFIG,
+  SHADOW_CONFIG,
   resolveFishTankTuning,
 } from "./fishTankConfig"
 import { createSkyMaterial, type SkyMaterial } from "@/fish/shaders/skyShader"
@@ -106,6 +108,7 @@ import {
 } from "@/fish/speciesMeshes"
 import { populateSeabedDecor } from "@/fish/seabedFlora"
 import { AmbientFishShoal } from "@/fish/ambientSchool"
+import { shouldLoadGltfHeroes, shouldLoadGltfScenery } from "@/fish/gltfQuality"
 import {
   buildGiantCatMesh,
   createCatAnimationState,
@@ -277,7 +280,7 @@ export default function FishTankCanvas({
 
     // Wavelength-aware water: replaces three's grey exponential fog with
     // Beer-Lambert extinction for every fogged material in the tank.
-    installBeerLambertFog()
+    installBeerLambertFog(palette.sigma)
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(palette.bg)
@@ -288,6 +291,17 @@ export default function FishTankCanvas({
       antialias: true,
       alpha: false,
     })
+    // OutputPass reads renderer.toneMapping — without this it only did sRGB
+    // conversion, no tone mapping, which is why the fish's atlas albedo needs
+    // this the moment it stops being a black bloom-only occluder.
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
+    renderer.toneMappingExposure = POST_CONFIG.toneMappingExposure
+    // Shadow map — high tier only. Every GLTF fish/prop mesh already sets
+    // castShadow/receiveShadow (modelLoader.ts) and the floor now does too;
+    // this and the sun's castShadow flag below are what were missing to make
+    // those flags do anything.
+    renderer.shadowMap.enabled = quality.shadowMapSize > 0
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CAMERA_CONFIG.maxPixelRatio))
     // devicePixelRatio only changes when the window moves to a different-DPI
     // display (e.g. dragging between a laptop panel and an external monitor).
@@ -318,6 +332,18 @@ export default function FishTankCanvas({
     // an equivalent for keyboard-only visitors — otherwise it's mouse-only.
     renderer.domElement.setAttribute("role", "application")
     renderer.domElement.tabIndex = 0
+    const canvasEl = renderer.domElement
+    let gltfHeroSettled = 0
+    const gltfHeroTarget = shouldLoadGltfHeroes(quality.tier) ? fish.length : 0
+    let stampTankDataset: () => void = () => {
+      canvasEl.dataset.tankTier = quality.tier
+      canvasEl.dataset.tankGltfHeroes = "0"
+      canvasEl.dataset.tankGltfReady = shouldLoadGltfHeroes(quality.tier) ? "false" : "true"
+      canvasEl.dataset.tankScenery = shouldLoadGltfScenery(quality.tier) ? "gltf" : "procedural"
+    }
+    stampTankDataset()
+    const sceneryAbort = new AbortController()
+    let disposed = false
 
     const tank = new THREE.Group()
     scene.add(tank)
@@ -337,7 +363,23 @@ export default function FishTankCanvas({
       WATER_Y + SUN_DIR.y * LIGHT_CONFIG.sunLightDistance,
       SUN_DIR.z * LIGHT_CONFIG.sunLightDistance,
     )
+    top.target.position.set(0, TANK_CENTER_Y, 0)
     scene.add(top)
+    scene.add(top.target)
+    if (quality.shadowMapSize > 0) {
+      top.castShadow = true
+      top.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize)
+      top.shadow.bias = SHADOW_CONFIG.bias
+      top.shadow.normalBias = SHADOW_CONFIG.normalBias
+      const cam = top.shadow.camera
+      cam.near = SHADOW_CONFIG.near
+      cam.far = SHADOW_CONFIG.far
+      cam.left = -TANK_HALF_W - SHADOW_CONFIG.frustumPad
+      cam.right = TANK_HALF_W + SHADOW_CONFIG.frustumPad
+      cam.top = TANK_HALF_D + SHADOW_CONFIG.frustumPad
+      cam.bottom = -TANK_HALF_D - SHADOW_CONFIG.frustumPad
+      cam.updateProjectionMatrix()
+    }
 
     const fill = new THREE.PointLight(palette.fillColor, palette.fillIntensity, 120)
     fill.position.set(
@@ -448,6 +490,7 @@ export default function FishTankCanvas({
     )
     const floor = new THREE.Mesh(floorGeo, floorMat)
     floor.position.y = FLOOR_Y
+    floor.receiveShadow = true
     tank.add(floor)
 
     // Procedural Voronoi Caustics Shader Plane
@@ -503,25 +546,28 @@ export default function FishTankCanvas({
     }
     tank.add(rays)
 
-    // Seabed Rocks & Glowing Cyber-Crystals
-    const rockGeo = new THREE.DodecahedronGeometry(1, ROCK_CONFIG.detail)
-    const rockMat = withCaustics(
-      new THREE.MeshStandardMaterial({
-        color: palette.rock,
-        roughness: ROCK_CONFIG.roughness,
-        flatShading: true,
-      }),
-    )
-    for (let i = 0; i < ROCK_CONFIG.count; i++) {
-      const rock = new THREE.Mesh(rockGeo, rockMat)
-      rock.position.set(
-        (i / (ROCK_CONFIG.count - 1) - 0.5) * (glassW - ROCK_CONFIG.xSpreadInset),
-        FLOOR_Y + ROCK_CONFIG.yBase + (i % ROCK_CONFIG.yModIndex) * ROCK_CONFIG.yModStep,
-        ((i % ROCK_CONFIG.zModIndex) + ROCK_CONFIG.zOffset) * (TANK_HALF_D * ROCK_CONFIG.zSpreadFrac),
+    // Seabed Rocks — procedural only on the low tier. High tier uses LayerLab
+    // GLB corals/rocks instead so the floor is not stacked twice.
+    if (quality.tier === "low") {
+      const rockGeo = new THREE.DodecahedronGeometry(1, ROCK_CONFIG.detail)
+      const rockMat = withCaustics(
+        new THREE.MeshStandardMaterial({
+          color: palette.rock,
+          roughness: ROCK_CONFIG.roughness,
+          flatShading: true,
+        }),
       )
-      rock.scale.setScalar(ROCK_CONFIG.scaleBase + (i % ROCK_CONFIG.scaleModIndex) * ROCK_CONFIG.scaleModStep)
-      rock.rotation.set(i * ROCK_CONFIG.rotXStep, i * ROCK_CONFIG.rotYStep, i * ROCK_CONFIG.rotZStep)
-      tank.add(rock)
+      for (let i = 0; i < ROCK_CONFIG.count; i++) {
+        const rock = new THREE.Mesh(rockGeo, rockMat)
+        rock.position.set(
+          (i / (ROCK_CONFIG.count - 1) - 0.5) * (glassW - ROCK_CONFIG.xSpreadInset),
+          FLOOR_Y + ROCK_CONFIG.yBase + (i % ROCK_CONFIG.yModIndex) * ROCK_CONFIG.yModStep,
+          ((i % ROCK_CONFIG.zModIndex) + ROCK_CONFIG.zOffset) * (TANK_HALF_D * ROCK_CONFIG.zSpreadFrac),
+        )
+        rock.scale.setScalar(ROCK_CONFIG.scaleBase + (i % ROCK_CONFIG.scaleModIndex) * ROCK_CONFIG.scaleModStep)
+        rock.rotation.set(i * ROCK_CONFIG.rotXStep, i * ROCK_CONFIG.rotYStep, i * ROCK_CONFIG.rotZStep)
+        tank.add(rock)
+      }
     }
 
     // Glowing cyber-crystals
@@ -555,55 +601,60 @@ export default function FishTankCanvas({
     // Theme-tintable materials, resampled in place by applyPalette below.
     const weedMats: THREE.MeshStandardMaterial[] = []
     const coralMats: { mat: THREE.MeshStandardMaterial; i: number }[] = []
-    for (let i = 0; i < SEAWEED_PLACEMENT_CONFIG.count; i++) {
-      const stalk = buildSeaweed(
-        SEAWEED_PLACEMENT_CONFIG.heightBase + (i % SEAWEED_PLACEMENT_CONFIG.heightModIndex) * SEAWEED_PLACEMENT_CONFIG.heightModStep,
-        weedColor,
-        i,
-      )
-      stalk.position.set(
-        (i / (SEAWEED_PLACEMENT_CONFIG.count - 1) - 0.5) * (glassW - SEAWEED_PLACEMENT_CONFIG.xInset),
-        FLOOR_Y + SEAWEED_PLACEMENT_CONFIG.yAboveFloor,
-        ((i % SEAWEED_PLACEMENT_CONFIG.zModIndex) + SEAWEED_PLACEMENT_CONFIG.zOffset) * (TANK_HALF_D * SEAWEED_PLACEMENT_CONFIG.zSpreadFrac),
-      )
-      tank.add(stalk)
-      const { segs, seed } = stalk.userData as { segs: number; seed: number }
-      const segRefs: (THREE.Object3D | null)[] = []
-      for (let s = 0; s < segs; s++) {
-        const seg = stalk.getObjectByName(`seg${s}`) ?? null
-        segRefs.push(seg)
-        if (s === 0 && seg instanceof THREE.Mesh && seg.material instanceof THREE.MeshStandardMaterial) {
-          weedMats.push(seg.material)
+    if (quality.tier === "low") {
+      for (let i = 0; i < SEAWEED_PLACEMENT_CONFIG.count; i++) {
+        const stalk = buildSeaweed(
+          SEAWEED_PLACEMENT_CONFIG.heightBase + (i % SEAWEED_PLACEMENT_CONFIG.heightModIndex) * SEAWEED_PLACEMENT_CONFIG.heightModStep,
+          weedColor,
+          i,
+        )
+        stalk.position.set(
+          (i / (SEAWEED_PLACEMENT_CONFIG.count - 1) - 0.5) * (glassW - SEAWEED_PLACEMENT_CONFIG.xInset),
+          FLOOR_Y + SEAWEED_PLACEMENT_CONFIG.yAboveFloor,
+          ((i % SEAWEED_PLACEMENT_CONFIG.zModIndex) + SEAWEED_PLACEMENT_CONFIG.zOffset) * (TANK_HALF_D * SEAWEED_PLACEMENT_CONFIG.zSpreadFrac),
+        )
+        tank.add(stalk)
+        const { segs, seed } = stalk.userData as { segs: number; seed: number }
+        const segRefs: (THREE.Object3D | null)[] = []
+        for (let s = 0; s < segs; s++) {
+          const seg = stalk.getObjectByName(`seg${s}`) ?? null
+          segRefs.push(seg)
+          if (s === 0 && seg instanceof THREE.Mesh && seg.material instanceof THREE.MeshStandardMaterial) {
+            weedMats.push(seg.material)
+          }
         }
+        weedRigs.push({ segs: segRefs, seed })
       }
-      weedRigs.push({ segs: segRefs, seed })
+
+      for (let i = 0; i < CORAL_PLACEMENT_CONFIG.count; i++) {
+        const coral = buildCoral(
+          new THREE.Color(i % 2 ? palette.accent : palette.neon),
+          CORAL_PLACEMENT_CONFIG.scaleBase + (i % CORAL_PLACEMENT_CONFIG.scaleModIndex) * CORAL_PLACEMENT_CONFIG.scaleModStep,
+        )
+        const firstArm = coral.children[0]
+        if (firstArm instanceof THREE.Mesh && firstArm.material instanceof THREE.MeshStandardMaterial) {
+          coralMats.push({ mat: firstArm.material, i })
+        }
+        coral.position.set(
+          (i + CORAL_PLACEMENT_CONFIG.xOffset) * (TANK_HALF_W * CORAL_PLACEMENT_CONFIG.xSpreadFrac),
+          FLOOR_Y + CORAL_PLACEMENT_CONFIG.yAboveFloor,
+          ((i % CORAL_PLACEMENT_CONFIG.zModIndex) + CORAL_PLACEMENT_CONFIG.zOffset) * (TANK_HALF_D * CORAL_PLACEMENT_CONFIG.zSpreadFrac),
+        )
+        tank.add(coral)
+      }
     }
 
-    for (let i = 0; i < CORAL_PLACEMENT_CONFIG.count; i++) {
-      const coral = buildCoral(
-        new THREE.Color(i % 2 ? palette.accent : palette.neon),
-        CORAL_PLACEMENT_CONFIG.scaleBase + (i % CORAL_PLACEMENT_CONFIG.scaleModIndex) * CORAL_PLACEMENT_CONFIG.scaleModStep,
-      )
-      const firstArm = coral.children[0]
-      if (firstArm instanceof THREE.Mesh && firstArm.material instanceof THREE.MeshStandardMaterial) {
-        coralMats.push({ mat: firstArm.material, i })
-      }
-      coral.position.set(
-        (i + CORAL_PLACEMENT_CONFIG.xOffset) * (TANK_HALF_W * CORAL_PLACEMENT_CONFIG.xSpreadFrac),
-        FLOOR_Y + CORAL_PLACEMENT_CONFIG.yAboveFloor,
-        ((i % CORAL_PLACEMENT_CONFIG.zModIndex) + CORAL_PLACEMENT_CONFIG.zOffset) * (TANK_HALF_D * CORAL_PLACEMENT_CONFIG.zSpreadFrac),
-      )
-      tank.add(coral)
+    if (shouldLoadGltfScenery(quality.tier)) {
+      populateSeabedDecor({
+        tank,
+        floorY: FLOOR_Y,
+        halfWidth: TANK_HALF_W,
+        halfDepth: TANK_HALF_D,
+        palette,
+        signal: sceneryAbort.signal,
+        onMaterial: (mat) => withCaustics(mat),
+      })
     }
-
-    // Populate real 3D seabed decor (corals, reef boulders, starfish, shells)
-    populateSeabedDecor({
-      tank,
-      floorY: FLOOR_Y,
-      halfWidth: TANK_HALF_W,
-      halfDepth: TANK_HALF_D,
-      palette,
-    })
 
     // Ambient commit-minnows — one InstancedMesh, placed and deformed entirely
     // in the vertex shader (fish/minnowField.ts), so population is free on CPU.
@@ -625,6 +676,7 @@ export default function FishTankCanvas({
       swimMaxY: SWIM_Y_MAX,
       halfWidth: TANK_HALF_W,
       halfDepth: TANK_HALF_D,
+      signal: sceneryAbort.signal,
     })
 
     // 3D Holographic Reticle for Focused Fish
@@ -674,26 +726,32 @@ export default function FishTankCanvas({
     const bubbles = new THREE.Points(bubbleGeo, bubbleMat)
     tank.add(bubbles)
 
-    const moteCount = MOTE_CONFIG.count
-    const moteGeo = new THREE.BufferGeometry()
-    const mPos = new Float32Array(moteCount * 3)
-    for (let i = 0; i < moteCount; i++) {
-      mPos[i * 3] = (Math.random() - 0.5) * (glassW - MOTE_CONFIG.spawnInsetXZ)
-      mPos[i * 3 + 1] = FLOOR_Y + Math.random() * TANK_HEIGHT
-      mPos[i * 3 + 2] = (Math.random() - 0.5) * (glassD - MOTE_CONFIG.spawnInsetXZ)
-    }
-    moteGeo.setAttribute("position", new THREE.BufferAttribute(mPos, 3))
-    const moteMat = new THREE.PointsMaterial({
-      color: palette.motes,
-      size: MOTE_CONFIG.size,
-      map: sprite || undefined,
-      transparent: true,
-      opacity: tuning.moteOpacity,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
+    // Marine snow as a few discrete size/density bands (see MOTE_CONFIG) —
+    // the closest a flat PointsMaterial (one size per draw call) can get to
+    // depth-varying particle size without a custom per-vertex-size shader.
+    const moteLayers = MOTE_CONFIG.layers.map((layer) => {
+      const count = Math.max(1, Math.round(MOTE_CONFIG.totalCount * layer.countFrac))
+      const geo = new THREE.BufferGeometry()
+      const pos = new Float32Array(count * 3)
+      for (let i = 0; i < count; i++) {
+        pos[i * 3] = (Math.random() - 0.5) * (glassW - MOTE_CONFIG.spawnInsetXZ)
+        pos[i * 3 + 1] = FLOOR_Y + Math.random() * TANK_HEIGHT
+        pos[i * 3 + 2] = (Math.random() - 0.5) * (glassD - MOTE_CONFIG.spawnInsetXZ)
+      }
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3))
+      const mat = new THREE.PointsMaterial({
+        color: palette.motes,
+        size: layer.size,
+        map: sprite || undefined,
+        transparent: true,
+        opacity: tuning.moteOpacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+      const points = new THREE.Points(geo, mat)
+      tank.add(points)
+      return { points, mat, sinkSpeedMul: layer.sinkSpeedMul }
     })
-    const motes = new THREE.Points(moteGeo, moteMat)
-    tank.add(motes)
 
     // Bioluminescent fish wake trails — same quality-tier split as the minnow field.
     const wakeCount = quality.tier === "high" ? WAKE_CONFIG.countHigh : WAKE_CONFIG.countLow
@@ -792,9 +850,29 @@ export default function FishTankCanvas({
     labelLayer.className = "ft-labels-layer pointer-events-none absolute inset-0 overflow-hidden"
     host.appendChild(labelLayer)
 
+    stampTankDataset = () => {
+      const heroes = fishObjs.filter((o) => o.built.isGltf).length
+      canvasEl.dataset.tankTier = quality.tier
+      canvasEl.dataset.tankGltfHeroes = String(heroes)
+      canvasEl.dataset.tankGltfReady =
+        !shouldLoadGltfHeroes(quality.tier) || gltfHeroSettled >= gltfHeroTarget ? "true" : "false"
+      canvasEl.dataset.tankScenery = shouldLoadGltfScenery(quality.tier) ? "gltf" : "procedural"
+    }
+
     for (const specimen of fish) {
       const col = domainColor(specimen.species)
-      const built = buildFishMesh(specimen, col)
+      const built = buildFishMesh(specimen, col, {
+        loadGltf: shouldLoadGltfHeroes(quality.tier),
+        onGltfReady: (ready) => {
+          if (disposed) return
+          for (const mat of ready.gltfMaterials) withCaustics(mat)
+          stampTankDataset()
+        },
+        onGltfSettled: () => {
+          gltfHeroSettled += 1
+          stampTankDataset()
+        },
+      })
       withCaustics(built.body)
       withCaustics(built.fin)
       tank.add(built.group)
@@ -835,6 +913,7 @@ export default function FishTankCanvas({
         label,
       })
     }
+    stampTankDataset()
 
     // Deferred / live palette resample. Circadian changes call this in-place
     // so the scene is not torn down when day/night mode flips.
@@ -848,6 +927,20 @@ export default function FishTankCanvas({
       if (scene.fog instanceof THREE.FogExp2) {
         scene.fog.color.set(palette.fogColor)
         scene.fog.density = palette.fogDensity
+      }
+      // Beer-Lambert's per-wavelength ratio is baked into fog_fragment's GLSL
+      // text at compile time — rewriting it only affects materials compiled
+      // after this call, so a real ratio change (day/night circadian swing)
+      // needs every already-compiled fogged material recompiled too.
+      if (installBeerLambertFog(palette.sigma)) {
+        scene.traverse((obj) => {
+          const mesh = obj as THREE.Mesh
+          const mat = mesh.material as THREE.Material | THREE.Material[] | undefined
+          if (!mat) return
+          for (const m of Array.isArray(mat) ? mat : [mat]) {
+            if (m.fog) m.needsUpdate = true
+          }
+        })
       }
       ambient.color.set(palette.ambientColor)
       ambient.intensity = palette.ambientIntensity
@@ -868,9 +961,16 @@ export default function FishTankCanvas({
       waterMat.uniforms.uSun.value.set(palette.sun)
       waterMat.uniforms.uOpacity.value = tuning.waterOpacity
       floorMat.color.set(palette.floor)
-      for (const m of rayMats) {
-        m.uniforms.uColor.value.set(palette.sun)
-        m.uniforms.uStrength.value = palette.rayStrength * GODRAY_CONFIG.strengthMul
+      {
+        // Match the animate loop's dive-progress ray strength (below) so a
+        // theme/circadian resample doesn't reset shafts to the flat pre-dive
+        // value until the camera's depth next changes.
+        const rayProg = clamp(progRef.current, 0, 1)
+        const rayDiveMul = GODRAY_CONFIG.diveStrengthMin + GODRAY_CONFIG.diveStrengthMul * rayProg
+        for (const m of rayMats) {
+          m.uniforms.uColor.value.set(palette.sun)
+          m.uniforms.uStrength.value = palette.rayStrength * GODRAY_CONFIG.strengthMul * rayDiveMul
+        }
       }
       causticMat.uniforms.uColor.value.set(palette.sun)
       causticSurfaceStrength.value = palette.causticStrength * CAUSTIC_CONFIG.surfaceStrengthMul
@@ -878,8 +978,10 @@ export default function FishTankCanvas({
       ;(minnows.mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = tuning.minnowEmissive
       bubbleMat.color.set(palette.bubble)
       bubbleMat.opacity = tuning.bubbleOpacity
-      moteMat.color.set(palette.motes)
-      moteMat.opacity = tuning.moteOpacity
+      for (const layer of moteLayers) {
+        layer.mat.color.set(palette.motes)
+        layer.mat.opacity = tuning.moteOpacity
+      }
       wakeMat.opacity = tuning.wakeOpacity
       shockMat.color.set(palette.cyan)
       for (const sw of shockwavePool) {
@@ -897,14 +999,13 @@ export default function FishTankCanvas({
       skyMat.uniforms.uCloud.value = palette.cloudStrength
 
       // Theme (not circadian) resample of species-accented decor — a theme
-      // switch no longer remounts the scene, so this is the only place these
-      // colors get refreshed. `domainColor` re-reads the CSS var each call.
+      // switch no longer remounts the scene, so this is the only place the
+      // name-pill color gets refreshed. `domainColor` re-reads the CSS var
+      // each call. The fish's own material (map/color/emissive) is set once
+      // at load time and never rewritten here — domain identity lives in the
+      // model/atlas, not a color painted onto or around it.
       for (const o of fishObjs) {
         const col = domainColor(o.data.species)
-        o.built.body.color.set(col)
-        o.built.body.emissive.set(col)
-        o.built.fin.color.set(col)
-        o.built.fin.emissive.set(col)
         const hex = `#${col.getHexString()}`
         const withHex = o.label as HTMLDivElement & { _pill?: HTMLDivElement; _hex?: string }
         withHex._hex = hex
@@ -1087,7 +1188,6 @@ export default function FishTankCanvas({
     }
     const clock = new THREE.Clock()
     let raf = 0
-    let disposed = false
     let selected: THREE.Group | null = null
     let hologramSlug: string | null = null
     const lastAnchor: { x: number; y: number; r: number } = {
@@ -1393,6 +1493,13 @@ export default function FishTankCanvas({
       if (Math.abs(prog - lastProg) > POST_CONFIG.diveEpsilon) {
         lastProg = prog
         skyMat.uniforms.uDive.value = prog
+        // Shafts strengthen as the camera submerges instead of sitting at a
+        // fixed opacity — a static god-ray was invisible above the surface
+        // and identical at any depth once under it.
+        const rayDiveMul = GODRAY_CONFIG.diveStrengthMin + GODRAY_CONFIG.diveStrengthMul * prog
+        for (const m of rayMats) {
+          m.uniforms.uStrength.value = palette.rayStrength * GODRAY_CONFIG.strengthMul * rayDiveMul
+        }
       }
 
       // Water surface waves are displaced in the vertex shader — just advance its clock.
@@ -1414,13 +1521,16 @@ export default function FishTankCanvas({
       }
       bubbles.geometry.attributes.position.needsUpdate = true
 
-      const mp = motes.geometry.attributes.position.array as Float32Array
-      for (let i = 0; i < mp.length; i += 3) {
-        mp[i] += Math.sin(t * MOTE_CONFIG.driftFreq + mp[i + 1] * MOTE_CONFIG.driftPhaseMul) * dt * MOTE_CONFIG.driftAmp
-        mp[i + 1] -= dt * MOTE_CONFIG.sinkSpeed
-        if (mp[i + 1] < FLOOR_Y) mp[i + 1] = WATER_Y - MOTE_CONFIG.recycleTopOffset
+      for (const layer of moteLayers) {
+        const mp = layer.points.geometry.attributes.position.array as Float32Array
+        const sinkSpeed = MOTE_CONFIG.sinkSpeed * layer.sinkSpeedMul
+        for (let i = 0; i < mp.length; i += 3) {
+          mp[i] += Math.sin(t * MOTE_CONFIG.driftFreq + mp[i + 1] * MOTE_CONFIG.driftPhaseMul) * dt * MOTE_CONFIG.driftAmp
+          mp[i + 1] -= dt * sinkSpeed
+          if (mp[i + 1] < FLOOR_Y) mp[i + 1] = WATER_Y - MOTE_CONFIG.recycleTopOffset
+        }
+        layer.points.geometry.attributes.position.needsUpdate = true
       }
-      motes.geometry.attributes.position.needsUpdate = true
 
       // Caustics & God rays
       causticMat.uniforms.uTime.value = st
@@ -1704,44 +1814,48 @@ export default function FishTankCanvas({
           o.built.mixer.update(dt * playbackSpeed)
         }
 
-        // Organic S-Curve Spine & Segment Undulation
-        const { spineSegments, pecL, pecR, tentacles } = o.built
-        // Beat rate tracks how fast the fish is *actually* moving, so a dash to
-        // food and a coast home are legible in the body, not only in the path.
-        const swimSpeed =
-          (o.data.speed || 0.5) * 7.5 * (0.45 + 0.55 * Math.min(1.6, bodySpeed(body) / cruise))
-        // Integrated rather than sampled from the global clock: multiplying `t`
-        // by a rate that changes with speed would jump the wave phase on every
-        // change, which reads as a twitch.
-        const tailPhase = ((o.mesh.userData.tailPhase as number | undefined) ?? 0) + dt * swimSpeed
-        o.mesh.userData.tailPhase = tailPhase
+        // Organic S-Curve Spine & Segment Undulation — procedural fallback only.
+        // GLB heroes already have a skeletal idle; ticking hidden spine segments
+        // is wasted CPU and can fight the mixer if a child was not hidden.
+        if (!o.built.isGltf) {
+          const { spineSegments, pecL, pecR, tentacles } = o.built
+          // Beat rate tracks how fast the fish is *actually* moving, so a dash to
+          // food and a coast home are legible in the body, not only in the path.
+          const swimSpeed =
+            (o.data.speed || 0.5) * 7.5 * (0.45 + 0.55 * Math.min(1.6, bodySpeed(body) / cruise))
+          // Integrated rather than sampled from the global clock: multiplying `t`
+          // by a rate that changes with speed would jump the wave phase on every
+          // change, which reads as a twitch.
+          const tailPhase = ((o.mesh.userData.tailPhase as number | undefined) ?? 0) + dt * swimSpeed
+          o.mesh.userData.tailPhase = tailPhase
 
-        if (spineSegments.length > 1) {
-          spineSegments.forEach((seg, sIdx) => {
-            const phaseLag = sIdx * 0.65
-            const amp = 0.08 + sIdx * 0.07
-            seg.rotation.y = Math.sin(tailPhase - phaseLag) * amp
-          })
-        }
-
-        // Pectoral fin flapping
-        if (pecL && pecR) {
-          const beat = Math.sin(t * 8 * (0.4 + o.data.speed)) * 0.35
-          pecL.rotation.x = beat
-          pecR.rotation.x = -beat
-        }
-
-        // Jellyfish tentacle wave
-        if (tentacles && tentacles.length > 0) {
-          const dome = spineSegments[0]
-          if (dome) {
-            const pulse = 1 + Math.sin(t * 3.5) * 0.15
-            dome.scale.set(1 / Math.sqrt(pulse), pulse, 1 / Math.sqrt(pulse))
+          if (spineSegments.length > 1) {
+            spineSegments.forEach((seg, sIdx) => {
+              const phaseLag = sIdx * 0.65
+              const amp = 0.08 + sIdx * 0.07
+              seg.rotation.y = Math.sin(tailPhase - phaseLag) * amp
+            })
           }
-          tentacles.forEach((ten, idx) => {
-            ten.rotation.z = Math.sin(t * 3 + idx * 0.8) * 0.25
-            ten.rotation.x = Math.cos(t * 3 + idx * 0.8) * 0.25
-          })
+
+          // Pectoral fin flapping
+          if (pecL && pecR) {
+            const beat = Math.sin(t * 8 * (0.4 + o.data.speed)) * 0.35
+            pecL.rotation.x = beat
+            pecR.rotation.x = -beat
+          }
+
+          // Jellyfish tentacle wave
+          if (tentacles && tentacles.length > 0) {
+            const dome = spineSegments[0]
+            if (dome) {
+              const pulse = 1 + Math.sin(t * 3.5) * 0.15
+              dome.scale.set(1 / Math.sqrt(pulse), pulse, 1 / Math.sqrt(pulse))
+            }
+            tentacles.forEach((ten, idx) => {
+              ten.rotation.z = Math.sin(t * 3 + idx * 0.8) * 0.25
+              ten.rotation.x = Math.cos(t * 3 + idx * 0.8) * 0.25
+            })
+          }
         }
 
         // Glow boost decay after eating
@@ -1785,12 +1899,22 @@ export default function FishTankCanvas({
             Math.min(1, lit) *
             tuning.fishFinEmissiveMul,
         )
-        o.built.glow.intensity =
-          (o.data.glow + boost * INTERACTION_CONFIG.glowBoostMul) *
-          INTERACTION_CONFIG.glowIntensityMul *
-          Math.min(1, lit) *
-          (focused ? INTERACTION_CONFIG.glowFocusedMul : 1) *
-          tuning.fishGlowMul
+        if (o.built.isGltf) {
+          const lit01 = Math.min(1, lit)
+          // White bloom lift only — never a domain tint. Focus/highlight reads
+          // via this lift plus the scale step above; the atlas albedo (map,
+          // color) is set once at load and never rewritten per frame.
+          const gltfEmissive = Math.max(
+            o.built.body.emissiveIntensity,
+            FISH_GLTF_CONFIG.emissiveFloor * lit01 * (focused ? INTERACTION_CONFIG.glowFocusedMul : 1),
+          )
+          const dimmed = opacityBase < 0.97
+          for (const mat of o.built.gltfMaterials) {
+            mat.opacity = opacityBase
+            mat.transparent = dimmed
+            mat.emissiveIntensity = gltfEmissive
+          }
+        }
 
         _v.copy(o.mesh.position)
         _v.y -= LABEL_CONFIG.yOffsetMul * pose.scale
@@ -1961,6 +2085,8 @@ export default function FishTankCanvas({
 
     return () => {
       disposed = true
+      sceneryAbort.abort()
+      for (const o of fishObjs) o.built.cancelGltf()
       applyPaletteRef.current = null
       applyHighlightRef.current = null
       cancelAnimationFrame(raf)

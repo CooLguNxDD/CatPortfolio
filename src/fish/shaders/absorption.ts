@@ -20,30 +20,37 @@
 
 import * as THREE from "three"
 
-/** Extinction coefficients per world unit (red dies first). */
+/** Extinction coefficients per world unit (red dies first). Fallback/default ratio. */
 export const SIGMA_RGB: [number, number, number] = [0.35, 0.08, 0.02]
 
-/**
- * Channel ratios normalised against red. `fogDensity` supplies the absolute
- * scale, so a palette can deepen the water (night dive) by raising density
- * without recompiling shaders.
- */
-const SIGMA_RATIO: [number, number, number] = [
-  1,
-  SIGMA_RGB[1] / SIGMA_RGB[0],
-  SIGMA_RGB[2] / SIGMA_RGB[0],
-]
+/** Build the normalised-against-red channel ratio from an [r,g,b] sigma triple. */
+function toRatio(sigma: readonly [number, number, number]): [number, number, number] {
+  const r = sigma[0] || 1
+  return [1, sigma[1] / r, sigma[2] / r]
+}
 
-let installed = false
+let installedRatioKey = ""
 
 /**
- * Install the wavelength-aware fog chunk. Global to the three runtime and
- * idempotent — called once from the tank canvas, which is the only place in
- * the app that renders WebGL at all.
+ * Install the wavelength-aware fog chunk with the given per-wavelength
+ * extinction ratio (`TankThemePalette.sigma`, day vs night vs circadian
+ * blend). `fogDensity` supplies the absolute scale, so this only needs to
+ * recompile when the *ratio* changes, not on every density/theme tick.
+ *
+ * `THREE.ShaderChunk.fog_fragment` is global text baked into a material's
+ * shader program at compile time — rewriting it does nothing to materials
+ * already compiled. Callers that resample the palette mid-life (no scene
+ * remount) must force affected materials' `.needsUpdate = true` afterward;
+ * see `FishTankCanvas.tsx::applyPalette`.
+ *
+ * Returns whether the installed ratio actually changed (i.e. a recompile is
+ * needed), so callers can skip that materials pass when it didn't.
  */
-export function installBeerLambertFog(): void {
-  if (installed) return
-  installed = true
+export function installBeerLambertFog(sigma: readonly [number, number, number] = SIGMA_RGB): boolean {
+  const ratio = toRatio(sigma)
+  const key = ratio.map((v) => v.toFixed(4)).join(",")
+  if (key === installedRatioKey) return false
+  installedRatioKey = key
 
   THREE.ShaderChunk.fog_fragment = /* glsl */ `
     #ifdef USE_FOG
@@ -51,11 +58,7 @@ export function installBeerLambertFog(): void {
         // Beer-Lambert per-wavelength extinction, replacing three's grey
         // exponential-squared falloff: red is absorbed ~17x faster than blue,
         // which is what makes deep water read as blue rather than as haze.
-        vec3 sigma = fogDensity * vec3(
-          ${SIGMA_RATIO[0].toFixed(4)},
-          ${SIGMA_RATIO[1].toFixed(4)},
-          ${SIGMA_RATIO[2].toFixed(4)}
-        );
+        vec3 sigma = fogDensity * vec3(${ratio[0].toFixed(4)}, ${ratio[1].toFixed(4)}, ${ratio[2].toFixed(4)});
         vec3 transmittance = exp(-sigma * vFogDepth);
         // What the water absorbs comes back as its own in-scattered colour,
         // otherwise distant geometry crushes to black instead of going blue.
@@ -66,4 +69,5 @@ export function installBeerLambertFog(): void {
       #endif
     #endif
   `
+  return true
 }

@@ -8,11 +8,14 @@ import path from 'path'
 function serveModelsPlugin() {
   return {
     name: 'serve-models-plugin',
+    // Before Vite's SPA fallback so the first .glb request is never index.html.
+    enforce: 'pre' as const,
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         const url = req.url || ''
         if (url.includes('/models/')) {
-          const subPath = url.split('/models/')[1]?.split('?')[0]
+          const raw = url.split('/models/')[1]?.split('?')[0]
+          const subPath = raw ? decodeURIComponent(raw) : ''
           if (subPath) {
             const filePath = path.resolve(process.cwd(), 'public/models', subPath)
             if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -23,6 +26,7 @@ function serveModelsPlugin() {
               } else if (filePath.endsWith('.json')) {
                 res.setHeader('Content-Type', 'application/json')
               }
+              res.statusCode = 200
               res.setHeader('Access-Control-Allow-Origin', '*')
               return fs.createReadStream(filePath).pipe(res)
             }

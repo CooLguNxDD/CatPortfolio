@@ -18,3 +18,15 @@ export {
   type FishFilter,
 } from "./matchFish"
 export { resolveFishForm, DOMAIN_FORM, type FishForm } from "./formFromDomain"
+export {
+  assetRegistry,
+  registerAsset,
+  registerAssetAlias,
+  registerManifest,
+  registerAllFish,
+  ensureAssetManifest,
+  DOMAIN_ASSET_ALIASES,
+  type ManifestEntry,
+  type RegisteredAsset,
+  type AssetKind,
+} from "./assetRegistry"

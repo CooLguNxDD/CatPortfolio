@@ -87,6 +87,19 @@ export const LIGHT_CONFIG = {
   bedBounceHeightOffset: 4,
 } as const
 
+/**
+ * Sun shadow map — high tier only (`TankQuality.shadowMapSize`). The
+ * orthographic frustum is sized in FishTankCanvas.tsx from TANK_HALF_W /
+ * TANK_HALF_D / TANK_HEIGHT, not here, since those live in fishTankLayout.ts.
+ */
+export const SHADOW_CONFIG = {
+  near: 1,
+  far: 80,
+  bias: -0.0015,
+  normalBias: 0.02,
+  frustumPad: 4,
+} as const
+
 // ---------------------------------------------------------------------------
 // Tank geometry & placement
 // ---------------------------------------------------------------------------
@@ -99,6 +112,26 @@ export const BACKDROP_CONFIG = {
 
 export const GLASS_CONFIG = {
   heightPad: 0.5,
+} as const
+
+/**
+ * Water surface underside — seen from the tank's normal submerged state.
+ * Real water shows a Snell window: a cone of the above-water world directly
+ * overhead, total internal reflection (a mirror of the water itself)
+ * outside it. `snellCosLo/Hi` are the soft-edge bounds on cos(angle from
+ * straight up); a real Snell window's half-angle is ~48.6° (cos ≈ 0.66) —
+ * the edge is widened here for a softer, more paintable transition.
+ */
+export const WATER_CONFIG = {
+  snellCosLo: 0.58,
+  snellCosHi: 0.78,
+  /** Sky bleed-through inside the window, mixed toward uSun. */
+  windowSkyMix: 0.6,
+  /** Mirror darkening outside the window, multiplied onto uColor. */
+  mirrorDarken: 0.55,
+  /** Alpha bounds outside → inside the window. */
+  underAlphaOuter: 0.25,
+  underAlphaInnerMul: 0.6,
 } as const
 
 export const FLOOR_CONFIG = {
@@ -122,8 +155,12 @@ export const CAUSTIC_CONFIG = {
   insetX: 0.6,
   insetZ: 0.6,
   yAboveFloor: 0.35,
-  /** World-space caustic injection on other materials (floor, fish, …). */
-  surfaceStrengthMul: 0.55,
+  // World-space caustic injection on other materials (floor, rocks, flora,
+  // minnows, fish). Fish now carry real atlas albedo, so this is the main
+  // cue that a fish is under moving water rather than lit flat — raised from
+  // the old value tuned for a near-black fish surface where the pattern was
+  // barely visible.
+  surfaceStrengthMul: 0.8,
 } as const
 
 export const GODRAY_CONFIG = {
@@ -133,6 +170,10 @@ export const GODRAY_CONFIG = {
   heightModIndex: 3,
   heightModStep: 0.15,
   strengthMul: 2.4,
+  /** Shaft strength floor above the surface / at the start of a dive. */
+  diveStrengthMin: 0.35,
+  /** Additional strength gained by full dive progress (prog: 0..1). */
+  diveStrengthMul: 0.9,
   radiusBase: 1.8,
   radiusModIndex: 4,
   radiusModStep: 0.6,
@@ -233,14 +274,25 @@ export const BUBBLE_CONFIG = {
 } as const
 
 export const MOTE_CONFIG = {
-  count: 100,
+  totalCount: 100,
   spawnInsetXZ: 1,
-  size: 0.9,
   driftFreq: 0.2,
   driftPhaseMul: 0.1,
   driftAmp: 0.25,
   sinkSpeed: 0.35,
   recycleTopOffset: 0.5,
+  /**
+   * Marine snow as a few discrete size/density bands instead of one uniform
+   * cloud — the closest approximation to depth-varying particle size a flat
+   * `PointsMaterial` (one size for the whole draw call) can give without a
+   * custom per-vertex-size shader. `countFrac` splits the old flat count
+   * (100) across bands so the total particle budget is unchanged.
+   */
+  layers: [
+    { countFrac: 0.5, size: 0.5, sinkSpeedMul: 0.6 },
+    { countFrac: 0.35, size: 0.9, sinkSpeedMul: 1.0 },
+    { countFrac: 0.15, size: 1.6, sinkSpeedMul: 1.5 },
+  ],
 } as const
 
 export const WAKE_CONFIG = {
@@ -321,8 +373,7 @@ export const INTERACTION_CONFIG = {
   bodyEmissiveGlowMul: 0.85,
   finEmissiveBoostMul: 1.0,
   finEmissiveGlowMul: 1.2,
-  glowBoostMul: 1.2,
-  glowIntensityMul: 2.4,
+  /** Focused GLTF fish's white bloom-lift multiplier — see FishTankCanvas.tsx's gltfEmissive calc. */
   glowFocusedMul: 2.8,
   boostDecayRate: 0.8,
 } as const
@@ -355,6 +406,8 @@ export const CAT_CONFIG = {
 } as const
 
 export const POST_CONFIG = {
+  /** ACESFilmic exposure — OutputPass reads renderer.toneMapping; without this it only did sRGB. */
+  toneMappingExposure: 1.05,
   /** Frame-delta ceiling — prevents multi-second physics snaps after a frozen/backgrounded tab. */
   dtClampSec: 0.05,
   fogBaseMin: 0.18,
@@ -398,7 +451,6 @@ export interface FishTankTuning {
   fishBodyEmissiveMul: number
   fishFinEmissiveFloor: number
   fishFinEmissiveMul: number
-  fishGlowMul: number
 }
 
 const DAY_TANK_TUNING: FishTankTuning = {
@@ -416,7 +468,6 @@ const DAY_TANK_TUNING: FishTankTuning = {
   fishBodyEmissiveMul: 0.6,
   fishFinEmissiveFloor: 0.16,
   fishFinEmissiveMul: 0.6,
-  fishGlowMul: 0.75,
 }
 
 const NIGHT_TANK_TUNING: FishTankTuning = {
@@ -432,7 +483,6 @@ const NIGHT_TANK_TUNING: FishTankTuning = {
   fishBodyEmissiveMul: 1.1,
   fishFinEmissiveFloor: 0.35,
   fishFinEmissiveMul: 1.25,
-  fishGlowMul: 1.25,
 }
 
 /** Resolve the day/night tuning pair for the tank's theme mode (`palette.light`). */
@@ -446,19 +496,33 @@ export function resolveFishTankTuning(light: boolean): FishTankTuning {
 // ---------------------------------------------------------------------------
 
 export const FISH_MATERIAL_CONFIG = {
-  bodyEmissiveFloor: 0.2,
-  bodyEmissiveGlowMul: 0.75,
+  bodyColor: 0xc9c2b4,
+  bodyEmissiveFloor: 0.06,
+  bodyEmissiveGlowMul: 0.4,
   bodyRoughness: 0.45,
   bodyMetalness: 0.08,
   bodyOpacity: 0.98,
-  finEmissiveFloor: 0.35,
-  finEmissiveGlowMul: 1.1,
+  finColor: 0xc9c2b4,
+  finEmissiveFloor: 0.08,
+  finEmissiveGlowMul: 0.55,
   finOpacity: 0.85,
   finRoughness: 0.3,
   finMetalness: 0.05,
-  glowIntensityFloor: 0.6,
-  glowIntensityMul: 1.6,
-  glowDistance: 8,
+} as const
+
+/**
+ * GLTF creature material (`modelLoader.ts::loadFishModelInstance`). Albedo is
+ * the shared LayerLab atlas (`public/models/textures/color.png`) — the
+ * default fish texture. `emissive` stays white: a hue-neutral bloom lift,
+ * never a domain tint. Floor is low because key/fill/hemi light now actually
+ * reach the surface (see `resolveFishTankTuning`); the old floor (0.85) only
+ * existed to keep a black-albedo fish visible at all.
+ */
+export const FISH_GLTF_CONFIG = {
+  emissiveFloor: 0.08,
+  emissiveGlowMul: 0.4,
+  roughness: 0.55,
+  metalness: 0.05,
 } as const
 
 export const EYE_CONFIG = {
