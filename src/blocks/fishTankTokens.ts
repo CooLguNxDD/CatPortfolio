@@ -178,6 +178,8 @@ export interface TankThemePalette {
   accent: number
   cyan: number
   neon: number
+  /** Fourth reef hue — pulled in alongside accent/cyan/neon for coral/crystal variety. */
+  pink: number
   /** Ambient light colour + intensity */
   ambientColor: number
   ambientIntensity: number
@@ -267,9 +269,13 @@ export function resolveCircadianPhase(
  * read as a dusty room. The tank is always underwater; the theme supplies the
  * *tint* and the lighting environment, not the medium.
  */
-const WATER_BASE_DARK = 0x0a2b3d
+// Dark bases lifted off pure ink toward a saturated midnight teal — this is
+// the color the water/deep column starts from *before* `applyCircadian`'s
+// night branch runs; both need to stay off-black for the reef to read as
+// colorful rather than crushing to near-zero downstream.
+const WATER_BASE_DARK = 0x0e3d58
 const WATER_BASE_LIGHT = 0x9fd8e6
-const DEEP_BASE_DARK = 0x02121d
+const DEEP_BASE_DARK = 0x072a40
 const DEEP_BASE_LIGHT = 0x4f9fba
 
 /** Sample live CSS theme tokens into a three-safe underwater palette. */
@@ -285,6 +291,7 @@ export function resolveTankThemePalette(): TankThemePalette {
   const accent = tokenToHex("amber", light ? 0xd97706 : 0xfbbf24)
   const cyan = tokenToHex("cyan", light ? 0x0891b2 : 0x22d3ee)
   const neon = tokenToHex("neon", light ? 0x16a34a : 0x4ade80)
+  const pink = tokenToHex("pink", light ? 0xdb2777 : 0xf472b6)
 
   // Optional --water / --water-deep tokens; cozy/neon/paper keep the formula.
   const waterTok = readCssToken("water", "")
@@ -313,29 +320,35 @@ export function resolveTankThemePalette(): TankThemePalette {
     accent,
     cyan,
     neon,
+    pink,
     deep,
     sun,
     // Two lighting environments, one medium.
     // light  = shallow sunlit lagoon: high key, thin haze, bright sand.
-    // dark   = night dive: dim ambient, hard cyan shaft, bioluminescent accents.
-    ambientColor: light ? liftHex(water, 0.45) : mixHex(water, cyan, 0.3),
-    ambientIntensity: light ? 1.2 : 0.85,
+    // dark   = night reef: a colourful bioluminescent dive (Subnautica-style
+    //          vivid flora/fauna against dark water), not a flat black abyss.
+    ambientColor: light ? liftHex(water, 0.45) : mixHex(water, cyan, 0.32),
+    ambientIntensity: light ? 1.3 : 1.05,
     keyColor: sun,
-    // Fish materials carry a floor emissiveIntensity for the night bioluminescent
-    // read (see speciesMeshes.ts::makeMaterials); at the old daylight key
-    // (2.6 * 1.2 = 3.12) that floor plus a hard directional specular blew
-    // scales out to a washed-out shine instead of a sunlit sheen.
-    keyIntensity: light ? 1.7 : 1.9,
+    // These were pulled down specifically because fish materials had a fixed
+    // black albedo (color: 0x000000) plus a floor emissiveIntensity for the
+    // night bioluminescent read — a hard directional specular against that
+    // combo blew scales out to a washed-out shine instead of a sunlit sheen.
+    // Fish now carry real atlas albedo (modelLoader.ts) and the renderer runs
+    // ACESFilmicToneMapping, which compresses that highlight on its own — so
+    // key/fill/hemi can sit closer to what the lagoon/night-dive brief calls
+    // for instead of being clamped down for a material that no longer exists.
+    keyIntensity: light ? 1.9 : 2.1,
     fillColor: light ? liftHex(water, 0.3) : mixHex(deep, cyan, 0.35),
-    fillIntensity: light ? 0.9 : 1.35,
+    fillIntensity: light ? 1.0 : 1.45,
     hemiSky: light ? liftHex(sun, 0.35) : liftHex(cyan, 0.25),
     hemiGround: light ? liftHex(water, 0.15) : deep,
-    hemiIntensity: light ? 1.1 : 0.75,
+    hemiIntensity: light ? 1.2 : 0.85,
     fogColor: light ? liftHex(water, 0.22) : deep,
     // Haze thickens with depth in the shader-free way: FogExp2 + a deep backdrop.
-    fogDensity: light ? 0.011 : 0.019,
+    fogDensity: light ? 0.011 : 0.014,
     water,
-    floor: light ? 0xd9c9a3 : mixHex(0x243a44, water, 0.35),
+    floor: light ? 0xd9c9a3 : mixHex(0x2a5a68, water, 0.4),
     rock: light ? 0x9a8f7a : mixHex(deep, 0x000000, 0.25),
     // Dark mode leans on additive particles for its bioluminescent read, so
     // both clouds are lifted much closer to white there than in daylight.
@@ -343,10 +356,12 @@ export function resolveTankThemePalette(): TankThemePalette {
     // Glass reads as a faint accent-tinted edge, not a hard amber cage.
     glass: mixHex(accent, sun, light ? 0.5 : 0.35),
     motes: light ? liftHex(water, 0.55) : liftHex(cyan, 0.62),
-    weed: light ? mixHex(neon, 0x3f6b3a, 0.45) : mixHex(neon, deep, 0.5),
-    causticStrength: light ? 0.55 : 0.38,
+    // Reef floor, not black sand — mixed toward the water/neon column instead
+    // of `deep`, which crushed to near-black once circadian night ran too.
+    weed: light ? mixHex(neon, 0x3f6b3a, 0.45) : mixHex(neon, water, 0.3),
+    causticStrength: light ? 0.55 : 0.5,
     // Per-surface opacity, and they overlap — keep it barely there.
-    rayStrength: light ? 0.035 : 0.05,
+    rayStrength: light ? 0.035 : 0.08,
     // Shallow lagoon water is clearer than the open column, so daylight loses
     // red more slowly than a night dive does.
     sigma: light ? [0.28, 0.06, 0.015] : [0.35, 0.08, 0.02],
@@ -393,6 +408,8 @@ export interface TankQuality {
   wobble: boolean
   /** Multiplier on shader time — 0 freezes animation for reduce-motion users. */
   timeScale: number
+  /** Shadow map resolution; 0 disables the shadow map entirely (low tier). */
+  shadowMapSize: number
 }
 
 const HIGH_QUALITY: TankQuality = {
@@ -402,6 +419,7 @@ const HIGH_QUALITY: TankQuality = {
   waterSegments: [64, 48],
   wobble: true,
   timeScale: 1,
+  shadowMapSize: 1024,
 }
 
 const LOW_QUALITY: TankQuality = {
@@ -411,6 +429,7 @@ const LOW_QUALITY: TankQuality = {
   waterSegments: [32, 24],
   wobble: false,
   timeScale: 1,
+  shadowMapSize: 0,
 }
 
 /** Safe media-query probe — SSR and bare-node tests have no matchMedia. */

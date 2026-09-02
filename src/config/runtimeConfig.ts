@@ -74,7 +74,8 @@ function parseTimeoutMs(value: unknown, fallback: number): number {
 function originOf(v: string | undefined | null): string {
   if (!v) return "";
   try {
-    return new URL(v).origin;
+    const cleaned = v.replace(/^[\uFEFF\xA0\s]+|[\uFEFF\xA0\s]+$/g, "");
+    return new URL(cleaned).origin;
   } catch {
     return "";
   }
@@ -98,7 +99,7 @@ function allowedOrigins(): Set<string> {
 }
 
 function resolveOctBaseUrl(raw: string | undefined | null): string {
-  const v = (raw ?? "").trim();
+  const v = (raw ?? "").replace(/^[\uFEFF\xA0\s]+|[\uFEFF\xA0\s]+$/g, "");
   if (!v || v === "same-origin" || v === ".") {
     if (typeof window !== "undefined" && window.location?.origin) {
       return window.location.origin;
@@ -135,7 +136,9 @@ function envFallback(): RuntimeConfig {
     octBaseUrl: resolveOctBaseUrl(
       (import.meta.env.VITE_OCT_URL as string | undefined) ?? "",
     ),
-    mcpApiKey: (import.meta.env.VITE_OCT_API_KEY as string | undefined) ?? "",
+    mcpApiKey: (
+      (import.meta.env.VITE_OCT_API_KEY as string | undefined) ?? ""
+    ).replace(/^[\uFEFF\xA0\s]+|[\uFEFF\xA0\s]+$/g, ""),
     askTimeoutMs: parseTimeoutMs(
       import.meta.env.VITE_ASK_TIMEOUT_MS as string | undefined,
       DEFAULT_ASK_TIMEOUT_MS

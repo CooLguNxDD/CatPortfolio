@@ -15,7 +15,7 @@ const TUNING_KEYS = [
   "fishBodyEmissiveMul",
   "fishFinEmissiveFloor",
   "fishFinEmissiveMul",
-  "fishGlowMul",
+  "plantGlowMul",
 ] as const satisfies readonly (keyof FishTankTuning)[]
 
 describe("resolveFishTankTuning", () => {
@@ -43,26 +43,26 @@ describe("resolveFishTankTuning", () => {
       fishBodyEmissiveMul: 0.6,
       fishFinEmissiveFloor: 0.16,
       fishFinEmissiveMul: 0.6,
-      fishGlowMul: 0.75,
+      plantGlowMul: 1,
     } satisfies FishTankTuning)
   })
 
   it("pins today's night (dark theme) branch values", () => {
     const night = resolveFishTankTuning(false)
     expect(night).toEqual({
-      accentFillIntensity: 1.8,
-      bedBounceIntensity: 0.85,
+      accentFillIntensity: 2.4,
+      bedBounceIntensity: 1.15,
       glassOpacity: 0.32,
       waterOpacity: 0.42,
-      minnowEmissive: 0.45,
-      bubbleOpacity: 0.65,
-      moteOpacity: 0.45,
-      wakeOpacity: 0.88,
+      minnowEmissive: 0.6,
+      bubbleOpacity: 0.72,
+      moteOpacity: 0.55,
+      wakeOpacity: 0.95,
       fishBodyEmissiveFloor: 0.25,
       fishBodyEmissiveMul: 1.1,
       fishFinEmissiveFloor: 0.35,
       fishFinEmissiveMul: 1.25,
-      fishGlowMul: 1.25,
+      plantGlowMul: 2,
     } satisfies FishTankTuning)
   })
 
@@ -73,6 +73,6 @@ describe("resolveFishTankTuning", () => {
     expect(night.fishBodyEmissiveMul).toBeGreaterThanOrEqual(day.fishBodyEmissiveMul)
     expect(night.fishFinEmissiveFloor).toBeGreaterThanOrEqual(day.fishFinEmissiveFloor)
     expect(night.fishFinEmissiveMul).toBeGreaterThanOrEqual(day.fishFinEmissiveMul)
-    expect(night.fishGlowMul).toBeGreaterThanOrEqual(day.fishGlowMul)
+    expect(night.plantGlowMul).toBeGreaterThanOrEqual(day.plantGlowMul)
   })
 })

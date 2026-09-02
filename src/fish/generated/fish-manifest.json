@@ -1,0 +1,1532 @@
+{
+  "AchilesTang": {
+    "id": "AchilesTang",
+    "path": "models/fish/AchilesTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1164,
+    "triangles": 388,
+    "bones": 6,
+    "sizeBytes": 77608
+  },
+  "AngelShark": {
+    "id": "AngelShark",
+    "path": "models/fish/AngelShark.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1932,
+    "triangles": 644,
+    "bones": 7,
+    "sizeBytes": 117412
+  },
+  "AzureDamsel": {
+    "id": "AzureDamsel",
+    "path": "models/fish/AzureDamsel.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 630,
+    "triangles": 210,
+    "bones": 6,
+    "sizeBytes": 47640
+  },
+  "BallinaAngelfish": {
+    "id": "BallinaAngelfish",
+    "path": "models/fish/BallinaAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 792,
+    "triangles": 264,
+    "bones": 6,
+    "sizeBytes": 57284
+  },
+  "BanditAngelfish": {
+    "id": "BanditAngelfish",
+    "path": "models/fish/BanditAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 864,
+    "triangles": 288,
+    "bones": 6,
+    "sizeBytes": 61384
+  },
+  "BarrierReefChromis": {
+    "id": "BarrierReefChromis",
+    "path": "models/fish/BarrierReefChromis.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 666,
+    "triangles": 222,
+    "bones": 6,
+    "sizeBytes": 49836
+  },
+  "BicolorAngelfish": {
+    "id": "BicolorAngelfish",
+    "path": "models/fish/BicolorAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 600,
+    "triangles": 200,
+    "bones": 6,
+    "sizeBytes": 46036
+  },
+  "BlackSeahorse": {
+    "id": "BlackSeahorse",
+    "path": "models/fish/BlackSeahorse.glb",
+    "type": "creature",
+    "rig": "seahorse",
+    "vertices": 1962,
+    "triangles": 654,
+    "bones": 17,
+    "sizeBytes": 138924
+  },
+  "BlackTang": {
+    "id": "BlackTang",
+    "path": "models/fish/BlackTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 600,
+    "triangles": 200,
+    "bones": 6,
+    "sizeBytes": 46008
+  },
+  "BlackandWhiteChromis": {
+    "id": "BlackandWhiteChromis",
+    "path": "models/fish/BlackandWhiteChromis.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 612,
+    "triangles": 204,
+    "bones": 6,
+    "sizeBytes": 46844
+  },
+  "BlackcapBasslet": {
+    "id": "BlackcapBasslet",
+    "path": "models/fish/BlackcapBasslet.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 618,
+    "triangles": 206,
+    "bones": 6,
+    "sizeBytes": 47128
+  },
+  "BlacktipReefShark": {
+    "id": "BlacktipReefShark",
+    "path": "models/fish/BlacktipReefShark.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1770,
+    "triangles": 590,
+    "bones": 7,
+    "sizeBytes": 108340
+  },
+  "BleekersDamsel": {
+    "id": "BleekersDamsel",
+    "path": "models/fish/BleekersDamsel.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 606,
+    "triangles": 202,
+    "bones": 6,
+    "sizeBytes": 46360
+  },
+  "BlueLobster": {
+    "id": "BlueLobster",
+    "path": "models/fish/BlueLobster.glb",
+    "type": "creature",
+    "rig": "lobster",
+    "vertices": 2550,
+    "triangles": 850,
+    "bones": 13,
+    "sizeBytes": 162252
+  },
+  "BlueTang": {
+    "id": "BlueTang",
+    "path": "models/fish/BlueTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1128,
+    "triangles": 376,
+    "bones": 6,
+    "sizeBytes": 75560
+  },
+  "BluebandedGoby": {
+    "id": "BluebandedGoby",
+    "path": "models/fish/BluebandedGoby.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 936,
+    "triangles": 312,
+    "bones": 6,
+    "sizeBytes": 64848
+  },
+  "BluefinTuna": {
+    "id": "BluefinTuna",
+    "path": "models/fish/BluefinTuna.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 843,
+    "triangles": 281,
+    "bones": 6,
+    "sizeBytes": 59744
+  },
+  "BumblebeeGrouper": {
+    "id": "BumblebeeGrouper",
+    "path": "models/fish/BumblebeeGrouper.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1146,
+    "triangles": 382,
+    "bones": 6,
+    "sizeBytes": 76640
+  },
+  "CandyBasslet": {
+    "id": "CandyBasslet",
+    "path": "models/fish/CandyBasslet.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1308,
+    "triangles": 436,
+    "bones": 6,
+    "sizeBytes": 85444
+  },
+  "CaptiveBredYellowlineGoby": {
+    "id": "CaptiveBredYellowlineGoby",
+    "path": "models/fish/CaptiveBredYellowlineGoby.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 678,
+    "triangles": 226,
+    "bones": 6,
+    "sizeBytes": 50436
+  },
+  "Clownfish": {
+    "id": "Clownfish",
+    "path": "models/fish/Clownfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1074,
+    "triangles": 358,
+    "bones": 6,
+    "sizeBytes": 72584
+  },
+  "CommonThresherShark": {
+    "id": "CommonThresherShark",
+    "path": "models/fish/CommonThresherShark.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1689,
+    "triangles": 563,
+    "bones": 9,
+    "sizeBytes": 106460
+  },
+  "ConspicAngelfish": {
+    "id": "ConspicAngelfish",
+    "path": "models/fish/ConspicAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 756,
+    "triangles": 252,
+    "bones": 6,
+    "sizeBytes": 55272
+  },
+  "CopperbandButterflyfish": {
+    "id": "CopperbandButterflyfish",
+    "path": "models/fish/CopperbandButterflyfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1188,
+    "triangles": 396,
+    "bones": 6,
+    "sizeBytes": 78996
+  },
+  "CoralAA": {
+    "id": "CoralAA",
+    "path": "models/props/CoralAA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1350,
+    "triangles": 450,
+    "bones": 0,
+    "sizeBytes": 44692
+  },
+  "CoralAB": {
+    "id": "CoralAB",
+    "path": "models/props/CoralAB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1350,
+    "triangles": 450,
+    "bones": 0,
+    "sizeBytes": 44696
+  },
+  "CoralBA": {
+    "id": "CoralBA",
+    "path": "models/props/CoralBA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 3192,
+    "triangles": 1064,
+    "bones": 0,
+    "sizeBytes": 103640
+  },
+  "CoralBB": {
+    "id": "CoralBB",
+    "path": "models/props/CoralBB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 3192,
+    "triangles": 1064,
+    "bones": 0,
+    "sizeBytes": 103640
+  },
+  "CoralCA": {
+    "id": "CoralCA",
+    "path": "models/props/CoralCA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 3732,
+    "triangles": 1244,
+    "bones": 0,
+    "sizeBytes": 120920
+  },
+  "CoralCB": {
+    "id": "CoralCB",
+    "path": "models/props/CoralCB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 3732,
+    "triangles": 1244,
+    "bones": 0,
+    "sizeBytes": 120916
+  },
+  "CoralD": {
+    "id": "CoralD",
+    "path": "models/props/CoralD.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1350,
+    "triangles": 450,
+    "bones": 0,
+    "sizeBytes": 44692
+  },
+  "CoralE": {
+    "id": "CoralE",
+    "path": "models/props/CoralE.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 2688,
+    "triangles": 896,
+    "bones": 0,
+    "sizeBytes": 87508
+  },
+  "CoralF": {
+    "id": "CoralF",
+    "path": "models/props/CoralF.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1620,
+    "triangles": 540,
+    "bones": 0,
+    "sizeBytes": 53336
+  },
+  "CoralG": {
+    "id": "CoralG",
+    "path": "models/props/CoralG.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 570,
+    "triangles": 190,
+    "bones": 0,
+    "sizeBytes": 19840
+  },
+  "CoralH": {
+    "id": "CoralH",
+    "path": "models/props/CoralH.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 570,
+    "triangles": 190,
+    "bones": 0,
+    "sizeBytes": 19840
+  },
+  "CoralIA": {
+    "id": "CoralIA",
+    "path": "models/props/CoralIA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 918,
+    "triangles": 306,
+    "bones": 0,
+    "sizeBytes": 30868
+  },
+  "CoralIB": {
+    "id": "CoralIB",
+    "path": "models/props/CoralIB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 918,
+    "triangles": 306,
+    "bones": 0,
+    "sizeBytes": 30872
+  },
+  "CoralJA": {
+    "id": "CoralJA",
+    "path": "models/props/CoralJA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 918,
+    "triangles": 306,
+    "bones": 0,
+    "sizeBytes": 30868
+  },
+  "CoralJB": {
+    "id": "CoralJB",
+    "path": "models/props/CoralJB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 918,
+    "triangles": 306,
+    "bones": 0,
+    "sizeBytes": 30868
+  },
+  "CoralKA": {
+    "id": "CoralKA",
+    "path": "models/props/CoralKA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 5433,
+    "triangles": 1811,
+    "bones": 0,
+    "sizeBytes": 175352
+  },
+  "CoralKB": {
+    "id": "CoralKB",
+    "path": "models/props/CoralKB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 5433,
+    "triangles": 1811,
+    "bones": 0,
+    "sizeBytes": 175352
+  },
+  "CoralKC": {
+    "id": "CoralKC",
+    "path": "models/props/CoralKC.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 5433,
+    "triangles": 1811,
+    "bones": 0,
+    "sizeBytes": 175348
+  },
+  "CoralKD": {
+    "id": "CoralKD",
+    "path": "models/props/CoralKD.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 5433,
+    "triangles": 1811,
+    "bones": 0,
+    "sizeBytes": 175352
+  },
+  "CoralLA": {
+    "id": "CoralLA",
+    "path": "models/props/CoralLA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1545,
+    "triangles": 515,
+    "bones": 0,
+    "sizeBytes": 50932
+  },
+  "CoralLB": {
+    "id": "CoralLB",
+    "path": "models/props/CoralLB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1545,
+    "triangles": 515,
+    "bones": 0,
+    "sizeBytes": 50932
+  },
+  "CoralMA": {
+    "id": "CoralMA",
+    "path": "models/props/CoralMA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1242,
+    "triangles": 414,
+    "bones": 0,
+    "sizeBytes": 41224
+  },
+  "CoralMB": {
+    "id": "CoralMB",
+    "path": "models/props/CoralMB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1242,
+    "triangles": 414,
+    "bones": 0,
+    "sizeBytes": 41220
+  },
+  "CoralNA": {
+    "id": "CoralNA",
+    "path": "models/props/CoralNA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 2949,
+    "triangles": 983,
+    "bones": 0,
+    "sizeBytes": 95868
+  },
+  "CoralNB": {
+    "id": "CoralNB",
+    "path": "models/props/CoralNB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 2949,
+    "triangles": 983,
+    "bones": 0,
+    "sizeBytes": 95868
+  },
+  "CoralNC": {
+    "id": "CoralNC",
+    "path": "models/props/CoralNC.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 2949,
+    "triangles": 983,
+    "bones": 0,
+    "sizeBytes": 95868
+  },
+  "CoralND": {
+    "id": "CoralND",
+    "path": "models/props/CoralND.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 2949,
+    "triangles": 983,
+    "bones": 0,
+    "sizeBytes": 95864
+  },
+  "CoralOA": {
+    "id": "CoralOA",
+    "path": "models/props/CoralOA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 153,
+    "triangles": 51,
+    "bones": 0,
+    "sizeBytes": 6428
+  },
+  "CoralOB": {
+    "id": "CoralOB",
+    "path": "models/props/CoralOB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 147,
+    "triangles": 49,
+    "bones": 0,
+    "sizeBytes": 6236
+  },
+  "CoralOC": {
+    "id": "CoralOC",
+    "path": "models/props/CoralOC.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 153,
+    "triangles": 51,
+    "bones": 0,
+    "sizeBytes": 6428
+  },
+  "CoralOD": {
+    "id": "CoralOD",
+    "path": "models/props/CoralOD.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 405,
+    "triangles": 135,
+    "bones": 0,
+    "sizeBytes": 14448
+  },
+  "CorazonDamsel": {
+    "id": "CorazonDamsel",
+    "path": "models/fish/CorazonDamsel.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 690,
+    "triangles": 230,
+    "bones": 6,
+    "sizeBytes": 51064
+  },
+  "DarwinClownfish": {
+    "id": "DarwinClownfish",
+    "path": "models/fish/DarwinClownfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1134,
+    "triangles": 378,
+    "bones": 6,
+    "sizeBytes": 75956
+  },
+  "DominoDamsel": {
+    "id": "DominoDamsel",
+    "path": "models/fish/DominoDamsel.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 894,
+    "triangles": 298,
+    "bones": 6,
+    "sizeBytes": 62480
+  },
+  "EightbandedButterflyfish": {
+    "id": "EightbandedButterflyfish",
+    "path": "models/fish/EightbandedButterflyfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1020,
+    "triangles": 340,
+    "bones": 6,
+    "sizeBytes": 69596
+  },
+  "FireGoby": {
+    "id": "FireGoby",
+    "path": "models/fish/FireGoby.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 702,
+    "triangles": 234,
+    "bones": 6,
+    "sizeBytes": 51720
+  },
+  "FlameAngelfish": {
+    "id": "FlameAngelfish",
+    "path": "models/fish/FlameAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1350,
+    "triangles": 450,
+    "bones": 6,
+    "sizeBytes": 88040
+  },
+  "FoureyeButterflyfish": {
+    "id": "FoureyeButterflyfish",
+    "path": "models/fish/FoureyeButterflyfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1104,
+    "triangles": 368,
+    "bones": 6,
+    "sizeBytes": 74288
+  },
+  "FrenchAngelfish": {
+    "id": "FrenchAngelfish",
+    "path": "models/fish/FrenchAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 966,
+    "triangles": 322,
+    "bones": 6,
+    "sizeBytes": 66532
+  },
+  "GoldenButterfly": {
+    "id": "GoldenButterfly",
+    "path": "models/fish/GoldenButterfly.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1032,
+    "triangles": 344,
+    "bones": 6,
+    "sizeBytes": 70732
+  },
+  "GoldenDottyback": {
+    "id": "GoldenDottyback",
+    "path": "models/fish/GoldenDottyback.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 564,
+    "triangles": 188,
+    "bones": 6,
+    "sizeBytes": 44016
+  },
+  "GoldneonPygmyGoby": {
+    "id": "GoldneonPygmyGoby",
+    "path": "models/fish/GoldneonPygmyGoby.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 678,
+    "triangles": 226,
+    "bones": 6,
+    "sizeBytes": 50408
+  },
+  "GreateWhiteShark": {
+    "id": "GreateWhiteShark",
+    "path": "models/fish/GreateWhiteShark.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1635,
+    "triangles": 545,
+    "bones": 7,
+    "sizeBytes": 100780
+  },
+  "GreenChromis": {
+    "id": "GreenChromis",
+    "path": "models/fish/GreenChromis.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 594,
+    "triangles": 198,
+    "bones": 6,
+    "sizeBytes": 45668
+  },
+  "GreenSeahorse": {
+    "id": "GreenSeahorse",
+    "path": "models/fish/GreenSeahorse.glb",
+    "type": "creature",
+    "rig": "seahorse",
+    "vertices": 1962,
+    "triangles": 654,
+    "bones": 17,
+    "sizeBytes": 137364
+  },
+  "GreenTurtle": {
+    "id": "GreenTurtle",
+    "path": "models/fish/GreenTurtle.glb",
+    "type": "creature",
+    "rig": "turtle",
+    "vertices": 2598,
+    "triangles": 866,
+    "bones": 14,
+    "sizeBytes": 164376
+  },
+  "GreenbandedGoby": {
+    "id": "GreenbandedGoby",
+    "path": "models/fish/GreenbandedGoby.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1110,
+    "triangles": 370,
+    "bones": 6,
+    "sizeBytes": 74624
+  },
+  "Ground": {
+    "id": "Ground",
+    "path": "models/props/Ground.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 606,
+    "triangles": 202,
+    "bones": 0,
+    "sizeBytes": 20836
+  },
+  "HalfBlackMimicTang": {
+    "id": "HalfBlackMimicTang",
+    "path": "models/fish/HalfBlackMimicTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 936,
+    "triangles": 312,
+    "bones": 6,
+    "sizeBytes": 64860
+  },
+  "HawksbillTurtle": {
+    "id": "HawksbillTurtle",
+    "path": "models/fish/HawksbillTurtle.glb",
+    "type": "creature",
+    "rig": "turtle",
+    "vertices": 3009,
+    "triangles": 1003,
+    "bones": 14,
+    "sizeBytes": 189052
+  },
+  "HectorDolphin": {
+    "id": "HectorDolphin",
+    "path": "models/fish/HectorDolphin.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1626,
+    "triangles": 542,
+    "bones": 7,
+    "sizeBytes": 100360
+  },
+  "IndusRiverDolphin": {
+    "id": "IndusRiverDolphin",
+    "path": "models/fish/IndusRiverDolphin.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1662,
+    "triangles": 554,
+    "bones": 7,
+    "sizeBytes": 102396
+  },
+  "JamTang": {
+    "id": "JamTang",
+    "path": "models/fish/JamTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1854,
+    "triangles": 618,
+    "bones": 6,
+    "sizeBytes": 116248
+  },
+  "JennniferDottyback": {
+    "id": "JennniferDottyback",
+    "path": "models/fish/JennniferDottyback.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 570,
+    "triangles": 190,
+    "bones": 6,
+    "sizeBytes": 44360
+  },
+  "JewelDamsel": {
+    "id": "JewelDamsel",
+    "path": "models/fish/JewelDamsel.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 984,
+    "triangles": 328,
+    "bones": 6,
+    "sizeBytes": 67552
+  },
+  "JewelTang": {
+    "id": "JewelTang",
+    "path": "models/fish/JewelTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1488,
+    "triangles": 496,
+    "bones": 6,
+    "sizeBytes": 95744
+  },
+  "JuggaloClownfish": {
+    "id": "JuggaloClownfish",
+    "path": "models/fish/JuggaloClownfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1374,
+    "triangles": 458,
+    "bones": 6,
+    "sizeBytes": 89472
+  },
+  "JuvenileYellowDamselfish": {
+    "id": "JuvenileYellowDamselfish",
+    "path": "models/fish/JuvenileYellowDamselfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 792,
+    "triangles": 264,
+    "bones": 6,
+    "sizeBytes": 56816
+  },
+  "KaudernsCardinalfish": {
+    "id": "KaudernsCardinalfish",
+    "path": "models/fish/KaudernsCardinalfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 918,
+    "triangles": 306,
+    "bones": 6,
+    "sizeBytes": 63880
+  },
+  "KoranAngelfish": {
+    "id": "KoranAngelfish",
+    "path": "models/fish/KoranAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1152,
+    "triangles": 384,
+    "bones": 6,
+    "sizeBytes": 76944
+  },
+  "Land": {
+    "id": "Land",
+    "path": "models/props/Land.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 10254,
+    "triangles": 3418,
+    "bones": 0,
+    "sizeBytes": 329616
+  },
+  "LeatherbackTurtle": {
+    "id": "LeatherbackTurtle",
+    "path": "models/fish/LeatherbackTurtle.glb",
+    "type": "creature",
+    "rig": "turtle",
+    "vertices": 2751,
+    "triangles": 917,
+    "bones": 14,
+    "sizeBytes": 172988
+  },
+  "LemonPeelAngelfish": {
+    "id": "LemonPeelAngelfish",
+    "path": "models/fish/LemonPeelAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 750,
+    "triangles": 250,
+    "bones": 6,
+    "sizeBytes": 54444
+  },
+  "LinedCardinal": {
+    "id": "LinedCardinal",
+    "path": "models/fish/LinedCardinal.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1320,
+    "triangles": 440,
+    "bones": 6,
+    "sizeBytes": 86356
+  },
+  "Lobster": {
+    "id": "Lobster",
+    "path": "models/fish/Lobster.glb",
+    "type": "creature",
+    "rig": "lobster",
+    "vertices": 2574,
+    "triangles": 858,
+    "bones": 13,
+    "sizeBytes": 161380
+  },
+  "LoggerheadTurtle": {
+    "id": "LoggerheadTurtle",
+    "path": "models/fish/LoggerheadTurtle.glb",
+    "type": "creature",
+    "rig": "turtle",
+    "vertices": 2880,
+    "triangles": 960,
+    "bones": 14,
+    "sizeBytes": 181764
+  },
+  "LongnoseButterflyfish": {
+    "id": "LongnoseButterflyfish",
+    "path": "models/fish/LongnoseButterflyfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 948,
+    "triangles": 316,
+    "bones": 6,
+    "sizeBytes": 65544
+  },
+  "MantaRay": {
+    "id": "MantaRay",
+    "path": "models/fish/MantaRay.glb",
+    "type": "creature",
+    "rig": "ray",
+    "vertices": 1632,
+    "triangles": 544,
+    "bones": 19,
+    "sizeBytes": 116072
+  },
+  "MaskedAngelfish": {
+    "id": "MaskedAngelfish",
+    "path": "models/fish/MaskedAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 582,
+    "triangles": 194,
+    "bones": 6,
+    "sizeBytes": 45020
+  },
+  "MazeAngelfish": {
+    "id": "MazeAngelfish",
+    "path": "models/fish/MazeAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 837,
+    "triangles": 279,
+    "bones": 6,
+    "sizeBytes": 59280
+  },
+  "MoorishIdol": {
+    "id": "MoorishIdol",
+    "path": "models/fish/MoorishIdol.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 918,
+    "triangles": 306,
+    "bones": 6,
+    "sizeBytes": 63832
+  },
+  "NurseShark": {
+    "id": "NurseShark",
+    "path": "models/fish/NurseShark.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1998,
+    "triangles": 666,
+    "bones": 7,
+    "sizeBytes": 121096
+  },
+  "PandaAngelfish": {
+    "id": "PandaAngelfish",
+    "path": "models/fish/PandaAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 606,
+    "triangles": 202,
+    "bones": 6,
+    "sizeBytes": 46360
+  },
+  "PantherGrouper": {
+    "id": "PantherGrouper",
+    "path": "models/fish/PantherGrouper.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1236,
+    "triangles": 412,
+    "bones": 6,
+    "sizeBytes": 81760
+  },
+  "PazamaCardinal": {
+    "id": "PazamaCardinal",
+    "path": "models/fish/PazamaCardinal.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1470,
+    "triangles": 490,
+    "bones": 6,
+    "sizeBytes": 94784
+  },
+  "PeppermintAngelfish": {
+    "id": "PeppermintAngelfish",
+    "path": "models/fish/PeppermintAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1044,
+    "triangles": 348,
+    "bones": 6,
+    "sizeBytes": 70916
+  },
+  "PinkDolphin": {
+    "id": "PinkDolphin",
+    "path": "models/fish/PinkDolphin.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1566,
+    "triangles": 522,
+    "bones": 7,
+    "sizeBytes": 97016
+  },
+  "PinkSkunkClownfish": {
+    "id": "PinkSkunkClownfish",
+    "path": "models/fish/PinkSkunkClownfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1224,
+    "triangles": 408,
+    "bones": 6,
+    "sizeBytes": 81028
+  },
+  "PinkSmithDamsel": {
+    "id": "PinkSmithDamsel",
+    "path": "models/fish/PinkSmithDamsel.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 564,
+    "triangles": 188,
+    "bones": 6,
+    "sizeBytes": 44012
+  },
+  "PowderBlueTang": {
+    "id": "PowderBlueTang",
+    "path": "models/fish/PowderBlueTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 780,
+    "triangles": 260,
+    "bones": 6,
+    "sizeBytes": 56108
+  },
+  "PrettyRoseGoby": {
+    "id": "PrettyRoseGoby",
+    "path": "models/fish/PrettyRoseGoby.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 882,
+    "triangles": 294,
+    "bones": 6,
+    "sizeBytes": 61756
+  },
+  "PygmeSeahorse": {
+    "id": "PygmeSeahorse",
+    "path": "models/fish/PygmeSeahorse.glb",
+    "type": "creature",
+    "rig": "seahorse",
+    "vertices": 1536,
+    "triangles": 512,
+    "bones": 17,
+    "sizeBytes": 113464
+  },
+  "QueenAngelfish": {
+    "id": "QueenAngelfish",
+    "path": "models/fish/QueenAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 822,
+    "triangles": 274,
+    "bones": 6,
+    "sizeBytes": 58464
+  },
+  "RacoonButterflyfish": {
+    "id": "RacoonButterflyfish",
+    "path": "models/fish/RacoonButterflyfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 996,
+    "triangles": 332,
+    "bones": 6,
+    "sizeBytes": 68228
+  },
+  "RedSeahorse": {
+    "id": "RedSeahorse",
+    "path": "models/fish/RedSeahorse.glb",
+    "type": "creature",
+    "rig": "seahorse",
+    "vertices": 2004,
+    "triangles": 668,
+    "bones": 17,
+    "sizeBytes": 139804
+  },
+  "RightWhaleDolphin": {
+    "id": "RightWhaleDolphin",
+    "path": "models/fish/RightWhaleDolphin.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1512,
+    "triangles": 504,
+    "bones": 7,
+    "sizeBytes": 94328
+  },
+  "RockA": {
+    "id": "RockA",
+    "path": "models/props/RockA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 201,
+    "triangles": 67,
+    "bones": 0,
+    "sizeBytes": 7916
+  },
+  "RockB": {
+    "id": "RockB",
+    "path": "models/props/RockB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 360,
+    "triangles": 120,
+    "bones": 0,
+    "sizeBytes": 13004
+  },
+  "RockC": {
+    "id": "RockC",
+    "path": "models/props/RockC.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 624,
+    "triangles": 208,
+    "bones": 0,
+    "sizeBytes": 21452
+  },
+  "RockD": {
+    "id": "RockD",
+    "path": "models/props/RockD.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1293,
+    "triangles": 431,
+    "bones": 0,
+    "sizeBytes": 42868
+  },
+  "RockE": {
+    "id": "RockE",
+    "path": "models/props/RockE.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 864,
+    "triangles": 288,
+    "bones": 0,
+    "sizeBytes": 29136
+  },
+  "RockF": {
+    "id": "RockF",
+    "path": "models/props/RockF.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1422,
+    "triangles": 474,
+    "bones": 0,
+    "sizeBytes": 46980
+  },
+  "RockG": {
+    "id": "RockG",
+    "path": "models/props/RockG.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 750,
+    "triangles": 250,
+    "bones": 0,
+    "sizeBytes": 25472
+  },
+  "RockH": {
+    "id": "RockH",
+    "path": "models/props/RockH.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1548,
+    "triangles": 516,
+    "bones": 0,
+    "sizeBytes": 51032
+  },
+  "RockI": {
+    "id": "RockI",
+    "path": "models/props/RockI.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 1806,
+    "triangles": 602,
+    "bones": 0,
+    "sizeBytes": 59288
+  },
+  "RockJ": {
+    "id": "RockJ",
+    "path": "models/props/RockJ.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 2040,
+    "triangles": 680,
+    "bones": 0,
+    "sizeBytes": 66776
+  },
+  "RockK": {
+    "id": "RockK",
+    "path": "models/props/RockK.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 2382,
+    "triangles": 794,
+    "bones": 0,
+    "sizeBytes": 77720
+  },
+  "SaddleButterflyfish": {
+    "id": "SaddleButterflyfish",
+    "path": "models/fish/SaddleButterflyfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 936,
+    "triangles": 312,
+    "bones": 6,
+    "sizeBytes": 64860
+  },
+  "SailfinTang": {
+    "id": "SailfinTang",
+    "path": "models/fish/SailfinTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 798,
+    "triangles": 266,
+    "bones": 6,
+    "sizeBytes": 57596
+  },
+  "ScissortailDartfish": {
+    "id": "ScissortailDartfish",
+    "path": "models/fish/ScissortailDartfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 582,
+    "triangles": 194,
+    "bones": 6,
+    "sizeBytes": 45072
+  },
+  "Sea": {
+    "id": "Sea",
+    "path": "models/props/Sea.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 9147,
+    "triangles": 3049,
+    "bones": 0,
+    "sizeBytes": 294316
+  },
+  "SeaweedA": {
+    "id": "SeaweedA",
+    "path": "models/props/SeaweedA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 108,
+    "triangles": 36,
+    "bones": 0,
+    "sizeBytes": 4948
+  },
+  "SeaweedB": {
+    "id": "SeaweedB",
+    "path": "models/props/SeaweedB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 108,
+    "triangles": 36,
+    "bones": 0,
+    "sizeBytes": 4948
+  },
+  "SeaweedC": {
+    "id": "SeaweedC",
+    "path": "models/props/SeaweedC.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 324,
+    "triangles": 108,
+    "bones": 0,
+    "sizeBytes": 11860
+  },
+  "SeaweedD": {
+    "id": "SeaweedD",
+    "path": "models/props/SeaweedD.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 432,
+    "triangles": 144,
+    "bones": 0,
+    "sizeBytes": 15316
+  },
+  "ShellA": {
+    "id": "ShellA",
+    "path": "models/props/ShellA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 348,
+    "triangles": 116,
+    "bones": 0,
+    "sizeBytes": 12688
+  },
+  "ShellB": {
+    "id": "ShellB",
+    "path": "models/props/ShellB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 804,
+    "triangles": 268,
+    "bones": 0,
+    "sizeBytes": 27148
+  },
+  "ShellC": {
+    "id": "ShellC",
+    "path": "models/props/ShellC.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 576,
+    "triangles": 192,
+    "bones": 0,
+    "sizeBytes": 19920
+  },
+  "ShellD": {
+    "id": "ShellD",
+    "path": "models/props/ShellD.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 576,
+    "triangles": 192,
+    "bones": 0,
+    "sizeBytes": 19920
+  },
+  "SkipjackTuna": {
+    "id": "SkipjackTuna",
+    "path": "models/fish/SkipjackTuna.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1332,
+    "triangles": 444,
+    "bones": 6,
+    "sizeBytes": 87144
+  },
+  "SkunkTilefish": {
+    "id": "SkunkTilefish",
+    "path": "models/fish/SkunkTilefish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 696,
+    "triangles": 232,
+    "bones": 6,
+    "sizeBytes": 51380
+  },
+  "SpeckeldButterfly": {
+    "id": "SpeckeldButterfly",
+    "path": "models/fish/SpeckeldButterfly.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1506,
+    "triangles": 502,
+    "bones": 6,
+    "sizeBytes": 96784
+  },
+  "SpottedEagleRay": {
+    "id": "SpottedEagleRay",
+    "path": "models/fish/SpottedEagleRay.glb",
+    "type": "creature",
+    "rig": "ray",
+    "vertices": 2292,
+    "triangles": 764,
+    "bones": 19,
+    "sizeBytes": 152888
+  },
+  "StarfishA": {
+    "id": "StarfishA",
+    "path": "models/props/StarfishA.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 840,
+    "triangles": 280,
+    "bones": 0,
+    "sizeBytes": 28360
+  },
+  "StarfishB": {
+    "id": "StarfishB",
+    "path": "models/props/StarfishB.glb",
+    "type": "prop",
+    "rig": "Static",
+    "vertices": 840,
+    "triangles": 280,
+    "bones": 0,
+    "sizeBytes": 28360
+  },
+  "StrawberryDottyback": {
+    "id": "StrawberryDottyback",
+    "path": "models/fish/StrawberryDottyback.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 714,
+    "triangles": 238,
+    "bones": 6,
+    "sizeBytes": 52432
+  },
+  "ThreeStripeDamsel": {
+    "id": "ThreeStripeDamsel",
+    "path": "models/fish/ThreeStripeDamsel.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 756,
+    "triangles": 252,
+    "bones": 6,
+    "sizeBytes": 54760
+  },
+  "TomatoClownfish": {
+    "id": "TomatoClownfish",
+    "path": "models/fish/TomatoClownfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1182,
+    "triangles": 394,
+    "bones": 6,
+    "sizeBytes": 78748
+  },
+  "TucuxiDophin": {
+    "id": "TucuxiDophin",
+    "path": "models/fish/TucuxiDophin.glb",
+    "type": "creature",
+    "rig": "shark",
+    "vertices": 1548,
+    "triangles": 516,
+    "bones": 7,
+    "sizeBytes": 95980
+  },
+  "UnicornTang": {
+    "id": "UnicornTang",
+    "path": "models/fish/UnicornTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 654,
+    "triangles": 218,
+    "bones": 6,
+    "sizeBytes": 49104
+  },
+  "WatanabeAngelfish": {
+    "id": "WatanabeAngelfish",
+    "path": "models/fish/WatanabeAngelfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 684,
+    "triangles": 228,
+    "bones": 6,
+    "sizeBytes": 50744
+  },
+  "WheelersShrimpGoby": {
+    "id": "WheelersShrimpGoby",
+    "path": "models/fish/WheelersShrimpGoby.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 774,
+    "triangles": 258,
+    "bones": 6,
+    "sizeBytes": 55792
+  },
+  "WhiteTailTang": {
+    "id": "WhiteTailTang",
+    "path": "models/fish/WhiteTailTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1506,
+    "triangles": 502,
+    "bones": 6,
+    "sizeBytes": 96772
+  },
+  "WhiteTang": {
+    "id": "WhiteTang",
+    "path": "models/fish/WhiteTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 600,
+    "triangles": 200,
+    "bones": 6,
+    "sizeBytes": 46008
+  },
+  "WyomingWhiteClownfish": {
+    "id": "WyomingWhiteClownfish",
+    "path": "models/fish/WyomingWhiteClownfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1386,
+    "triangles": 462,
+    "bones": 6,
+    "sizeBytes": 90164
+  },
+  "YellowTang": {
+    "id": "YellowTang",
+    "path": "models/fish/YellowTang.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 648,
+    "triangles": 216,
+    "bones": 6,
+    "sizeBytes": 48700
+  },
+  "YellowfinTuna": {
+    "id": "YellowfinTuna",
+    "path": "models/fish/YellowfinTuna.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 1098,
+    "triangles": 366,
+    "bones": 6,
+    "sizeBytes": 74040
+  },
+  "ZebraSeahorse": {
+    "id": "ZebraSeahorse",
+    "path": "models/fish/ZebraSeahorse.glb",
+    "type": "creature",
+    "rig": "seahorse",
+    "vertices": 2814,
+    "triangles": 938,
+    "bones": 17,
+    "sizeBytes": 185060
+  },
+  "ZosterButterflyfish": {
+    "id": "ZosterButterflyfish",
+    "path": "models/fish/ZosterButterflyfish.glb",
+    "type": "creature",
+    "rig": "fish",
+    "vertices": 696,
+    "triangles": 232,
+    "bones": 6,
+    "sizeBytes": 51424
+  }
+}

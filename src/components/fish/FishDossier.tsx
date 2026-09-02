@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { fishBus, type FishAnchor } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
+import { getModelInfo } from "@/fish/modelLoader"
 
 export interface FishDossierProps {
   fish: FishSpecimenInput | null
@@ -34,8 +35,6 @@ export interface FishDossierProps {
 /** Panel geometry — kept here so the clamp and the CSS agree. */
 const PANEL_W = 520
 const PANEL_H = 760
-/** Clearance between the specimen's silhouette edge and the panel. */
-const GAP = 40
 const MARGIN = 16
 /** Below this canvas width the panel reverts to the full-height rail. */
 const DOCK_MIN_W = 900
@@ -66,6 +65,7 @@ export function FishDossier({
   const fallback = SPECIES_FALLBACK_HEX[sp] || "#fbbf24"
   const href = fish ? linkHref(fish.link) : null
   const specimen = String(index).padStart(2, "0")
+  const modelInfo = fish ? getModelInfo(fish.species) : null
 
   const rootRef = useRef<HTMLDivElement | null>(null)
   const sheetRef = useRef<HTMLDivElement | null>(null)
@@ -88,30 +88,39 @@ export function FishDossier({
         sheet.style.removeProperty("top")
         sheet.style.removeProperty("width")
         delete sheet.dataset.lead
+        if (lead) {
+          lead.style.removeProperty("left")
+          lead.style.removeProperty("top")
+          lead.style.removeProperty("width")
+          lead.style.removeProperty("display")
+          delete lead.dataset.lead
+        }
         return
       }
 
-      const clear = anchor.r + GAP
-      const fitsRight = anchor.x + clear + PANEL_W + MARGIN <= anchor.w
-      const leadSide: "left" | "right" = fitsRight ? "left" : "right"
-      const left = fitsRight
-        ? Math.min(anchor.w - PANEL_W - MARGIN, Math.max(anchor.x + clear, anchor.w * 0.52))
-        : Math.max(MARGIN, anchor.x - clear - PANEL_W)
+      // Specimen dossier is always docked to the right rail
+      const panelWidth = Math.min(PANEL_W, Math.max(340, anchor.w - MARGIN * 2))
+      const left = Math.max(MARGIN, anchor.w - panelWidth - MARGIN)
       const maxTop = Math.max(MARGIN, anchor.h - PANEL_H - MARGIN)
       const top = Math.min(Math.max(MARGIN, anchor.y - PANEL_H / 2), maxTop)
 
       sheet.style.left = `${left}px`
       sheet.style.top = `${top}px`
-      sheet.style.width = `${PANEL_W}px`
-      sheet.dataset.lead = leadSide
+      sheet.style.width = `${panelWidth}px`
+      sheet.dataset.lead = "left"
 
       if (lead) {
-        const leadLeft = fitsRight ? anchor.x + anchor.r : left + PANEL_W
-        const leadRight = fitsRight ? left : anchor.x - anchor.r
-        lead.dataset.lead = leadSide
-        lead.style.left = `${leadLeft}px`
-        lead.style.top = `${Math.min(Math.max(top + 26, top + 12), top + PANEL_H - 12)}px`
-        lead.style.width = `${Math.max(0, leadRight - leadLeft)}px`
+        const leadLeft = anchor.x + anchor.r
+        const leadRight = left
+        lead.dataset.lead = "left"
+        if (leadRight > leadLeft) {
+          lead.style.display = "block"
+          lead.style.left = `${leadLeft}px`
+          lead.style.top = `${Math.min(Math.max(top + 26, top + 12), top + PANEL_H - 12)}px`
+          lead.style.width = `${leadRight - leadLeft}px`
+        } else {
+          lead.style.display = "none"
+        }
       }
     })
   }, [])
@@ -194,6 +203,18 @@ export function FishDossier({
             </span>
             <span className="ft-ref font-mono text-[10px] tracking-wider">{fish.species.toUpperCase()} // SYS-LOCKED</span>
           </div>
+          {modelInfo ? (
+            <div className="px-2.5 py-1.5 rounded bg-(--card)/60 border border-(--hairline) flex items-center justify-between text-[11px] font-mono mb-2">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="h-1.5 w-1.5 rounded-full bg-(--accent-green) animate-pulse shrink-0" />
+                <span className="text-(--fg) font-medium truncate">{modelInfo.displayName}</span>
+                <span className="text-(--fg-muted) text-[10px]">({modelInfo.family})</span>
+              </div>
+              <span className="text-(--fg-muted) text-[10px] shrink-0 ml-2">
+                {modelInfo.triangles.toLocaleString()} tris · {modelInfo.bones} bones
+              </span>
+            </div>
+          ) : null}
           <h3 id="ft-dossier-title" className="text-xl font-bold tracking-tight">{fish.title}</h3>
           {fish.blurb ? <p className="ft-blurb text-sm leading-relaxed">{fish.blurb}</p> : null}
           {(fish.metrics?.length ?? 0) > 0 ? (

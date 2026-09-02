@@ -49,9 +49,17 @@ export interface TankFrameState {
   focusDistance: number
 }
 
+export interface BloomSettings {
+  strength: number
+  radius: number
+  threshold: number
+}
+
 export interface TankComposerBundle {
   render(state: TankFrameState): void
   setSize(width: number, height: number): void
+  /** Retune bloom in place (day/night resample) — no-op on the low tier (no bloom pass). */
+  setBloom(settings: BloomSettings): void
   dispose(): void
 }
 
@@ -257,6 +265,12 @@ export function createTankComposer(
       bloom?.resolution.set(cw, ch)
       bokeh?.setSize(cw, ch)
       aspect.set(1, ch / cw)
+    },
+    setBloom(settings: BloomSettings) {
+      if (!bloom) return
+      bloom.strength = settings.strength
+      bloom.radius = settings.radius
+      bloom.threshold = settings.threshold
     },
     dispose() {
       bokeh?.dispose()
