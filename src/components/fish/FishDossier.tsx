@@ -35,8 +35,6 @@ export interface FishDossierProps {
 /** Panel geometry — kept here so the clamp and the CSS agree. */
 const PANEL_W = 520
 const PANEL_H = 760
-/** Clearance between the specimen's silhouette edge and the panel. */
-const GAP = 40
 const MARGIN = 16
 /** Below this canvas width the panel reverts to the full-height rail. */
 const DOCK_MIN_W = 900
@@ -90,30 +88,39 @@ export function FishDossier({
         sheet.style.removeProperty("top")
         sheet.style.removeProperty("width")
         delete sheet.dataset.lead
+        if (lead) {
+          lead.style.removeProperty("left")
+          lead.style.removeProperty("top")
+          lead.style.removeProperty("width")
+          lead.style.removeProperty("display")
+          delete lead.dataset.lead
+        }
         return
       }
 
-      const clear = anchor.r + GAP
-      const fitsRight = anchor.x + clear + PANEL_W + MARGIN <= anchor.w
-      const leadSide: "left" | "right" = fitsRight ? "left" : "right"
-      const left = fitsRight
-        ? Math.min(anchor.w - PANEL_W - MARGIN, Math.max(anchor.x + clear, anchor.w * 0.52))
-        : Math.max(MARGIN, anchor.x - clear - PANEL_W)
+      // Specimen dossier is always docked to the right rail
+      const panelWidth = Math.min(PANEL_W, Math.max(340, anchor.w - MARGIN * 2))
+      const left = Math.max(MARGIN, anchor.w - panelWidth - MARGIN)
       const maxTop = Math.max(MARGIN, anchor.h - PANEL_H - MARGIN)
       const top = Math.min(Math.max(MARGIN, anchor.y - PANEL_H / 2), maxTop)
 
       sheet.style.left = `${left}px`
       sheet.style.top = `${top}px`
-      sheet.style.width = `${PANEL_W}px`
-      sheet.dataset.lead = leadSide
+      sheet.style.width = `${panelWidth}px`
+      sheet.dataset.lead = "left"
 
       if (lead) {
-        const leadLeft = fitsRight ? anchor.x + anchor.r : left + PANEL_W
-        const leadRight = fitsRight ? left : anchor.x - anchor.r
-        lead.dataset.lead = leadSide
-        lead.style.left = `${leadLeft}px`
-        lead.style.top = `${Math.min(Math.max(top + 26, top + 12), top + PANEL_H - 12)}px`
-        lead.style.width = `${Math.max(0, leadRight - leadLeft)}px`
+        const leadLeft = anchor.x + anchor.r
+        const leadRight = left
+        lead.dataset.lead = "left"
+        if (leadRight > leadLeft) {
+          lead.style.display = "block"
+          lead.style.left = `${leadLeft}px`
+          lead.style.top = `${Math.min(Math.max(top + 26, top + 12), top + PANEL_H - 12)}px`
+          lead.style.width = `${leadRight - leadLeft}px`
+        } else {
+          lead.style.display = "none"
+        }
       }
     })
   }, [])
