@@ -171,18 +171,18 @@ export async function loadFishModelInstance(
 
       const mat = new THREE.MeshStandardMaterial({
         map: paletteTex,
-        roughness: 0.65,
-        metalness: 0.1,
+        roughness: 0.55,
+        metalness: 0.08,
         flatShading: true,
       })
 
-      if (options.tintColor) {
-        mat.color.set(options.tintColor)
-      }
+      // Preserve full RGB color texture from Color.png atlas
+      mat.color.set(0xffffff)
 
-      if (options.emissiveGlow !== undefined && options.emissiveGlow > 0) {
-        mat.emissive.set(options.tintColor ? options.tintColor : 0xffffff)
-        mat.emissiveIntensity = options.emissiveGlow * 0.4
+      // Apply subtle domain-tinted emissive glow for underwater visibility
+      if (options.tintColor) {
+        mat.emissive.set(options.tintColor)
+        mat.emissiveIntensity = 0.15 + (options.emissiveGlow ?? 0.3) * 0.25
       }
 
       mesh.material = mat
@@ -190,12 +190,12 @@ export async function loadFishModelInstance(
     }
   })
 
-  // Normalize scale so models fit the standard ~1.0 - 1.5 unit range
+  // Normalize scale so models fit 2x larger standard range (~2.4 units)
   const box = new THREE.Box3().setFromObject(clone)
   const size = box.getSize(new THREE.Vector3())
   const maxDim = Math.max(size.x, size.y, size.z)
   if (maxDim > 0) {
-    const targetScale = 1.2 / maxDim
+    const targetScale = 2.4 / maxDim
     clone.scale.multiplyScalar(targetScale)
   }
 
@@ -258,13 +258,17 @@ export async function loadPropModelInstance(
 
       const mat = new THREE.MeshStandardMaterial({
         map: paletteTex,
-        roughness: 0.85,
+        roughness: 0.8,
         metalness: 0.05,
         flatShading: true,
       })
 
+      // Preserve authentic coral/rock texture colors
+      mat.color.set(0xffffff)
+
       if (options.tintColor) {
-        mat.color.set(options.tintColor)
+        mat.emissive.set(options.tintColor)
+        mat.emissiveIntensity = 0.12
       }
 
       mesh.material = mat
