@@ -95,7 +95,9 @@ import {
   SONAR_CONFIG,
   FISH_GLTF_CONFIG,
   SHADOW_CONFIG,
+  PLANT_MATERIAL_CONFIG,
   resolveFishTankTuning,
+  resolveBloomTuning,
 } from "./fishTankConfig"
 import { createSkyMaterial, type SkyMaterial } from "@/fish/shaders/skyShader"
 import {
@@ -570,14 +572,23 @@ export default function FishTankCanvas({
       }
     }
 
-    // Glowing cyber-crystals
-    const crystalColors = [palette.accent, palette.neon, palette.cyan]
+    // Glowing cyber-crystals — 4-hue reef cycle shared with the coral loop
+    // below, pulled from the theme's own tokens (never a raw hardcoded color).
+    const reefColors = [palette.accent, palette.neon, palette.cyan, palette.pink]
+    // Theme/circadian-tintable — resampled in place by applyPalette below
+    // (previously untracked: a theme swap never re-tinted these).
+    const crystalMats: { mat: THREE.MeshStandardMaterial; i: number }[] = []
     for (let i = 0; i < CRYSTAL_PLACEMENT_CONFIG.count; i++) {
-      const col = new THREE.Color(crystalColors[i % crystalColors.length])
+      const col = new THREE.Color(reefColors[i % reefColors.length])
       const crystal = buildCyberCrystal(
         col,
         CRYSTAL_PLACEMENT_CONFIG.scaleBase + (i % CRYSTAL_PLACEMENT_CONFIG.scaleModIndex) * CRYSTAL_PLACEMENT_CONFIG.scaleModStep,
       )
+      const crystalMesh = crystal.children[0]
+      if (crystalMesh instanceof THREE.Mesh && crystalMesh.material instanceof THREE.MeshStandardMaterial) {
+        crystalMesh.material.emissiveIntensity = PLANT_MATERIAL_CONFIG.crystal.emissiveIntensity * tuning.plantGlowMul
+        crystalMats.push({ mat: crystalMesh.material, i })
+      }
       crystal.position.set(
         (i / (CRYSTAL_PLACEMENT_CONFIG.count - 1) - 0.5) * (glassW - CRYSTAL_PLACEMENT_CONFIG.xInset) +
           (i % CRYSTAL_PLACEMENT_CONFIG.xModIndex ? CRYSTAL_PLACEMENT_CONFIG.xOffsetOdd : CRYSTAL_PLACEMENT_CONFIG.xOffsetEven),
@@ -620,6 +631,7 @@ export default function FishTankCanvas({
           const seg = stalk.getObjectByName(`seg${s}`) ?? null
           segRefs.push(seg)
           if (s === 0 && seg instanceof THREE.Mesh && seg.material instanceof THREE.MeshStandardMaterial) {
+            seg.material.emissiveIntensity = PLANT_MATERIAL_CONFIG.seaweed.emissiveIntensity * tuning.plantGlowMul
             weedMats.push(seg.material)
           }
         }
@@ -628,11 +640,12 @@ export default function FishTankCanvas({
 
       for (let i = 0; i < CORAL_PLACEMENT_CONFIG.count; i++) {
         const coral = buildCoral(
-          new THREE.Color(i % 2 ? palette.accent : palette.neon),
+          new THREE.Color(reefColors[i % reefColors.length]),
           CORAL_PLACEMENT_CONFIG.scaleBase + (i % CORAL_PLACEMENT_CONFIG.scaleModIndex) * CORAL_PLACEMENT_CONFIG.scaleModStep,
         )
         const firstArm = coral.children[0]
         if (firstArm instanceof THREE.Mesh && firstArm.material instanceof THREE.MeshStandardMaterial) {
+          firstArm.material.emissiveIntensity = PLANT_MATERIAL_CONFIG.coral.emissiveIntensity * tuning.plantGlowMul
           coralMats.push({ mat: firstArm.material, i })
         }
         coral.position.set(
@@ -660,7 +673,7 @@ export default function FishTankCanvas({
     // in the vertex shader (fish/minnowField.ts), so population is free on CPU.
     const minnows = createMinnowField({
       count: quality.tier === "high" ? MINNOW_CONFIG.countHigh : MINNOW_CONFIG.countLow,
-      colors: [palette.accent, palette.cyan, palette.neon].map((c) => new THREE.Color(c)),
+      colors: [palette.accent, palette.cyan, palette.neon, palette.pink].map((c) => new THREE.Color(c)),
       octaves: quality.octaves,
       emissiveIntensity: tuning.minnowEmissive,
       emissiveTint: palette.deep,
@@ -729,7 +742,12 @@ export default function FishTankCanvas({
     // Marine snow as a few discrete size/density bands (see MOTE_CONFIG) —
     // the closest a flat PointsMaterial (one size per draw call) can get to
     // depth-varying particle size without a custom per-vertex-size shader.
-    const moteLayers = MOTE_CONFIG.layers.map((layer) => {
+    // Each band also gets its own hue (motes/pink/cyan) instead of one flat
+    // color for the whole cloud — a "living particle swarm" read cheaply,
+    // with no new shader.
+    const moteLayerColor = (p: TankThemePalette, index: number) =>
+      [p.motes, p.pink, p.cyan][index % 3]
+    const moteLayers = MOTE_CONFIG.layers.map((layer, index) => {
       const count = Math.max(1, Math.round(MOTE_CONFIG.totalCount * layer.countFrac))
       const geo = new THREE.BufferGeometry()
       const pos = new Float32Array(count * 3)
@@ -740,7 +758,7 @@ export default function FishTankCanvas({
       }
       geo.setAttribute("position", new THREE.BufferAttribute(pos, 3))
       const mat = new THREE.PointsMaterial({
-        color: palette.motes,
+        color: moteLayerColor(palette, index),
         size: layer.size,
         map: sprite || undefined,
         transparent: true,
@@ -922,6 +940,9 @@ export default function FishTankCanvas({
       palette = applyCircadian(resolveTankThemePalette(), nextPhase)
       faunaScale = palette.faunaTimeScale
       const nextLight = palette.light
+      const bloomTuning = resolveBloomTuning(palette.phase === "night")
+      composer.setBloom(bloomTuning)
+      renderer.toneMappingExposure = bloomTuning.exposure
       tuning = resolveFishTankTuning(nextLight)
       scene.background?.set(palette.bg)
       if (scene.fog instanceof THREE.FogExp2) {
@@ -976,12 +997,13 @@ export default function FishTankCanvas({
       causticSurfaceStrength.value = palette.causticStrength * CAUSTIC_CONFIG.surfaceStrengthMul
       causticSurfaceColor.set(palette.sun)
       ;(minnows.mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = tuning.minnowEmissive
+      minnows.setColors([palette.accent, palette.cyan, palette.neon, palette.pink].map((c) => new THREE.Color(c)))
       bubbleMat.color.set(palette.bubble)
       bubbleMat.opacity = tuning.bubbleOpacity
-      for (const layer of moteLayers) {
-        layer.mat.color.set(palette.motes)
+      moteLayers.forEach((layer, index) => {
+        layer.mat.color.set(moteLayerColor(palette, index))
         layer.mat.opacity = tuning.moteOpacity
-      }
+      })
       wakeMat.opacity = tuning.wakeOpacity
       shockMat.color.set(palette.cyan)
       for (const sw of shockwavePool) {
@@ -1017,13 +1039,23 @@ export default function FishTankCanvas({
       for (const m of weedMats) {
         m.color.set(palette.weed)
         m.emissive.set(palette.weed)
+        m.emissiveIntensity = PLANT_MATERIAL_CONFIG.seaweed.emissiveIntensity * tuning.plantGlowMul
       }
+      // Recomputed from the just-resampled palette — `reefColors` above was
+      // captured once at scene build and does not follow `palette` reassignment.
+      const nextReefColors = [palette.accent, palette.neon, palette.cyan, palette.pink]
       for (const { mat, i } of coralMats) {
-        const c = i % 2 ? palette.accent : palette.neon
+        const c = nextReefColors[i % nextReefColors.length]
         mat.color.set(c)
         mat.emissive.set(c)
+        mat.emissiveIntensity = PLANT_MATERIAL_CONFIG.coral.emissiveIntensity * tuning.plantGlowMul
       }
-      minnows.setColors([palette.accent, palette.cyan, palette.neon].map((c) => new THREE.Color(c)))
+      for (const { mat, i } of crystalMats) {
+        const c = nextReefColors[i % nextReefColors.length]
+        mat.color.set(c)
+        mat.emissive.set(c)
+        mat.emissiveIntensity = PLANT_MATERIAL_CONFIG.crystal.emissiveIntensity * tuning.plantGlowMul
+      }
     }
     applyPaletteRef.current = applyPalette
     let paletteFrame = requestAnimationFrame(() => applyPalette(circadianRef.current))
