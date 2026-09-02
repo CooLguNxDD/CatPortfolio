@@ -1120,7 +1120,7 @@
 @keyframes ft-panel-in {
   from {
     opacity: 0;
-    transform: translateX(-8px) scale(0.985);
+    transform: translateX(10px) scale(0.985);
   }
   to {
     opacity: 1;
