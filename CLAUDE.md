@@ -49,6 +49,9 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Specimens from a `fishTank` block, or derived from any layout | `fish/sceneFromLayout.ts`, `blocks/fishFromLayout.ts` |
 | Filter / lit / dim math (pure) | `fish/matchFish.ts` |
 | Domain → mesh form | `fish/formFromDomain.ts`, `fish/speciesMeshes.ts` |
+| 3D GLTF Model Engine & Caching | `fish/modelLoader.ts` (153 GLB models, skeleton cloning, shared palette) |
+| Seabed 3D Flora, Reef & Props | `fish/seabedFlora.ts` (3D corals, boulders, starfish, shells) |
+| Asset Catalog Index Metadata | `fish/fishCatalogMetadata.ts` (17 groups, 153 models) |
 | Swim + camera math (pure, testable) | `blocks/fishTankLayout.ts` |
 | Boids steering + cursor intent (pure) | `fish/fishBoids.ts`, `fish/cursorIntent.ts` |
 | Per-fish behaviour states + integrated swim body (pure) | `fish/fishBehavior.ts`, `fish/fishLocomotion.ts` |
@@ -169,6 +172,7 @@ CatPortfolio/
 │   │       ├── components/     # Cat3DView.tsx · CatDOMCompanion.tsx (dev-only floating companion)
 │   │       └── index.ts        # Module export barrel
 │   ├── fish/                   # Pure models: sceneFromLayout matchFish formFromDomain speciesMeshes
+│   │                           # modelLoader (async GLTF cache) seabedFlora (3D corals & rocks) fishCatalogMetadata
 │   │                           # fishBoids cursorIntent audioMath sonarProjection bathymetry minnowField
 │   │                           # shaders/ (noiseCommon water caustic godRay spineDeform absorption
 │   │                           #   causticProjection underwaterPass) · postprocessing/tankComposer
@@ -198,10 +202,10 @@ CatPortfolio/
 │   ├── fish/                   # tank3d extraction notes (README, body/css/js)
 │   ├── prototypes/             # Layout drafts + HTML prototypes
 │   └── sampleDesign/
-├── scripts/                    # compile-layout · gen-layout · gen-fragments · gen-themes · sources-schema
+├── scripts/                    # compile-layout · gen-layout · gen-fragments · gen-themes · convert-fish-assets
 ├── .claude/skills/             # react-app-guide · react_generator · agy-tdd-pipeline
 ├── .github/workflows/          # ci.yml · deploy.yml · portfolio-gen.yml
-├── public/                     # favicon.svg · config.json (runtime, unhashed)
+├── public/                     # favicon.svg · config.json · models/ (fish/*.glb, props/*.glb, textures/color.png)
 ├── Dockerfile docker-compose.yml docker-entrypoint.sh nginx.conf nginx.ngrok.conf
 └── vite.config.ts              # base /CatPortfolio/, @ alias, port 11000, three manualChunk
 ```

@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { fishBus, type FishAnchor } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
+import { getModelInfo } from "@/fish/modelLoader"
 
 export interface FishDossierProps {
   fish: FishSpecimenInput | null
@@ -66,6 +67,7 @@ export function FishDossier({
   const fallback = SPECIES_FALLBACK_HEX[sp] || "#fbbf24"
   const href = fish ? linkHref(fish.link) : null
   const specimen = String(index).padStart(2, "0")
+  const modelInfo = fish ? getModelInfo(fish.species) : null
 
   const rootRef = useRef<HTMLDivElement | null>(null)
   const sheetRef = useRef<HTMLDivElement | null>(null)
@@ -194,6 +196,18 @@ export function FishDossier({
             </span>
             <span className="ft-ref font-mono text-[10px] tracking-wider">{fish.species.toUpperCase()} // SYS-LOCKED</span>
           </div>
+          {modelInfo ? (
+            <div className="px-2.5 py-1.5 rounded bg-(--card)/60 border border-(--hairline) flex items-center justify-between text-[11px] font-mono mb-2">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="h-1.5 w-1.5 rounded-full bg-(--accent-green) animate-pulse shrink-0" />
+                <span className="text-(--fg) font-medium truncate">{modelInfo.displayName}</span>
+                <span className="text-(--fg-muted) text-[10px]">({modelInfo.family})</span>
+              </div>
+              <span className="text-(--fg-muted) text-[10px] shrink-0 ml-2">
+                {modelInfo.triangles.toLocaleString()} tris · {modelInfo.bones} bones
+              </span>
+            </div>
+          ) : null}
           <h3 id="ft-dossier-title" className="text-xl font-bold tracking-tight">{fish.title}</h3>
           {fish.blurb ? <p className="ft-blurb text-sm leading-relaxed">{fish.blurb}</p> : null}
           {(fish.metrics?.length ?? 0) > 0 ? (
