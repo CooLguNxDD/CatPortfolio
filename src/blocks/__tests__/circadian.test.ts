@@ -66,23 +66,35 @@ describe("applyCircadian", () => {
     vi.unstubAllGlobals()
   })
 
-  it("dims the key light and slows the fauna at night", () => {
+  it("dims the key light and slows the fauna at night, but keeps it a moonlit reef", () => {
     const base = resolveTankThemePalette()
     const night = applyCircadian(base, "night")
     expect(night.phase).toBe("night")
     expect(night.faunaTimeScale).toBeLessThan(1)
     expect(night.keyIntensity).toBeLessThan(base.keyIntensity)
-    expect(night.ambientIntensity).toBeLessThan(base.ambientIntensity)
-    expect(night.rayStrength).toBeLessThan(base.rayStrength)
+    // Night is dimmer than day, but not an abyss crush: caustics and
+    // god-rays — the "undersea game" shafts-through-the-surface read — go
+    // *up* at night, not down (see fishTankCircadian.ts's header comment).
+    expect(night.causticStrength).toBeGreaterThanOrEqual(base.causticStrength)
+    expect(night.rayStrength).toBeGreaterThanOrEqual(base.rayStrength)
   })
 
-  it("thickens the water so less light reaches the bed", () => {
+  it("keeps the night water column chromatic instead of crushing toward black", () => {
     const base = resolveTankThemePalette()
     const night = applyCircadian(base, "night")
-    expect(night.fogDensity).toBeGreaterThan(base.fogDensity)
-    for (let i = 0; i < 3; i++) {
-      expect(night.sigma[i]).toBeGreaterThan(base.sigma[i])
-    }
+    // Thinner haze, not thicker — color needs to survive a full dive.
+    expect(night.fogDensity).toBeLessThanOrEqual(base.fogDensity)
+    // Red still dies fastest (Beer-Lambert ordering holds after the night
+    // mix), but green/blue travel further than the pre-circadian base so the
+    // column stays teal at range instead of crushing to ink.
+    expect(night.sigma[0]).toBeGreaterThan(night.sigma[1])
+    expect(night.sigma[1]).toBeGreaterThan(night.sigma[2])
+    expect(night.sigma[1]).toBeLessThanOrEqual(base.sigma[1])
+    expect(night.sigma[2]).toBeLessThanOrEqual(base.sigma[2])
+    // The night mix target itself (0x0a3d62) must not be near-black — a
+    // brightness proxy on `deep` catches a regression back toward 0x040a1a.
+    const brightness = (hex: number) => ((hex >> 16) & 0xff) + ((hex >> 8) & 0xff) + (hex & 0xff)
+    expect(brightness(night.deep)).toBeGreaterThan(brightness(0x040a1a))
   })
 
   it("leaves the sky untouched — it's keyed by theme, not the clock", () => {

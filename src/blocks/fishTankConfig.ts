@@ -420,6 +420,43 @@ export const POST_CONFIG = {
   wobbleProgMul: 0.65,
 } as const
 
+/**
+ * Day/night bloom pair + exposure — the single conservative bloom pass
+ * (`tankComposer.ts`) never caught bioluminescent glow at night. Applied via
+ * `composer.setBloom()` + `renderer.toneMappingExposure` from `applyPalette`.
+ */
+export interface BloomTuning {
+  strength: number
+  radius: number
+  threshold: number
+  exposure: number
+}
+
+const DAY_BLOOM: BloomTuning = {
+  strength: 0.42,
+  radius: 0.35,
+  threshold: 0.72,
+  exposure: POST_CONFIG.toneMappingExposure,
+}
+
+const NIGHT_BLOOM: BloomTuning = {
+  strength: 0.62,
+  radius: 0.48,
+  threshold: 0.52,
+  exposure: 1.12,
+}
+
+/**
+ * Resolve the bloom + exposure pair for the *circadian* phase
+ * (`palette.phase === "night"`), not the theme's light/dark mode — a light
+ * theme's `applyCircadian` always forces `phase: "day"`, so this naturally
+ * never fires there; a dark theme only gets the vivid night bloom once the
+ * circadian chip actually reads night.
+ */
+export function resolveBloomTuning(isNight: boolean): BloomTuning {
+  return isNight ? NIGHT_BLOOM : DAY_BLOOM
+}
+
 export const ANCHOR_CONFIG = {
   worldRadiusMul: 2.4,
   minRadius: 24,
@@ -452,6 +489,8 @@ export interface FishTankTuning {
   fishBodyEmissiveMul: number
   fishFinEmissiveFloor: number
   fishFinEmissiveMul: number
+  /** Multiplier on PLANT_MATERIAL_CONFIG's coral/crystal/seaweed emissiveIntensity. */
+  plantGlowMul: number
 }
 
 const DAY_TANK_TUNING: FishTankTuning = {
@@ -469,21 +508,25 @@ const DAY_TANK_TUNING: FishTankTuning = {
   fishBodyEmissiveMul: 0.6,
   fishFinEmissiveFloor: 0.16,
   fishFinEmissiveMul: 0.6,
+  plantGlowMul: 1,
 }
 
 const NIGHT_TANK_TUNING: FishTankTuning = {
-  accentFillIntensity: 1.8,
-  bedBounceIntensity: 0.85,
+  accentFillIntensity: 2.4,
+  bedBounceIntensity: 1.15,
   glassOpacity: 0.32,
   waterOpacity: 0.42,
-  minnowEmissive: 0.45,
-  bubbleOpacity: 0.65,
-  moteOpacity: 0.45,
-  wakeOpacity: 0.88,
+  minnowEmissive: 0.6,
+  bubbleOpacity: 0.72,
+  moteOpacity: 0.55,
+  wakeOpacity: 0.95,
   fishBodyEmissiveFloor: 0.25,
   fishBodyEmissiveMul: 1.1,
   fishFinEmissiveFloor: 0.35,
   fishFinEmissiveMul: 1.25,
+  // Coral/crystal/seaweed have to emit for themselves at night — this is
+  // what makes the reef read as bioluminescent instead of just dim.
+  plantGlowMul: 2,
 }
 
 /** Resolve the day/night tuning pair for the tank's theme mode (`palette.light`). */
