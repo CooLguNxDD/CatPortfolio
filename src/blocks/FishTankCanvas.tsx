@@ -104,6 +104,7 @@ import {
   buildSeaweed,
   type BuiltFish,
 } from "@/fish/speciesMeshes"
+import { populateSeabedDecor } from "@/fish/seabedFlora"
 import {
   buildGiantCatMesh,
   createCatAnimationState,
@@ -593,6 +594,15 @@ export default function FishTankCanvas({
       )
       tank.add(coral)
     }
+
+    // Populate real 3D seabed decor (corals, reef boulders, starfish, shells)
+    populateSeabedDecor({
+      tank,
+      floorY: FLOOR_Y,
+      halfWidth: TANK_HALF_W,
+      halfDepth: TANK_HALF_D,
+      palette,
+    })
 
     // Ambient commit-minnows — one InstancedMesh, placed and deformed entirely
     // in the vertex shader (fish/minnowField.ts), so population is free on CPU.
@@ -1673,6 +1683,13 @@ export default function FishTankCanvas({
           const bank = clamp((dYaw / Math.max(dt, 0.001)) * 0.16, -0.5, 0.5)
           o.mesh.rotation.z += (bank - o.mesh.rotation.z) * 0.08
           o.mesh.rotation.x = Math.sin(t * 1.4 * o.data.speed + o.data.depth * 6) * 0.06
+        }
+
+        // Tick GLTF Skeletal AnimationMixer if loaded
+        if (o.built.mixer) {
+          const playbackSpeed =
+            (0.5 + 0.5 * Math.min(2.0, bodySpeed(body) / (cruise || 1))) * (o.data.speed || 1)
+          o.built.mixer.update(dt * playbackSpeed)
         }
 
         // Organic S-Curve Spine & Segment Undulation

@@ -8,6 +8,7 @@ import * as THREE from "three"
 import { resolveFishForm, type FishForm } from "./formFromDomain"
 import type { FishSpecimenInput } from "@/blocks/fishTankLayout"
 import { FISH_MATERIAL_CONFIG, EYE_CONFIG, PLANT_MATERIAL_CONFIG } from "@/blocks/fishTankConfig"
+import { loadFishModelInstance } from "./modelLoader"
 
 const geoCache = new Map<string, THREE.BufferGeometry>()
 
@@ -30,6 +31,8 @@ export interface BuiltFish {
   pecL?: THREE.Object3D
   pecR?: THREE.Object3D
   tentacles?: THREE.Object3D[]
+  mixer?: THREE.AnimationMixer
+  isGltf?: boolean
 }
 
 function makeMaterials(color: THREE.Color, glow: number) {
@@ -340,7 +343,30 @@ export function buildFishMesh(
   )
   group.add(glow)
   group.userData = { slug: data.slug, data, form }
-  return { group, body, fin, glow, form, spineSegments, pecL, pecR, tentacles }
+
+  const built: BuiltFish = { group, body, fin, glow, form, spineSegments, pecL, pecR, tentacles }
+
+  // Asynchronously attempt loading real 3D GLB model
+  loadFishModelInstance(data.species, {
+    tintColor: color,
+    emissiveGlow: data.glow,
+  })
+    .then((gltfInstance) => {
+      // Hide procedural fallback sub-meshes except glow & hit sphere
+      group.children.forEach((c) => {
+        if (c !== glow && c.name !== "hit") {
+          c.visible = false
+        }
+      })
+      group.add(gltfInstance.group)
+      built.mixer = gltfInstance.mixer
+      built.isGltf = true
+    })
+    .catch(() => {
+      // Silently keep procedural geometry on any network or WebGL fallback
+    })
+
+  return built
 }
 
 /**

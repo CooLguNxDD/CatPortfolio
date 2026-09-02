@@ -8,6 +8,7 @@ declare module "three" {
     getHex(): number
     getHexString(): string
     set(color: string | number | Color): this
+    copy(color: Color): this
     clone(): Color
   }
   export class Vector2 {
@@ -227,16 +228,49 @@ declare module "three" {
     wrapS: number
     wrapT: number
     needsUpdate: boolean
+    colorSpace: string
+    magFilter: number
+    minFilter: number
+    flipY: boolean
     dispose(): void
+  }
+  export class TextureLoader {
+    load(
+      url: string,
+      onLoad?: (texture: Texture) => void,
+      onProgress?: (event: ProgressEvent) => void,
+      onError?: (event: unknown) => void,
+    ): Texture
   }
   export class CanvasTexture extends Texture {
     constructor(canvas: HTMLCanvasElement)
+  }
+  export class DataTexture extends Texture {
+    constructor(
+      data: ArrayBufferView | null,
+      width: number,
+      height: number,
+      format?: number,
+      type?: number,
+      mapping?: number,
+      wrapS?: number,
+      wrapT?: number,
+      magFilter?: number,
+      minFilter?: number,
+      anisotropy?: number,
+      colorSpace?: string,
+    )
   }
   export class MeshStandardMaterial extends Material {
     opacity: number
     emissiveIntensity: number
     color: Color
     emissive: Color
+    roughness: number
+    metalness: number
+    flatShading: boolean
+    map: Texture | null
+    side: number
     constructor(params?: Record<string, unknown>)
   }
   export class LineBasicMaterial extends Material {
@@ -252,12 +286,56 @@ declare module "three" {
   }
   export class Mesh extends Object3D {
     isMesh?: boolean
+    castShadow: boolean
+    receiveShadow: boolean
     morphTargetInfluences?: number[]
     morphTargetDictionary?: Record<string, number>
     geometry: BufferGeometry
     material: Material | Material[]
     constructor(geometry?: BufferGeometry, material?: Material)
     lookAt(v: Vector3): void
+  }
+  export class Bone extends Object3D {
+    isBone?: boolean
+  }
+  export class Skeleton {
+    bones: Bone[]
+    constructor(bones?: Bone[])
+  }
+  export class SkinnedMesh extends Mesh {
+    isSkinnedMesh?: boolean
+    skeleton: Skeleton
+    bindMatrix: Matrix4
+    bindMatrixInverse: Matrix4
+    constructor(geometry?: BufferGeometry, material?: Material)
+  }
+  export class AnimationAction {
+    setLoop(mode: number, repetitions: number): this
+    play(): this
+    stop(): this
+    reset(): this
+  }
+  export class AnimationClip {
+    name: string
+    duration: number
+    tracks: unknown[]
+    constructor(name?: string, duration?: number, tracks?: unknown[])
+  }
+  export class AnimationMixer {
+    time: number
+    timeScale: number
+    constructor(root: Object3D)
+    clipAction(clip: AnimationClip, optionalRoot?: Object3D): AnimationAction
+    update(deltaTime: number): this
+    stopAllAction(): this
+  }
+  export class Box3 {
+    min: Vector3
+    max: Vector3
+    constructor(min?: Vector3, max?: Vector3)
+    setFromObject(object: Object3D): this
+    getSize(target: Vector3): Vector3
+    getCenter(target: Vector3): Vector3
   }
   export class Line extends Object3D {
     geometry: BufferGeometry
@@ -453,6 +531,17 @@ declare module "three" {
   export const AdditiveBlending: number
   export const RepeatWrapping: number
   export const ClampToEdgeWrapping: number
+  export const LoopRepeat: number
+  export const LoopOnce: number
+}
+
+declare module "three/examples/jsm/utils/SkeletonUtils.js" {
+  import { Object3D } from "three"
+  export function clone<T extends Object3D>(source: T): T
+}
+
+declare module "three/addons/utils/SkeletonUtils.js" {
+  export * from "three/examples/jsm/utils/SkeletonUtils.js"
 }
 
 declare module "three/addons/postprocessing/EffectComposer.js" {

@@ -11,9 +11,14 @@ export type FishForm =
   | "tuna"
   | "shark"
   | "manta"
+  | "ray"
   | "eel"
   | "pufferfish"
   | "crab"
+  | "lobster"
+  | "turtle"
+  | "seahorse"
+  | "dolphin"
   | "jellyfish"
   | "anglerfish"
   | "angelfish"
@@ -23,10 +28,10 @@ export type FishForm =
 
 /** Default WelTel / portfolio domain → silhouette mapping. */
 export const DOMAIN_FORM: Record<DomainIdType, FishForm> = {
-  ai: "grouper",
-  devops: "eel",
-  mobile: "angelfish",
-  platform: "tuna",
+  ai: "manta",
+  devops: "shark",
+  mobile: "clownfish",
+  platform: "turtle",
 }
 
 const FORM_SET = new Set<string>([
@@ -34,9 +39,14 @@ const FORM_SET = new Set<string>([
   "tuna",
   "shark",
   "manta",
+  "ray",
   "eel",
   "pufferfish",
   "crab",
+  "lobster",
+  "turtle",
+  "seahorse",
+  "dolphin",
   "jellyfish",
   "anglerfish",
   "angelfish",
