@@ -80,9 +80,18 @@ export function FishTankStage({
 
   useEffect(() => {
     function onAskToggle() {
-      setAskOpen((prev) => !prev)
+      setAskOpen((prev) => {
+        const next = !prev
+        if (next && typeof window !== "undefined" && window.innerWidth < 960 && tank.focusedSlug) {
+          fishBus.emit("fish:release")
+        }
+        return next
+      })
     }
     function onAskOpen(payload?: { prompt?: string } | void) {
+      if (typeof window !== "undefined" && window.innerWidth < 960 && tank.focusedSlug) {
+        fishBus.emit("fish:release")
+      }
       setAskOpen(true)
       if (payload && typeof payload === "object" && payload.prompt) {
         useChatStore.getState().setPendingPrompt(payload.prompt)
@@ -91,20 +100,27 @@ export function FishTankStage({
     function onAskClose() {
       setAskOpen(false)
     }
+    function onFishPick() {
+      if (typeof window !== "undefined" && window.innerWidth < 960) {
+        setAskOpen(false)
+      }
+    }
     function onShortcutsToggle() {
       setShortcutsOpen((prev) => !prev)
     }
     fishBus.on("ask:toggle", onAskToggle)
     fishBus.on("ask:open", onAskOpen)
     fishBus.on("ask:close", onAskClose)
+    fishBus.on("fish:pick", onFishPick)
     fishBus.on("shortcuts:toggle", onShortcutsToggle)
     return () => {
       fishBus.off("ask:toggle", onAskToggle)
       fishBus.off("ask:open", onAskOpen)
       fishBus.off("ask:close", onAskClose)
+      fishBus.off("fish:pick", onFishPick)
       fishBus.off("shortcuts:toggle", onShortcutsToggle)
     }
-  }, [])
+  }, [tank.focusedSlug])
 
   // Element focused when the dossier opened, so Escape hands focus back
   // instead of dropping keyboard users at the top of the document.

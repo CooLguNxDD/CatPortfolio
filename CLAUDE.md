@@ -49,6 +49,12 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Specimens from a `fishTank` block, or derived from any layout | `fish/sceneFromLayout.ts`, `blocks/fishFromLayout.ts` |
 | Filter / lit / dim math (pure) | `fish/matchFish.ts` |
 | Domain → mesh form | `fish/formFromDomain.ts`, `fish/speciesMeshes.ts` |
+| 3D asset registry (manifest) | `fish/assetRegistry.ts` — all 98 fish + 55 props from `src/fish/generated/fish-manifest.json` (copied from `public/models/` by `convert:fish`) |
+| 3D GLTF Model Engine & Caching | `fish/modelLoader.ts` (paths from the registry; skeleton cloning, shared palette) |
+| Per-rig +Z facing offsets | `fish/gltfFacing.ts` |
+| Quality split (GLB vs procedural) | `fish/gltfQuality.ts` — high loads GLB heroes/scenery/ambient; low stays procedural |
+| Seabed 3D Flora, Reef & Props | `fish/seabedFlora.ts` (LayerLab corals, rocks, seaweed, shells — high tier only) |
+| Asset Catalog Index Metadata | `fish/fishCatalogMetadata.ts` (17 groups, 153 catalog entries = 98 fish + 55 props) |
 | Swim + camera math (pure, testable) | `blocks/fishTankLayout.ts` |
 | Boids steering + cursor intent (pure) | `fish/fishBoids.ts`, `fish/cursorIntent.ts` |
 | Per-fish behaviour states + integrated swim body (pure) | `fish/fishBehavior.ts`, `fish/fishLocomotion.ts` |
@@ -70,10 +76,11 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 - `highlightSlugs` / `curationLabel` drive bake dimming — non-highlighted fish fade when a job bake is active.
 - Failures isolate via `components/FishTankErrorBoundary.tsx`; per-block throws via `render/BlockErrorBoundary.tsx`.
 - **Optics.** `installBeerLambertFog()` (called once from the canvas) overrides three's `fog_fragment` chunk with per-wavelength extinction — red dies ~17x faster than blue, and `scene.fog.density` stays the strength knob. It is a chunk override, **not** a post pass: a depth-sampling pass reads the same target the composer writes, which WebGL rejects as a framebuffer feedback loop. Caustics are injected world-space into standard materials via `patchMaterialCaustics` so they ride rocks/coral/fish, not just the seabed plane.
-- **Quality tiers gate the post chain.** `tier: "high"` → bokeh + bloom + wobble; `tier: "low"` (coarse pointer / dense small screens) → `RenderPass → OutputPass` only, so mobile keeps the old single-render cost. `timeScale: 0` (reduced motion) freezes every shader clock; the shell also drops the tank entirely for reduced-motion users.
+- **Quality tiers gate the post chain and the GLB path.** `tier: "high"` → bokeh + bloom + wobble, LayerLab GLB heroes (domain map `ai→MantaRay`, `devops→GreateWhiteShark`, `mobile→Clownfish`, `platform→GreenTurtle`), GLB reef, ambient GLB shoal. `tier: "low"` (coarse pointer / dense small screens) → `RenderPass → OutputPass` only **and** procedural heroes/reef (no GLB fetch). `timeScale: 0` (reduced motion) freezes every shader clock; the shell also drops the tank entirely for reduced-motion users. Canvas `data-tank-*` attributes (`tier`, `gltf-heroes`, `gltf-ready`, `scenery`) are the Playwright seam.
+- **GLB is the primary high-tier renderer.** `buildFishMesh` still builds a procedural silhouette as fallback, then swaps in a cancellable GLB. Caustics, focus-dim opacity, and theme emissive wash write to `gltfMaterials`. Albedo stays the Color.png atlas — domain identity lives in the species/model itself (`ai→MantaRay`, `devops→GreateWhiteShark`, `mobile→Clownfish`, `platform→GreenTurtle`), never a color painted onto or around a fish; there is no per-fish domain-tinted light. Focus/highlight reads via a white bloom lift (`FISH_GLTF_CONFIG`) plus the `INTERACTION_CONFIG` scale step only. Idle mixer speed tracks `bodySpeed`. Dispose aborts in-flight loads. Locomotion stays +Z-forward on the wrapper group.
 - **Fish are swimmers, not path samples.** `computeFishPose` is a *target*; `fish/fishLocomotion.ts` owns each fish position, velocity and heading. It matches the target velocity as well as chasing its position (so a fish arrives *on* its path at path speed instead of braking onto it), and it only ever reads steering as a heading and a throttle — the body makes way along its own facing and can never slide, stall or pivot in place. Every input goes through it: boids output is a velocity bias, never a displaced target, because a separation term flips sign as two fish pass and a flipping target spins the fish. Shoal bias gain is 0.18 x cruise, measured: above ~0.2 the shoal term beats the path and fish wag.
 - **Feeding is a state machine.** `fish/fishBehavior.ts`: `cruise → hunt → feed → sated → cruise`, with `focused` outranking all of them. Sense 28 / release 34 gives hysteresis on a sinking pellet; a 6 s hunt timeout covers pellets resting below the swim band; the 2.5 s sated cooldown stops one pellet holding the whole shoal. Behaviour decides *what a fish wants*; locomotion decides how fast it can get there.
-- **Ambient shoal.** 240 (high) / 80 (low) commit-minnows in one `InstancedMesh`; orbit path *and* spine wave run in the vertex shader, so the frame loop writes one uniform regardless of population. Hero specimens keep their CPU spine rig — their materials, glow lights and raycast targets hang off those nodes.
+- **Ambient shoal.** 240 (high) / 80 (low) GPU commit-minnows in one `InstancedMesh`; orbit path *and* spine wave run in the vertex shader. High tier also adds a small LayerLab ambient GLB shoal (`fish/ambientSchool.ts`). Hero specimens keep a CPU spine rig only while the procedural fallback is visible — after a GLB swap the mixer owns the body.
 - **HUD observations.** Sonar contacts ride the bus at ~10Hz (`tank:sonar`), the dossier anchor and dive progress at 60fps; all three are written to DOM refs, never React state. `tank:depth` (bathymetry) and `view:sonar` are commands, handled in `useFishTank`.
 - **Depth is the timeline.** `fish/bathymetry.ts` maps the existing `depth` ∈ [0,1] to year bands — no per-fish year field, so the layout schema and its Python mirror are untouched.
 - **Audio.** Positional cues pass `at` on `audio:fx` and route through an HRTF `PannerNode`; the listener tracks the camera at ~15Hz and `setImmersion` sweeps a lowpass 20kHz → 450Hz across the waterline. Still gated behind the user's sound toggle (autoplay policy).
@@ -169,6 +176,7 @@ CatPortfolio/
 │   │       ├── components/     # Cat3DView.tsx · CatDOMCompanion.tsx (dev-only floating companion)
 │   │       └── index.ts        # Module export barrel
 │   ├── fish/                   # Pure models: sceneFromLayout matchFish formFromDomain speciesMeshes
+│   │                           # modelLoader (async GLTF cache) assetRegistry gltfFacing gltfQuality seabedFlora fishCatalogMetadata
 │   │                           # fishBoids cursorIntent audioMath sonarProjection bathymetry minnowField
 │   │                           # shaders/ (noiseCommon water caustic godRay spineDeform absorption
 │   │                           #   causticProjection underwaterPass) · postprocessing/tankComposer
@@ -198,10 +206,10 @@ CatPortfolio/
 │   ├── fish/                   # tank3d extraction notes (README, body/css/js)
 │   ├── prototypes/             # Layout drafts + HTML prototypes
 │   └── sampleDesign/
-├── scripts/                    # compile-layout · gen-layout · gen-fragments · gen-themes · sources-schema
+├── scripts/                    # compile-layout · gen-layout · gen-fragments · gen-themes · convert:fish
 ├── .claude/skills/             # react-app-guide · react_generator · agy-tdd-pipeline
 ├── .github/workflows/          # ci.yml · deploy.yml · portfolio-gen.yml
-├── public/                     # favicon.svg · config.json (runtime, unhashed)
+├── public/                     # favicon.svg · config.json · models/ (fish/*.glb, props/*.glb, textures/color.png)
 ├── Dockerfile docker-compose.yml docker-entrypoint.sh nginx.conf nginx.ngrok.conf
 └── vite.config.ts              # base /CatPortfolio/, @ alias, port 11000, three manualChunk
 ```
@@ -221,6 +229,8 @@ npm run gen:layout [-- --audience=recruiter|hiring-manager|peer|default]
 npm run gen:fragments    # Refresh design/fragments.json from OCT (manual only)
 npm run gen:themes       # Pull theme JSON from OCT design-context theme_defs (manual only)
 npm run check:themes     # Diff on-disk src/themes vs live OCT (needs OCT_URL; not CI)
+npm run convert:fish     # FBX → public/models GLB (local LayerLab pack; not CI)
+npm run test:e2e         # Playwright (starts Vite unless E2E_ORIGIN is set)
 ```
 
 **Docker:** `docker compose up --build` → http://localhost:11000/CatPortfolio/. After editing `design/layout.yaml`, run `compile:layout` **and rebuild the image** — the bind mount will not update an nginx root baked at build time.

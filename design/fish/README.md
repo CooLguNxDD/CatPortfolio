@@ -8,7 +8,12 @@ Ported from Open Design **CatPortfolio Fish Tank** (`tank3d.html` + `schema.md` 
 |---|---|
 | Specimens + scene props | Layout `fishTank` block / `fishFromLayout` adapter · `fish/sceneFromLayout` |
 | Filter / lit math | Pure `fish/matchFish` |
-| Domain → mesh form | `fish/formFromDomain` + `fish/speciesMeshes` |
+| Domain → mesh form | `fish/formFromDomain` + `fish/speciesMeshes` (procedural fallback) |
+| LayerLab GLB load + cache | `fish/modelLoader` (asks the registry for paths; skeleton clone + palette) |
+| 3D asset registry | `fish/assetRegistry` — bundles `src/fish/generated/fish-manifest.json` (from `convert:fish`), aliases domains (`ai→MantaRay`), loaders resolve `path` from the catalog |
+| Per-rig +Z facing | `fish/gltfFacing` |
+| High vs low GLB gate | `fish/gltfQuality` — high: GLB heroes/reef/ambient; low: procedural only |
+| Seabed GLB scatter | `fish/seabedFlora` (high tier; AbortSignal + caustic patch) |
 | Transient UI (scene, chrome, query, bake) | Zustand `store/fishTankSlice` (non-persisted) |
 | Shareable focus / text view | URL `?f=` / `?v=` via TanStack Router |
 | Server / bake layout | TanStack Query (`useDemoLayout`) |
