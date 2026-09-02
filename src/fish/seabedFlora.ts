@@ -71,7 +71,7 @@ export async function populateSeabedDecor(config: SeabedDecorConfig): Promise<TH
   for (let i = 0; i < coralCount; i++) {
     const propId = CORAL_PROP_IDS[i % CORAL_PROP_IDS.length]!
     const col = coralColors[i % coralColors.length]!
-    const scale = 0.035 + (i % 4) * 0.012
+    const scale = 0.07 + (i % 4) * 0.024
 
     loadPropModelInstance(propId, { tintColor: col, scale })
       .then((instance) => {
@@ -90,7 +90,7 @@ export async function populateSeabedDecor(config: SeabedDecorConfig): Promise<TH
   const rockCount = 6
   for (let i = 0; i < rockCount; i++) {
     const propId = ROCK_PROP_IDS[i % ROCK_PROP_IDS.length]!
-    const scale = 0.04 + (i % 3) * 0.015
+    const scale = 0.08 + (i % 3) * 0.03
 
     loadPropModelInstance(propId, { scale })
       .then((instance) => {
@@ -108,7 +108,7 @@ export async function populateSeabedDecor(config: SeabedDecorConfig): Promise<TH
   const detailCount = 8
   for (let i = 0; i < detailCount; i++) {
     const propId = SEABED_DETAIL_IDS[i % SEABED_DETAIL_IDS.length]!
-    const scale = 0.03 + (i % 2) * 0.01
+    const scale = 0.06 + (i % 2) * 0.02
 
     loadPropModelInstance(propId, { scale })
       .then((instance) => {

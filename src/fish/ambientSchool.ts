@@ -90,8 +90,8 @@ export class AmbientFishShoal {
           emissiveGlow: 0.2,
         })
 
-        // Scale ambient creatures slightly smaller (~0.65 - 0.85) so hero specimens remain prominent
-        const ambientScale = 0.65 + (i % 3) * 0.1
+        // Scale ambient creatures with natural size distribution (~1.8 - 2.5 units)
+        const ambientScale = 0.8 + (i % 3) * 0.15
         instance.group.scale.multiplyScalar(ambientScale)
 
         const orbitRadius = halfWidth * 0.45 + (i % 4) * 3.5
