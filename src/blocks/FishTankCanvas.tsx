@@ -105,6 +105,7 @@ import {
   type BuiltFish,
 } from "@/fish/speciesMeshes"
 import { populateSeabedDecor } from "@/fish/seabedFlora"
+import { AmbientFishShoal } from "@/fish/ambientSchool"
 import {
   buildGiantCatMesh,
   createCatAnimationState,
@@ -615,6 +616,16 @@ export default function FishTankCanvas({
     })
     withCaustics(minnows.mesh.material as THREE.MeshStandardMaterial)
     tank.add(minnows.mesh)
+
+    // Ambient 3D Fish Shoal — authentic animated 3D marine creatures
+    const ambientShoal = new AmbientFishShoal({
+      tank,
+      qualityTier: quality.tier,
+      swimMinY: SWIM_Y_MIN,
+      swimMaxY: SWIM_Y_MAX,
+      halfWidth: TANK_HALF_W,
+      halfDepth: TANK_HALF_D,
+    })
 
     // 3D Holographic Reticle for Focused Fish
     const holoReticle = createHoloReticle()
@@ -1389,6 +1400,7 @@ export default function FishTankCanvas({
       skyMat.uniforms.uTime.value = st
       causticClock.value = st
       minnows.update(st * faunaScale)
+      ambientShoal.update(dt * faunaScale, t)
       // Pointer speed decays between move events so one flick does not pin flee.
       cursorIntent = cursorTracker.tick(performance.now())
 
@@ -1971,6 +1983,7 @@ export default function FishTankCanvas({
       holoReticle.dispose()
       hologram.dispose()
       minnows.dispose()
+      ambientShoal.dispose()
       composer.dispose()
       shockRingGeo.dispose()
       shockMat.dispose()
