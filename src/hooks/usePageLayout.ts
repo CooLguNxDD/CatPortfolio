@@ -5,10 +5,8 @@
  * `workingLayout` is visible after switching `?v=` without a remount race.
  */
 
-import { useQuery } from "@tanstack/react-query"
 import {
   loadBaked,
-  loadLiveWithStatus,
   type LayoutLoadResult,
   type LayoutSource,
 } from "@/content/loadLayout"
@@ -16,17 +14,12 @@ import type { Layout } from "@/content/schema"
 import { useLayoutStore } from "@/store"
 import { useDemoLayoutQuery, useDemoShortId } from "@/hooks/useDemoLayout"
 
-const SNAPSHOT_PLACEHOLDER: LayoutLoadResult = {
-  layout: loadBaked(),
-  source: "snapshot",
-}
-
 /** Inputs for the pure page-layout resolver (unit-testable, no Query). */
 export interface ResolvePageLayoutInput {
   shortId: string | null
   isDemoSession: boolean
   demoResult: LayoutLoadResult | null
-  liveResult: LayoutLoadResult | null
+  liveResult?: LayoutLoadResult | null
   workingLayout: Layout | null
   workingSource: LayoutSource | null
   workingShortId: string | null
@@ -88,21 +81,11 @@ export function usePageLayout(urlJ: string | undefined): {
   const workingSource = useLayoutStore((s) => s.workingSource)
   const workingShortId = useLayoutStore((s) => s.shortId)
 
-  const live = useQuery({
-    queryKey: ["layout", "default"],
-    queryFn: () => loadLiveWithStatus("default"),
-    enabled: !shortId,
-    retry: false,
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    placeholderData: SNAPSHOT_PLACEHOLDER,
-  })
-
   const data = resolvePageLayout({
     shortId,
     isDemoSession,
     demoResult: shortId ? demo.result : null,
-    liveResult: live.data ?? null,
+    liveResult: null,
     workingLayout,
     workingSource,
     workingShortId,
@@ -111,7 +94,7 @@ export function usePageLayout(urlJ: string | undefined): {
   return {
     data,
     layout: data.layout,
-    isLoading: shortId ? demo.isLoading : live.isLoading,
+    isLoading: shortId ? demo.isLoading : false,
     shortId,
     isDemoSession,
   }
