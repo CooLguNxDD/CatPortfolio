@@ -94,10 +94,10 @@ function allowedOrigins(): Set<string> {
   if (typeof window !== "undefined" && window.location?.origin) {
     origins.add(window.location.origin);
   }
-  const buildTimeOrigin =
-    originOf(import.meta.env.VITE_WHISKERS_URL as string | undefined) ||
-    originOf(import.meta.env.VITE_OCT_URL as string | undefined);
-  if (buildTimeOrigin) origins.add(buildTimeOrigin);
+  const whiskersOrigin = originOf(import.meta.env.VITE_WHISKERS_URL as string | undefined);
+  if (whiskersOrigin) origins.add(whiskersOrigin);
+  const octOrigin = originOf(import.meta.env.VITE_OCT_URL as string | undefined);
+  if (octOrigin) origins.add(octOrigin);
   return origins;
 }
 

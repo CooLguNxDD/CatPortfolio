@@ -583,7 +583,7 @@ export async function askOct(
     const msg = String(err?.message || err);
 
     if (msg.includes("oct_unconfigured")) {
-      return { ok: false, error: "OCT server is unconfigured.", kind: "offline" };
+      return { ok: false, error: "Whiskers Agent server is unconfigured.", kind: "offline" };
     }
 
     const rateLimitCheck = parseRateLimit(err);
