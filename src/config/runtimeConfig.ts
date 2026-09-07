@@ -1,15 +1,16 @@
 export interface RuntimeConfig {
   /**
-   * OCT backend base URL.
+   * Whiskers Agent / OCT backend base URL.
    *
    * **Docker (localhost / ngrok)**: intentionally absent from config.json.
    * `resolveOctBaseUrl("")` returns `window.location.origin`, so the browser
    * uses same-origin `/api/` and `/mcp` paths that nginx proxies to the real
    * backend. The backend URL never reaches the browser.
    *
-   * **GitHub Pages**: baked into the JS bundle at build time via `VITE_OCT_URL`
+   * **GitHub Pages**: baked into the JS bundle at build time via `VITE_WHISKERS_URL` / `VITE_OCT_URL`
    * (injected from a GitHub Actions secret in deploy.yml).
    */
+  whiskersBaseUrl: string;
   octBaseUrl: string;
   /**
    * Bearer token for the /mcp endpoint.
@@ -46,7 +47,7 @@ export interface RuntimeConfig {
 const FETCH_TIMEOUT_MS = 2000;
 /**
  * Default idle timeout for askOct / run_graph.
- * Matches OpenCat admin MCP_TOOL_TIMEOUT_MS (10 min); keepalives reset the clock.
+ * Matches Whiskers admin MCP_TOOL_TIMEOUT_MS (10 min); keepalives reset the clock.
  */
 export const DEFAULT_ASK_TIMEOUT_MS = 600_000;
 
@@ -93,8 +94,10 @@ function allowedOrigins(): Set<string> {
   if (typeof window !== "undefined" && window.location?.origin) {
     origins.add(window.location.origin);
   }
-  const buildTimeOrigin = originOf(import.meta.env.VITE_OCT_URL as string | undefined);
-  if (buildTimeOrigin) origins.add(buildTimeOrigin);
+  const whiskersOrigin = originOf(import.meta.env.VITE_WHISKERS_URL as string | undefined);
+  if (whiskersOrigin) origins.add(whiskersOrigin);
+  const octOrigin = originOf(import.meta.env.VITE_OCT_URL as string | undefined);
+  if (octOrigin) origins.add(octOrigin);
   return origins;
 }
 
@@ -122,7 +125,7 @@ function resolveOctBaseUrl(raw: string | undefined | null): string {
       throw new Error(`origin not allowlisted: ${parsed.origin}`);
     }
   } catch (err) {
-    console.warn("resolveOctBaseUrl: rejecting invalid octBaseUrl, falling back to same-origin", stripped, err);
+    console.warn("resolveOctBaseUrl: rejecting invalid base url, falling back to same-origin", stripped, err);
     if (typeof window !== "undefined" && window.location?.origin) {
       return window.location.origin;
     }
@@ -132,12 +135,16 @@ function resolveOctBaseUrl(raw: string | undefined | null): string {
 }
 
 function envFallback(): RuntimeConfig {
+  const resolvedBase = resolveOctBaseUrl(
+    ((import.meta.env.VITE_WHISKERS_URL as string | undefined) ||
+    (import.meta.env.VITE_OCT_URL as string | undefined)) ?? "",
+  );
   return {
-    octBaseUrl: resolveOctBaseUrl(
-      (import.meta.env.VITE_OCT_URL as string | undefined) ?? "",
-    ),
+    whiskersBaseUrl: resolvedBase,
+    octBaseUrl: resolvedBase,
     mcpApiKey: (
-      (import.meta.env.VITE_OCT_API_KEY as string | undefined) ?? ""
+      ((import.meta.env.VITE_WHISKERS_API_KEY as string | undefined) ||
+      (import.meta.env.VITE_OCT_API_KEY as string | undefined)) ?? ""
     ).replace(/^[\uFEFF\xA0\s]+|[\uFEFF\xA0\s]+$/g, ""),
     askTimeoutMs: parseTimeoutMs(
       import.meta.env.VITE_ASK_TIMEOUT_MS as string | undefined,
@@ -170,14 +177,20 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
       const json = await res.json();
       const fallback = envFallback();
       const rawBase =
-        typeof json?.octBaseUrl === "string" ? json.octBaseUrl : fallback.octBaseUrl;
+        typeof json?.whiskersBaseUrl === "string"
+          ? json.whiskersBaseUrl
+          : typeof json?.octBaseUrl === "string"
+            ? json.octBaseUrl
+            : fallback.whiskersBaseUrl;
       if (typeof json?.mcpApiKey === "string" && json.mcpApiKey) {
         console.warn(
           "loadRuntimeConfig: ignoring mcpApiKey from config.json (unhashed, not trusted)",
         );
       }
+      const resolved = resolveOctBaseUrl(rawBase || fallback.whiskersBaseUrl);
       cached = {
-        octBaseUrl: resolveOctBaseUrl(rawBase || fallback.octBaseUrl),
+        whiskersBaseUrl: resolved,
+        octBaseUrl: resolved,
         mcpApiKey: fallback.mcpApiKey,
         askTimeoutMs:
           json?.askTimeoutMs !== undefined
@@ -198,12 +211,17 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
   return loadPromise;
 }
 
-/** Returns the resolved OCT base URL. Throws if loadRuntimeConfig() hasn't resolved yet. */
-export function getOctBaseUrl(): string {
+/** Returns the resolved Whiskers Agent base URL. Throws if loadRuntimeConfig() hasn't resolved yet. */
+export function getWhiskersBaseUrl(): string {
   if (!cached) {
     throw new Error("runtime_config_not_loaded");
   }
-  return resolveOctBaseUrl(cached.octBaseUrl);
+  return resolveOctBaseUrl(cached.whiskersBaseUrl || cached.octBaseUrl);
+}
+
+/** Returns the resolved OCT base URL (alias for getWhiskersBaseUrl). Throws if loadRuntimeConfig() hasn't resolved yet. */
+export function getOctBaseUrl(): string {
+  return getWhiskersBaseUrl();
 }
 
 /** Returns the resolved /mcp bearer token (may be ""). Throws if not loaded yet. */

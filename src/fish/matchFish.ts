@@ -59,7 +59,7 @@ export function fishLitFactor(
 }
 
 /** Words too common to carry signal when scoring a visitor question.
- *  Keep in sync with OpenCat ``ask/router.py`` ``_ASK_STOPWORDS``. */
+ *  Keep in sync with Whiskers Agent ``ask/router.py`` ``_ASK_STOPWORDS``. */
 const STOPWORDS = new Set([
   "a", "an", "the", "this", "that", "these", "those",
   "i", "im", "ive", "id", "me", "my", "mine", "we", "us", "our",

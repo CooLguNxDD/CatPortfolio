@@ -53,6 +53,18 @@ describe("runtimeConfig", () => {
       expect(config.octBaseUrl).toBe("https://trusted.example.com/oct");
     });
 
+    it("accepts base URLs from either VITE_WHISKERS_URL or legacy VITE_OCT_URL when both are set", async () => {
+      vi.stubEnv("VITE_WHISKERS_URL", "https://whiskers.example.com");
+      vi.stubEnv("VITE_OCT_URL", "https://legacy-oct.example.com");
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ octBaseUrl: "https://legacy-oct.example.com" }),
+      }) as unknown as typeof fetch;
+
+      const config = await loadRuntimeConfig();
+      expect(config.octBaseUrl).toBe("https://legacy-oct.example.com");
+    });
+
     it("rejects an octBaseUrl on a foreign origin and falls back instead of trusting it", async () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       vi.stubEnv("VITE_OCT_URL", "https://trusted.example.com");
