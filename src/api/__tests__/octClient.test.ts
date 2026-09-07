@@ -26,6 +26,7 @@ vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
 }));
 
 vi.mock("../../config/runtimeConfig", () => ({
+  getWhiskersBaseUrl: vi.fn().mockReturnValue("http://localhost:10000"),
   getOctBaseUrl: vi.fn().mockReturnValue("http://localhost:10000"),
   getMcpApiKey: vi.fn().mockReturnValue("test-key"),
 }));

@@ -113,7 +113,7 @@ export function askDirective(ctx: AskContext): string {
   );
 }
 
-/** Label for the one-shot CLI pill (mirrors OpenCat admin McpMode). */
+/** Label for the one-shot CLI pill (mirrors Whiskers admin McpMode). */
 function oneShotPillLabel(cli: CliMeta): string {
   const agent = (cli.agent || "").toLowerCase();
   if (agent === "agy" || cli.provider === "agy-cli") return "one-shot cli · agy";
@@ -538,12 +538,12 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
                 isOnline ? "bg-emerald-500" : "bg-red-500",
               )}
             />
-            {isOnline ? "oct online" : "oct offline"}
+            {isOnline ? "whiskers online" : "whiskers offline"}
           </div>
           {cliMeta && (
             <div
               className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium flex items-center gap-1.5 border uppercase tracking-wider bg-(--neon)/10 text-(--neon) border-(--neon)/30 whitespace-nowrap shrink-0"
-              title="OpenCat core LLM is a headless CLI provider — this turn ran as a single CLI agent spawn."
+              title="Whiskers core LLM is a headless CLI provider — this turn ran as a single CLI agent spawn."
             >
               <span className="h-1.5 w-1.5 rounded-full bg-(--neon) animate-pulse" />
               {oneShotPillLabel(cliMeta)}
@@ -602,7 +602,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
             <p className="text-sm text-(--fg-muted) max-w-sm">
               {isOnline
                 ? "Ask about experience, projects, or a job fit — the page re-renders live from fragments while the agent answers. Questions are stored (capped) in an ask-turn audit; the layout overlay is not."
-                : "OpenCat Tunnel connection is currently unavailable. Chat will activate when the server comes online."}
+                : "Whiskers Agent connection is currently unavailable. Chat will activate when the server comes online."}
             </p>
             {isOnline && (
               <div className="space-y-3 w-full max-w-md text-left">

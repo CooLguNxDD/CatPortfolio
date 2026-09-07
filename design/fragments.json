@@ -16,10 +16,10 @@
           "props": {
             "name": "Andrew Liang (the cat)",
             "tagline": "AI Systems · Cloud Infra & DevOps · Mobile & Platform",
-            "pitch": "WelTel employment impact (AI gateway, cloud cost, mobile, platform) plus personal OSS: OpenCat Tunnel MCP platform and this agentic CatPortfolio SPA.",
+            "pitch": "WelTel employment impact (AI gateway, cloud cost, mobile, platform) plus personal OSS: Whiskers Agent MCP platform and this agentic CatPortfolio SPA.",
             "links": [
               { "label": "GitHub Profile", "href": "https://github.com/CooLguNxDD" },
-              { "label": "OpenCat Tunnel (personal OSS)", "href": "https://github.com/CooLguNxDD/OpenCat-Mcp-Full" },
+              { "label": "Whiskers Agent (personal OSS)", "href": "https://github.com/CooLguNxDD/OpenCat-Mcp-Full" },
               { "label": "CatPortfolio (this site)", "href": "https://github.com/CooLguNxDD/CatPortfolio" }
             ]
           }
@@ -29,7 +29,7 @@
     {
       "id": "work.cards",
       "label": "WelTel job domain cards",
-      "description": "Four employer tracks (ai/devops/mobile/platform). Not OpenCat Tunnel OSS.",
+      "description": "Four employer tracks (ai/devops/mobile/platform). Not Whiskers Agent OSS.",
       "tags": ["projects", "cards", "matrix", "WelTel", "job"],
       "audience_affinity": ["default", "recruiter", "peer", "hiring-manager"],
       "overrides": {},
@@ -140,7 +140,7 @@
           "props": {
             "kind": "donut",
             "title": "WelTel clinical tool distribution (42 total, job MCP)",
-            "caption": "Employer AI gateway — not OpenCat Tunnel OSS",
+            "caption": "Employer AI gateway — not Whiskers Agent OSS",
             "unit": "tools",
             "series": [
               { "name": "Patients & Alerts", "points": [{ "x": "Patients", "y": 14 }] },
@@ -251,8 +251,8 @@
                 "prompt": "Summarize WelTel Mobile work: 531+ commits and Amplify GraphQL chat."
               },
               {
-                "label": "OpenCat Tunnel (OSS)",
-                "prompt": "How is OpenCat Tunnel different from WelTel job work as a personal OSS MCP platform?"
+                "label": "Whiskers Agent (OSS)",
+                "prompt": "How is Whiskers Agent different from WelTel job work as a personal OSS MCP platform?"
               },
               {
                 "label": "CatPortfolio (OSS)",
@@ -281,8 +281,8 @@
       "audience": "peer"
     },
     {
-      "label": "OpenCat Tunnel (OSS)",
-      "prompt": "How is OpenCat Tunnel different from WelTel job work as a personal OSS MCP platform?",
+      "label": "Whiskers Agent (OSS)",
+      "prompt": "How is Whiskers Agent different from WelTel job work as a personal OSS MCP platform?",
       "audience": "peer"
     },
     {

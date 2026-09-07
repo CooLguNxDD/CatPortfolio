@@ -1,5 +1,5 @@
 /**
- * Mock OpenCat MCP tool sandbox — client-only demo (no PHI, no live backend).
+ * Mock Whiskers Agent MCP tool sandbox — client-only demo (no PHI, no live backend).
  * Ported from OD cat-portfolio-system prototypes/matrix-home.html.
  */
 
@@ -57,7 +57,7 @@ type LogLine = {
 const seg = (kind: LogKind, text: string): LogSegment => ({ kind, text });
 
 const READY_LINES: LogLine[] = [
-  { segments: [seg("dim", "// OpenCat MCP mock inspector · ready")] },
+  { segments: [seg("dim", "// Whiskers MCP mock inspector · ready")] },
   {
     segments: [seg("prompt", "mcp>"), seg("dim", "select a tool to stream a demo invoke…")],
     cursor: true,
@@ -83,7 +83,7 @@ export function McpSandbox(_props: Record<string, unknown> = {}) {
     setBusy(true);
     try {
       setLines([
-        { segments: [seg("dim", "// vector route · mock OpenCat gateway")] },
+        { segments: [seg("dim", "// vector route · mock Whiskers gateway")] },
         { segments: [seg("prompt", "mcp>"), seg("cmd", `tools/call ${name}`)] },
         { segments: [seg("dim", `args ${JSON.stringify(demo.args)}`)] },
       ]);
