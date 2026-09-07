@@ -29,7 +29,7 @@ export function Hero({ name, tagline, pitch, links }: HeroProps) {
     >
       <div className="flex-1 space-y-4 min-w-0">
         <div className="text-[0.72rem] font-mono uppercase tracking-[0.16em] text-(--fg-subtle)">
-          OpenCat · Systems &amp; AI
+          Whiskers · Systems &amp; AI
         </div>
         <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-(--fg) leading-[1.1]">
           {name}
@@ -45,7 +45,7 @@ export function Hero({ name, tagline, pitch, links }: HeroProps) {
 
         <div className="flex flex-wrap gap-2 pt-0.5" aria-label="Work streams">
           <span className="mx-chip mx-chip--job">WelTel · job</span>
-          <span className="mx-chip mx-chip--oss">OpenCat · OSS</span>
+          <span className="mx-chip mx-chip--oss">Whiskers · OSS</span>
           <span className="mx-chip mx-chip--accent">MCP · GOAP · GenUI</span>
         </div>
 

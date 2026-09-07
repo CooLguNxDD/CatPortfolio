@@ -8,7 +8,7 @@ meta:
   audience: default
   generatedAt: "2026-08-10T20:00:00Z"
   curationLabel: WelTel job tracks · contribution reports
-  # Streams: WelTel JOB work (employer) ≠ OpenCat Tunnel OSS ≠ CatPortfolio SPA.
+  # Streams: WelTel JOB work (employer) ≠ Whiskers Agent OSS ≠ CatPortfolio SPA.
   # Default tank fish sourced from employer contribution reports
   # (AI, DevOps, Mobile, Platform). Open Design matrix contract.
   dag:
@@ -30,7 +30,7 @@ meta:
         at: 0.38
         nodes: [fish-tank-1]
       - level: 4
-        label: Personal OSS · OpenCat Tunnel
+        label: Personal OSS · Whiskers Agent
         at: 0.48
         nodes: [fa1, mcp-sandbox]
       - level: 5
@@ -59,11 +59,11 @@ blocks:
       tagline: AI Systems · Cloud Infra & DevOps · Mobile & Platform
       pitch: >-
         WelTel employment impact (AI gateway, cloud cost, mobile, platform)
-        plus personal OSS: OpenCat Tunnel MCP platform and this agentic CatPortfolio SPA.
+        plus personal OSS: Whiskers Agent MCP platform and this agentic CatPortfolio SPA.
       links:
         - label: GitHub Profile
           href: https://github.com/CooLguNxDD
-        - label: OpenCat Tunnel (personal OSS)
+        - label: Whiskers Agent (personal OSS)
           href: https://github.com/CooLguNxDD/OpenCat-Mcp-Full
         - label: CatPortfolio (this site)
           href: https://github.com/CooLguNxDD/CatPortfolio
@@ -92,14 +92,14 @@ blocks:
   - type: flowAnim
     id: fa1
     props:
-      title: OpenCat Tunnel (personal OSS) — tool routing & multi-provider agents
+      title: Whiskers Agent (personal OSS) — tool routing & multi-provider agents
       animate: true
       nodes:
         - id: client
           label: Console / CLI
           group: client
         - id: gateway
-          label: OpenCat MCP
+          label: Whiskers MCP
           group: infra
         - id: router
           label: GOAP + embeddings
@@ -121,7 +121,7 @@ blocks:
           to: client
           label: streaming result
 
-  # L2 — WelTel JOB domain cards (employer narrative; not OpenCat OSS)
+  # L2 — WelTel JOB domain cards (employer narrative; not Whiskers Agent OSS)
   - type: card
     id: card-ai
     props:
@@ -346,11 +346,11 @@ blocks:
         - label: Focus
           cells:
             - "AI / DevOps / Mobile / Platform employment impact"
-            - "OpenCat Tunnel MCP + CatPortfolio SPA"
+            - "Whiskers Agent MCP + CatPortfolio SPA"
         - label: AI surface
           cells:
             - "42-tool WelTel MCP + Clinician Command Center"
-            - "OpenCat Tunnel plugins, GOAP, OAuth gateway"
+            - "Whiskers Agent plugins, GOAP, OAuth gateway"
         - label: Cloud
           cells:
             - "AWS $4k→$2.8k/mo · self-hosted runners"
@@ -382,7 +382,7 @@ blocks:
           body: RN + Amplify GraphQL chat path; 531+ commits over the mobile window.
           tag: WelTel Mobile
         - date: "2026"
-          title: OpenCat Tunnel & CatPortfolio (personal OSS)
+          title: Whiskers Agent & CatPortfolio (personal OSS)
           body: Separate open-source MCP platform and agentic portfolio SPA — not WelTel product code.
           tag: Personal OSS
 
@@ -412,10 +412,10 @@ blocks:
             - kind: text
               markdown: |-
                 ### Personal OSS
-                - **OpenCat Tunnel** — LangGraph, OAuth, plugins, GOAP MCP platform.
+                - **Whiskers Agent** — LangGraph, OAuth, plugins, GOAP MCP platform.
                 - **CatPortfolio** — React 19 matrix GenUI, live `/ask`, bake `?j=`.
             - kind: quote
-              text: "Job impact at WelTel. Platform craft in OpenCat Tunnel. Storytelling in CatPortfolio — three separate streams."
+              text: "Job impact at WelTel. Platform craft in Whiskers Agent. Storytelling in CatPortfolio — three separate streams."
               cite: "Andrew Liang"
             - kind: metric
               label: Indexed job reports
@@ -436,33 +436,33 @@ blocks:
         (~395 commits, 42 tools) and multi-provider streaming assistant.
       result: >-
         AWS ~$2.8k/mo (−30%), production mobile messaging, clinician AI with live tools —
-        while OpenCat Tunnel and CatPortfolio remain separate personal OSS products.
+        while Whiskers Agent and CatPortfolio remain separate personal OSS products.
       tags: [WelTel, aws, mcp, react-native, job]
 
   - type: archDiagram
     id: a1
     props:
-      title: Personal OSS loop — OpenCat Tunnel + CatPortfolio
+      title: Personal OSS loop — Whiskers Agent + CatPortfolio
       kind: mermaid
       source: |-
         flowchart LR
-          oct[OpenCat Tunnel OSS] --> bake[bake layout / MCP tools]
+          wa[Whiskers Agent OSS] --> bake[bake layout / MCP tools]
           bake --> api[public layout API]
           spa[CatPortfolio SPA] --> api
           spa --> ask["/ask live GenUI"]
-          ask --> oct
-          job[WelTel job reports] -.->|context only| oct
+          ask --> wa
+          job[WelTel job reports] -.->|context only| wa
 
   - type: codeSnippet
     id: c1
     props:
       lang: ts
-      caption: CatPortfolio — job layout fetch (personal OSS SPA talking to OpenCat Tunnel)
+      caption: CatPortfolio — job layout fetch (personal OSS SPA talking to Whiskers Agent)
       code: |-
         // loadJobLayout(shortId) → GET /api/portfolio/public/layout/{id}
         // Backend bakes from portfolio projects (e.g. WelTel job tracks) + fragments.
         export async function loadJobLayout(jobId: string) {
-          const res = await fetch(`${octBaseUrl()}/api/portfolio/public/layout/${jobId}`);
+          const res = await fetch(`${whiskersBaseUrl()}/api/portfolio/public/layout/${jobId}`);
           if (!res.ok) return loadBaked(); // fail-open to default matrix
           return LayoutSchema.parse(await res.json());
         }
@@ -475,14 +475,14 @@ blocks:
 
         **WelTel job work** (AI, DevOps, mobile, platform) is employer impact — sourced from contribution reports under `weltelprojects/`.
 
-        **OpenCat Tunnel** is a **personal OSS** MCP platform (LangGraph, OAuth, plugins, portfolio bake). It is not WelTel product code.
+        **Whiskers Agent** is a **personal OSS** MCP platform (LangGraph, OAuth, plugins, portfolio bake). It is not WelTel product code.
 
         **CatPortfolio** is this **agentic portfolio SPA**: Zod layout contract, matrix `meta.dag`, live `/ask`, and `?j=` baked resumes.
 
         | Stream | Kind | Headline |
         | --- | --- | --- |
         | WelTel AI / DevOps / Mobile / Platform | Job | 42 tools · −30% AWS · 531+ mobile commits · SMS Axios |
-        | OpenCat Tunnel | Personal OSS | MCP gateway platform + agent runtime |
+        | Whiskers Agent | Personal OSS | MCP gateway platform + agent runtime |
         | CatPortfolio | Personal OSS | Matrix GenUI portfolio you are reading |
 
   - fragment: cta.quickActions

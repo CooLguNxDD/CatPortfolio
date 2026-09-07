@@ -287,7 +287,7 @@ const CostSim = z.object({
  * Declarative canvas-2D visual (OD matrix L3, alongside archDiagram/flowAnim).
  * Preset + grounded data, NOT a general drawing DSL: no arbitrary paths,
  * colors, or expressions -- mirrors flowAnim's nodes/edges shape, server-
- * derived from real projects (see OpenCat-Mcp-Full block_builder.py's
+ * derived from real projects (see Whiskers Agent block_builder.py's
  * "scene2d" branch). `renderer` is a Literal union deliberately left open
  * for "webgl" later (a schema widening, not a rewrite) -- three.js is not
  * added until that path ships.
