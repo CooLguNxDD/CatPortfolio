@@ -243,6 +243,7 @@ export class WhiskersClient {
 
 /** Backward-compatible alias for WhiskersClient */
 export const OctClient = WhiskersClient;
+export type OctClient = WhiskersClient;
 
 /** Resolved Whiskers Agent base URL: runtime `config.json` first, then the build-time `VITE_WHISKERS_URL` / `VITE_OCT_URL` fallback. */
 export function whiskersBaseUrl(): string | undefined {

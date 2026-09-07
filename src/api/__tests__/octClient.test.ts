@@ -106,4 +106,13 @@ describe("OctClient", () => {
       expect(mockClientInstance.connect).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe("TypeScript backward compatibility", () => {
+    it("can be used in both type and value positions", () => {
+      let client: OctClient | null = null;
+      client = new OctClient("http://localhost:10000/mcp");
+      expect(client).toBeInstanceOf(OctClient);
+    });
+  });
 });
+
