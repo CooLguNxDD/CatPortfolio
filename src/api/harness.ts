@@ -5,7 +5,7 @@ import { wrapMessage } from "./instructions.ts";
 import { BlockSchema, LayoutSchema, type Block, type Layout } from "../content/schema.ts";
 
 /**
- * Present when OpenCat short-circuited the turn to a single headless CLI agent
+ * Present when Whiskers Agent short-circuited the turn to a single headless CLI agent
  * spawn (core LLM provider claude-cli / agy-cli → oneshot). Mirrors the
  * admin playground "one-shot cli" pill payload under response.meta.cli.
  */
@@ -532,7 +532,7 @@ function isConfirmationNeeded(data: unknown): boolean {
 }
 
 /**
- * Ask OpenCat via run_graph.
+ * Ask Whiskers Agent via run_graph.
  *
  * @param directive Optional system directive already (or to be) appended for
  *   confirm round-trips — when confirmation_needed, the continuation re-sends
@@ -583,7 +583,7 @@ export async function askOct(
     const msg = String(err?.message || err);
 
     if (msg.includes("oct_unconfigured")) {
-      return { ok: false, error: "OCT server is unconfigured.", kind: "offline" };
+      return { ok: false, error: "Whiskers Agent server is unconfigured.", kind: "offline" };
     }
 
     const rateLimitCheck = parseRateLimit(err);
@@ -630,7 +630,10 @@ export async function askOct(
         return { ok: false, error: "Request timed-out.", kind: "timeout" };
       }
 
-      return { ok: false, error: "OCT server is offline or connection failed.", kind: "offline" };
+      return { ok: false, error: "Whiskers Agent server is offline or connection failed.", kind: "offline" };
     }
   }
 }
+
+/** Canonical alias for askOct. */
+export const askWhiskers = askOct;
