@@ -83,6 +83,9 @@ declare module "three" {
     add(...objects: Object3D[]): this
     remove(...objects: Object3D[]): this
     getObjectByName(name: string): Object3D | undefined
+    updateMatrixWorld(force?: boolean): void
+    getWorldPosition(target: Vector3): Vector3
+    worldToLocal(vector: Vector3): Vector3
     traverse(cb: (obj: Object3D) => void): void
     lookAt(v: Vector3): void
     clone(recursive?: boolean): this
