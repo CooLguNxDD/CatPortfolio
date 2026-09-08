@@ -18,6 +18,7 @@
 
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
+import { attachRiggedGiantCat } from "@/object3D/Cat/mesh/riggedGiantCat"
 import { useFishTankStore } from "@/store"
 import { fishBus } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
@@ -709,6 +710,9 @@ export default function FishTankCanvas({
     cat.position.set(CAT_X, WATER_Y, 0)
     cat.rotation.y = CAT_CONFIG.rotationYOffset
     scene.add(cat)
+    const riggedCat = attachRiggedGiantCat(catParts, (status) => {
+      renderer.domElement.setAttribute("data-tank-cat-model", status)
+    })
 
     const catAnimState = createCatAnimationState()
     let catTriggerSwat = false
@@ -1651,6 +1655,7 @@ export default function FishTankCanvas({
         },
       })
       catTriggerSwat = false
+      riggedCat.update()
 
       // Focus visuals: the reticle marks an unlocked hover state, the
       // architecture hologram takes over once a specimen is locked.
@@ -2117,6 +2122,7 @@ export default function FishTankCanvas({
 
     return () => {
       disposed = true
+      riggedCat.dispose()
       sceneryAbort.abort()
       for (const o of fishObjs) o.built.cancelGltf()
       applyPaletteRef.current = null

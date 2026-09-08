@@ -29,3 +29,6 @@ dist-ssr
 /.playwright-mcp
 /graphify-out/
 /test-results/
+
+graphify-out
+.opencode-runtime

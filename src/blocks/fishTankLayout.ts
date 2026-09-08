@@ -41,7 +41,7 @@ export const DIVE_DURATION_MS = 1100
 export const SURFACE_DURATION_MS = 750
 
 /** Where the cat perches on the rim. Shared by the mesh and the surface camera. */
-export const CAT_X = 12
+export const CAT_X = TANK_HALF_W + 2
 export const CAT_Y = WATER_Y + 1
 
 export interface FishSpecimenInput {

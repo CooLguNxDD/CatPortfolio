@@ -397,7 +397,7 @@ export const LABEL_CONFIG = {
 } as const
 
 export const CAT_CONFIG = {
-  rotationYOffset: -Math.PI / 4,
+  rotationYOffset: -Math.PI / 2,
   huntCursorDistance: 28,
   trackDistance: 35,
   huntDistance: 24,
