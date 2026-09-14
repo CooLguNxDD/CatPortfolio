@@ -107,7 +107,27 @@ describe("rigged giant cat", () => {
     expect(parts.rig.visible).toBe(false)
     expect(group.children).toContain(model)
     expect(status).toHaveBeenLastCalledWith("ready")
+    const skeletonDispose = vi.spyOn(THREE.Skeleton.prototype, "dispose")
     instance.dispose()
     expect(group.children).not.toContain(model)
+    expect(skeletonDispose).toHaveBeenCalled()
+    skeletonDispose.mockRestore()
+  })
+
+  it("centers the pointer hitbox on the rigged head", async () => {
+    const { group, parts } = buildGiantCatMesh(12)
+    const model = await asset()
+    group.add(model)
+    bindGiantCat(model, parts)
+    group.updateMatrixWorld(true)
+    const head = model.getObjectByName("head")!.getWorldPosition(new THREE.Vector3())
+    const face = group.localToWorld(new THREE.Vector3(0, 20, -2))
+    // Straight-on rays at the face center, cheeks, and brow must all pick the cat.
+    for (const [x, y] of [[0, 0], [-14, 0], [14, 0], [0, 12], [0, -8]]) {
+      const target = face.clone().add(new THREE.Vector3(x, y, 0))
+      const ray = new THREE.Raycaster(target.clone().add(new THREE.Vector3(0, 0, 60)), new THREE.Vector3(0, 0, -1))
+      expect(ray.intersectObject(parts.hitBox, false).length).toBeGreaterThan(0)
+    }
+    expect(parts.hitBox.getWorldPosition(new THREE.Vector3()).y).toBeGreaterThan(head.y)
   })
 })

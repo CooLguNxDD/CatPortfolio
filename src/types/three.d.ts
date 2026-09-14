@@ -319,6 +319,7 @@ declare module "three" {
   export class Skeleton {
     bones: Bone[]
     constructor(bones?: Bone[])
+    dispose(): void
   }
   export class SkinnedMesh extends Mesh {
     isSkinnedMesh?: boolean

@@ -4,10 +4,15 @@ import type { CatParts } from "./catGiantMesh"
 
 export const RIGGED_CAT_URL = `${import.meta.env.BASE_URL}models/cat/reference-cat-rigged.glb`
 
+/** Head-bone origin to skinned-head center, in cat-group space (measured from the shipped GLB). */
+const HEAD_HIT_OFFSET = new THREE.Vector3(0, 8, 4)
+
 function release(model: THREE.Group) {
   const geometries = new Set<THREE.BufferGeometry>()
   const materials = new Set<THREE.Material>()
+  const skeletons = new Set<THREE.Skeleton>()
   model.traverse((node) => {
+    if (node instanceof THREE.SkinnedMesh) skeletons.add(node.skeleton)
     if (node instanceof THREE.Mesh) {
       geometries.add(node.geometry)
       for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
@@ -17,6 +22,7 @@ function release(model: THREE.Group) {
   })
   geometries.forEach((geometry) => geometry.dispose())
   materials.forEach((material) => material.dispose())
+  skeletons.forEach((skeleton) => skeleton.dispose())
 }
 
 /** Add offsets to the authored bone orientation; never overwrite its bind pose. */
@@ -55,6 +61,7 @@ export function bindGiantCat(model: THREE.Group, parts: CatParts) {
     }
   })
   const support = new THREE.Vector3()
+  const headPos = new THREE.Vector3()
   const head = bones.get("head")!.node
   const modelWorld = new THREE.Quaternion()
   const modelToParent = new THREE.Quaternion()
@@ -99,8 +106,12 @@ export function bindGiantCat(model: THREE.Group, parts: CatParts) {
     head.quaternion.copy(modelToParent)
     model.worldToLocal(bones.get("front_paw.R")!.node.getWorldPosition(support))
     model.position.set(0, 0.9 - support.y * 18, 2 - support.z * 18)
-    parts.hitBox.position.set(0, 2, model.position.z)
-    parts.hitBox.scale.set(1.6, 2, 1.6)
+    // Keep pointer picking on the framed face, not the fallback body's height.
+    model.updateMatrixWorld(true)
+    parts.hitBox.parent!.worldToLocal(head.getWorldPosition(headPos))
+    // The head bone sits at the skull base; shift up/forward to the skinned head's center.
+    parts.hitBox.position.copy(headPos).add(HEAD_HIT_OFFSET)
+    parts.hitBox.scale.set(3.6, 2.6, 2.6)
   }
   update()
   return update
