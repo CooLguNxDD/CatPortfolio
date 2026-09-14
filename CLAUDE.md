@@ -100,7 +100,7 @@ Extensible 2D/3D skeletal rigging and procedural animation framework:
 | Purr Reaction Layer | `animations/PurrReactionLayer.ts` | Click-reactive 26Hz purr resonance, amplitude decay, and haptic feedback. |
 | Idle Breathing & Tail Wave | `animations/BreathingLayer.ts` | Harmonic chest expansion and 7-segment fluid sinusoidal tail travelling wave. |
 | Stylized Low-Poly Geometry | `mesh/CatMeshBuilder.ts` | Procedural Three.js Cat geometry bound to bones with glowing golden eyes. |
-| Giant Perched Mascot | `mesh/catGiantMesh.ts` | Rim-perched giant cat with glowing/dilating pupils and hunting swat strike. |
+| Giant Perched Mascot | `mesh/catGiantMesh.ts`, `mesh/riggedGiantCat.ts` | Rigged charcoal GLB at `public/models/cat/reference-cat-rigged.glb`, with the procedural mascot retained as loading/error fallback and animation driver. A 6× model scale and upright pelvis pose place the body outside the right glass wall; the support wrist anchors to the rim while head, ears, forepaw and curled tail animate. Inset eyes remain as modeled. Load status: canvas `data-tank-cat-model`. Source Blender file: `../3dModels/cat_reference.blend`. |
 | React & DOM Views | `components/Cat3DView.tsx`, `components/CatDOMCompanion.tsx` | Isolated WebGL canvas view & draggable dev companion widget (`import.meta.env.DEV`). |
 
 - **Zero-Discontinuity Look-At**: Eliminates atan2 branch cuts along negative axes via forward-hemisphere projection and $\arcsin$ vector normalization.
@@ -172,7 +172,7 @@ CatPortfolio/
 │   │       ├── math/           # LinearTransform.ts (affine, continuous arcsin look-at, FOV falloff, ±90° clamp) · SpringDamper.ts
 │   │       ├── rig/            # RigBone.ts · CatRig.ts · types.ts (bone hierarchy, anatomical constraints)
 │   │       ├── animations/     # AnimationLayer.ts · GazeTrackingLayer.ts · BlinkLayer.ts · PurrReactionLayer.ts · BreathingLayer.ts · CatAnimationEngine.ts
-│   │       ├── mesh/           # CatMeshBuilder.ts · catGiantMesh.ts (perched giant mascot)
+│   │       ├── mesh/           # CatMeshBuilder.ts · CatGLTFLoader.ts · catGiantMesh.ts · riggedGiantCat.ts (skinned giant mascot with procedural fallback)
 │   │       ├── components/     # Cat3DView.tsx · CatDOMCompanion.tsx (dev-only floating companion)
 │   │       └── index.ts        # Module export barrel
 │   ├── fish/                   # Pure models: sceneFromLayout matchFish formFromDomain speciesMeshes

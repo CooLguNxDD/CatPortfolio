@@ -30,6 +30,7 @@ dist-ssr
 /graphify-out/
 /test-results/
 
+graphify-out
 # pullfrog runtime (event payload written by the workflow)
 .github/pullfrog/event.json
 config.env

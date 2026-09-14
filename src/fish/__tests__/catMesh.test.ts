@@ -41,6 +41,20 @@ describe("buildGiantCatMesh", () => {
 })
 
 describe("stepCatAnimation", () => {
+  it("uses the loaded cat's face height for mouse gaze instead of the fallback neck", () => {
+    const { parts } = buildGiantCatMesh(12)
+    const state = createCatAnimationState()
+    const gazeOrigin = { x: 14, y: 32, z: -20 }
+    const target = { x: 14, y: 32, z: -4 }
+    state.currentGaze = { ...target }
+    stepCatAnimation(parts, state, {
+      t: 0, dt: 0.016, catWorldPos: { x: 12, y: 12, z: -28 },
+      gazeOrigin, targetPos: target, isHunting: false,
+    })
+    expect(parts.headPivot.rotation.x).toBeCloseTo(0)
+    expect(parts.headPivot.rotation.y).toBeCloseTo(0)
+  })
+
   it("calculates 3D head IK towards target position within biomechanical bounds", () => {
     const { parts } = buildGiantCatMesh(12)
     const state = createCatAnimationState()

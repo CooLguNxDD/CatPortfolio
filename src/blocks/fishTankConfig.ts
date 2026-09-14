@@ -50,6 +50,8 @@ export const CAMERA_CONFIG = {
   dragYawSensitivity: 0.005,
   dragPitchSensitivity: 0.004,
   wheelZoomSensitivity: 0.02,
+  /** Keep the surface camera outside the mascot's oversized head. */
+  surfaceMinRadius: 26,
   surfaceReturnThreshold: 0.05,
   submergedThreshold: 0.95,
   targetSnapDistance: 0.08,
@@ -397,7 +399,7 @@ export const LABEL_CONFIG = {
 } as const
 
 export const CAT_CONFIG = {
-  rotationYOffset: -Math.PI / 4,
+  rotationYOffset: 0,
   huntCursorDistance: 28,
   trackDistance: 35,
   huntDistance: 24,

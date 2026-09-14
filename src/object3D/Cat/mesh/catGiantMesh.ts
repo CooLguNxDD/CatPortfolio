@@ -590,6 +590,8 @@ export function stepCatAnimation(
     t: number
     dt: number
     catWorldPos: Vec3
+    /** The loaded mascot's face is much higher than the procedural fallback. */
+    gazeOrigin?: Vec3
     targetPos: Vec3 | null
     isHunting: boolean
     triggerSwat?: boolean
@@ -621,9 +623,9 @@ export function stepCatAnimation(
   state.currentGaze.z += (state.gazeTarget.z - state.currentGaze.z) * Math.min(1, dt * gazeLerpSpeed)
 
   // Compute relative angle to target from head pivot
-  const dx = state.currentGaze.x - catWorldPos.x
-  const dy = state.currentGaze.y - (catWorldPos.y + 4.5)
-  const dz = state.currentGaze.z - catWorldPos.z
+  const dx = state.currentGaze.x - (params.gazeOrigin?.x ?? catWorldPos.x)
+  const dy = state.currentGaze.y - (params.gazeOrigin?.y ?? catWorldPos.y + 4.5)
+  const dz = state.currentGaze.z - (params.gazeOrigin?.z ?? catWorldPos.z)
   const horizontalDist = Math.hypot(dx, dz)
 
   // Continuous FOV attention falloff for targets behind the cat:
@@ -721,7 +723,7 @@ export function stepCatAnimation(
     state.swatTarget = targetPos ?? {
       x: catWorldPos.x - 4,
       y: catWorldPos.y - 1,
-      z: 2,
+      z: catWorldPos.z + 2,
     }
   }
 
