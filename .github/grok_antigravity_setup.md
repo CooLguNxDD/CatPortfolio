@@ -8,7 +8,7 @@ This guide describes how to configure and use the **Grok** (xAI) and **Antigravi
 
 The pipeline uses the custom Pullfrog Action runner and agent image:
 *   **Custom Runner Action**: pinned SHA in `.github/pullfrog/config.yml` (`action.uses`)
-*   **Docker Agent Image**: `ghcr.io/coolgunxdd/pullfrog-agent:latest`
+*   **Docker Agent Image**: digest-pinned in `.github/pullfrog/config.yml` (`image.digest`)
 
 ---
 
