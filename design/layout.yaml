@@ -73,9 +73,9 @@ blocks:
     props:
       items:
         - label: WelTel AWS bill
-          value: "$4k → $2.8k"
-          delta: "-30% monthly (job DevOps)"
-          spark: [4200, 3800, 3200, 2800]
+          value: "−30%"
+          delta: "monthly (job DevOps)"
+          spark: [100, 90, 80, 70]
         - label: WelTel clinical MCP tools
           value: 42 tools
           delta: Job AI gateway
@@ -149,7 +149,7 @@ blocks:
       title: EKS · Terraform · runners
       body: >-
         Self-hosted org runners · multi-AZ VPC · ~570+ infra commits ·
-        AWS monthly bill $4k+ → ~$2.8k (−30%).
+        AWS monthly bill cut −30%.
       domain: devops
       tech: "EKS Terraform AWS Docker"
       tags: [WelTel, AWS, Terraform, job]
@@ -159,7 +159,7 @@ blocks:
         - label: infra commits
           value: "570+"
         - label: AWS cost drop
-          value: "-$1.2k/mo"
+          value: "−30%"
 
   - type: card
     id: card-mobile
@@ -251,19 +251,18 @@ blocks:
           school: 0
           tags: [WelTel, AWS, Terraform, EKS, job]
           blurb: >-
-            Self-hosted org runners, multi-AZ VPC, AWS monthly bill
-            $4k+ → ~$2.8k (−30%).
+            Self-hosted org runners, multi-AZ VPC, AWS monthly bill cut −30%.
           description: >-
             DevOps track — ~570+ infra commits covering self-hosted GitHub runners,
             Terraform multi-AZ VPC, and cloud cost reduction that cut WelTel’s AWS bill
-            by about $1.2k/mo while keeping clinical deploys reliable.
+            by about 30% while keeping clinical deploys reliable.
           metrics:
             - label: infra commits
               value: "570+"
             - label: AWS cost
-              value: "-30%"
-            - label: monthly save
-              value: "~$1.2k"
+              value: "−30%"
+            - label: runners
+              value: "self-hosted"
 
         - slug: weltel-mobile
           title: WelTel React Native · Amplify
@@ -326,14 +325,14 @@ blocks:
     id: chart-master
     props:
       kind: bar
-      title: WelTel AWS monthly cost (job DevOps) — $4,000+ → $2,800/mo
-      caption: Self-hosted runners + Terraform VPC optimization at WelTel (employer work)
-      unit: USD / month
+      title: WelTel AWS monthly cost (job DevOps) — sample $10k → $7k (−30%)
+      caption: Sample baseline $10k/mo (not the live bill) — self-hosted runners + Terraform VPC at WelTel (employer work)
+      unit: USD / month (sample)
       series:
         - name: Pre-Optimization
-          points: [{ x: "Legacy cloud setup", y: 4150 }]
+          points: [{ x: "Legacy cloud setup", y: 10000 }]
         - name: Post-Optimization
-          points: [{ x: "Self-hosted EKS stack", y: 2800 }]
+          points: [{ x: "Self-hosted EKS stack", y: 7000 }]
 
   - type: comparison
     id: comp-master
@@ -353,7 +352,7 @@ blocks:
             - "Whiskers Agent plugins, GOAP, OAuth gateway"
         - label: Cloud
           cells:
-            - "AWS $4k→$2.8k/mo · self-hosted runners"
+            - "AWS −30%/mo · self-hosted runners"
             - "Portfolio bake / multi-tenant platform infra"
         - label: Mobile / UI
           cells:
@@ -371,7 +370,7 @@ blocks:
           tag: WelTel AI
         - date: "2026-06"
           title: WelTel AWS cost & deploy (job)
-          body: Self-hosted EKS runners / Terraform — bill ~$4k → $2.8k/mo.
+          body: Self-hosted EKS runners / Terraform — AWS bill −30%.
           tag: WelTel DevOps
         - date: "2026-01"
           title: WelTel SMS modernization (job)
@@ -400,7 +399,7 @@ blocks:
             - kind: text
               markdown: |-
                 ### WelTel job tracks
-                - **DevOps**: AWS **$4k → $2.8k/mo** (−30%).
+                - **DevOps**: AWS **−30%**.
                 - **AI**: WelTel MCP (**42 tools**, ~395 commits).
                 - **Mobile**: RN app (**531+ commits**, 39+ tickets).
                 - **Platform**: SMS Axios + clinical UI (~105 commits).
@@ -426,7 +425,7 @@ blocks:
     id: st1
     props:
       situation: >-
-        At WelTel, cloud spend exceeded $4k/mo, mobile needed a real foundation,
+        At WelTel, cloud spend needed a cut, mobile needed a real foundation,
         and clinicians lacked a safe AI tool surface over live clinical APIs.
       task: >-
         Drive DevOps cost/runner work, ship mobile chat infrastructure, and build
@@ -435,7 +434,7 @@ blocks:
         Self-hosted runners and Terraform multi-AZ; RN + Amplify GraphQL; WelTel MCP
         (~395 commits, 42 tools) and multi-provider streaming assistant.
       result: >-
-        AWS ~$2.8k/mo (−30%), production mobile messaging, clinician AI with live tools —
+        AWS −30%, production mobile messaging, clinician AI with live tools —
         while Whiskers Agent and CatPortfolio remain separate personal OSS products.
       tags: [WelTel, aws, mcp, react-native, job]
 
