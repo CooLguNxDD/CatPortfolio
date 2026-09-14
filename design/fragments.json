@@ -99,7 +99,7 @@
     {
       "id": "devops.aws_cost",
       "label": "WelTel AWS cost optimization",
-      "description": "Bar chart $4,000 → $2,800/mo from WelTel job DevOps track.",
+      "description": "Bar chart sample $10,000 → $7,000/mo (−30%) from WelTel job DevOps track.",
       "tags": ["devops", "aws", "cost-reduction", "WelTel", "job"],
       "audience_affinity": ["recruiter", "hiring-manager"],
       "overrides": {},
@@ -109,17 +109,17 @@
           "id": "chart-aws-cost-frag",
           "props": {
             "kind": "bar",
-            "title": "WelTel AWS monthly cost (job) — $4,000+ → $2,800/mo",
-            "caption": "Self-hosted EKS runners and Terraform VPC work at WelTel",
-            "unit": "USD / month",
+            "title": "WelTel AWS monthly cost (job) — sample $10k → $7k (−30%)",
+            "caption": "Sample baseline $10k/mo (not the live bill) — self-hosted EKS runners and Terraform VPC at WelTel",
+            "unit": "USD / month (sample)",
             "series": [
               {
                 "name": "Legacy Setup",
-                "points": [{ "x": "Pre-Optimization", "y": 4150 }]
+                "points": [{ "x": "Pre-Optimization", "y": 10000 }]
               },
               {
                 "name": "Optimized Stack",
-                "points": [{ "x": "Post-Optimization", "y": 2800 }]
+                "points": [{ "x": "Post-Optimization", "y": 7000 }]
               }
             ]
           }
@@ -197,9 +197,9 @@
             "items": [
               {
                 "label": "WelTel AWS bill",
-                "value": "$4k → $2.8k",
-                "delta": "-30% monthly (job DevOps)",
-                "spark": [4200, 3800, 3200, 2800]
+                "value": "−30%",
+                "delta": "monthly (job DevOps)",
+                "spark": [100, 90, 80, 70]
               },
               {
                 "label": "WelTel clinical MCP tools",
@@ -240,7 +240,7 @@
             "actions": [
               {
                 "label": "WelTel AWS cost",
-                "prompt": "How did WelTel AWS costs drop from $4,000 to $2,800/mo on the job DevOps track?"
+                "prompt": "How did WelTel AWS costs drop 30% on the job DevOps track?"
               },
               {
                 "label": "WelTel MCP (job)",
@@ -267,7 +267,7 @@
   "quick_actions": [
     {
       "label": "WelTel AWS cost",
-      "prompt": "How did WelTel AWS costs drop from $4,000 to $2,800/mo on the job DevOps track?",
+      "prompt": "How did WelTel AWS costs drop 30% on the job DevOps track?",
       "audience": "recruiter"
     },
     {
