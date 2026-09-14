@@ -55,12 +55,12 @@
           "props": {
             "eyebrow": "WelTel · DevOps (job)",
             "title": "EKS & Terraform",
-            "body": "Self-hosted runners · multi-AZ VPC · −$1.2k/mo AWS.",
+            "body": "Self-hosted runners · multi-AZ VPC · AWS monthly bill cut −30%.",
             "domain": "devops",
             "tags": ["WelTel", "AWS", "job"],
             "metrics": [
               { "label": "infra commits", "value": "570+" },
-              { "label": "AWS cost drop", "value": "-$1.2k/mo" }
+              { "label": "AWS cost drop", "value": "−30%" }
             ]
           }
         },
