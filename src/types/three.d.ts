@@ -41,6 +41,8 @@ declare module "three" {
     setScalar(s: number): this
     multiplyScalar(s: number): this
     normalize(): this
+    dot(v: Vector3): number
+    applyQuaternion(q: Quaternion): this
   }
   export class Quaternion {
     x: number
@@ -49,6 +51,10 @@ declare module "three" {
     w: number
     constructor(x?: number, y?: number, z?: number, w?: number)
     setFromEuler(euler: Euler): this
+    copy(q: Quaternion): this
+    clone(): Quaternion
+    invert(): this
+    multiply(q: Quaternion): this
   }
   export class Euler {
     x: number
@@ -74,6 +80,7 @@ declare module "three" {
   export class Object3D {
     position: Vector3
     rotation: Euler
+    quaternion: Quaternion
     scale: Vector3
     parent: Object3D | null
     children: Object3D[]
@@ -83,6 +90,10 @@ declare module "three" {
     add(...objects: Object3D[]): this
     remove(...objects: Object3D[]): this
     getObjectByName(name: string): Object3D | undefined
+    updateMatrixWorld(force?: boolean): void
+    getWorldPosition(target: Vector3): Vector3
+    getWorldQuaternion(target: Quaternion): Quaternion
+    worldToLocal(vector: Vector3): Vector3
     traverse(cb: (obj: Object3D) => void): void
     lookAt(v: Vector3): void
     clone(recursive?: boolean): this
@@ -308,6 +319,7 @@ declare module "three" {
   export class Skeleton {
     bones: Bone[]
     constructor(bones?: Bone[])
+    dispose(): void
   }
   export class SkinnedMesh extends Mesh {
     isSkinnedMesh?: boolean

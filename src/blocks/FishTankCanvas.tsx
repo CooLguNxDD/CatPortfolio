@@ -18,6 +18,7 @@
 
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
+import { attachRiggedGiantCat } from "@/object3D/Cat/mesh/riggedGiantCat"
 import { useFishTankStore } from "@/store"
 import { fishBus } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
@@ -25,6 +26,8 @@ import { isSubmerged } from "@/fish/tankMachine"
 import { fishLitFactor, type FishFilter } from "@/fish/matchFish"
 import {
   CAT_X,
+  CAT_Z,
+  CAT_FACE,
   clamp01,
   WATER_Y,
   FLOOR_Y,
@@ -706,9 +709,12 @@ export default function FishTankCanvas({
 
     // Interactive Giant Predator Cat Mascot perched on the rim
     const { group: cat, parts: catParts } = buildGiantCatMesh(WATER_Y)
-    cat.position.set(CAT_X, WATER_Y, 0)
+    cat.position.set(CAT_X, WATER_Y, CAT_Z)
     cat.rotation.y = CAT_CONFIG.rotationYOffset
     scene.add(cat)
+    const riggedCat = attachRiggedGiantCat(catParts, (status) => {
+      renderer.domElement.setAttribute("data-tank-cat-model", status)
+    })
 
     const catAnimState = createCatAnimationState()
     let catTriggerSwat = false
@@ -1185,6 +1191,9 @@ export default function FishTankCanvas({
     const raycaster = new THREE.Raycaster()
     const cursor3D = new THREE.Vector3()
     const vCursor = new THREE.Vector3()
+    const catCursor = new THREE.Vector3()
+    const catGazeNormal = new THREE.Vector3()
+    const catGazePlane = new THREE.Plane()
     let hasCursor3D = false
     let hasPointer = false
 
@@ -1234,6 +1243,7 @@ export default function FishTankCanvas({
     const sonarSourcesBuffer: SonarSource[] = []
     const sonarBlipsBuffer: SonarBlip[] = []
 
+    const initialTarget = stageOrbitTarget(progRef.current)
     const orbit = {
       yaw: 0,
       yawT: 0,
@@ -1241,8 +1251,8 @@ export default function FishTankCanvas({
       pitchT: DEFAULT_PITCH,
       radius: SURFACE_RADIUS,
       radiusT: SURFACE_RADIUS,
-      target: new THREE.Vector3(CAT_X, WATER_Y, 0),
-      targetT: new THREE.Vector3(CAT_X, WATER_Y, 0),
+      target: new THREE.Vector3(initialTarget.x, initialTarget.y, initialTarget.z),
+      targetT: new THREE.Vector3(initialTarget.x, initialTarget.y, initialTarget.z),
       dragging: false,
       lx: 0,
       ly: 0,
@@ -1318,12 +1328,14 @@ export default function FishTankCanvas({
     }
 
     function onWheel(e: WheelEvent) {
-      if (!isSubmerged(progRef.current)) return
+      if (progRef.current > CAMERA_CONFIG.surfaceReturnThreshold && !isSubmerged(progRef.current)) return
       e.preventDefault()
+      // Wheel over the cat zooms; scrolling the surface card can still dive.
+      e.stopPropagation()
       if (selected) return
       orbit.radiusT = clamp(
         orbit.radiusT + e.deltaY * CAMERA_CONFIG.wheelZoomSensitivity,
-        MIN_ORBIT_RADIUS,
+        isSubmerged(progRef.current) ? MIN_ORBIT_RADIUS : CAMERA_CONFIG.surfaceMinRadius,
         MAX_ORBIT_RADIUS,
       )
     }
@@ -1337,7 +1349,7 @@ export default function FishTankCanvas({
         const catHits = raycaster.intersectObjects([catParts.hitBox], false)
         if (catHits.length > 0) {
           catTriggerSwat = true
-          fishBus.emit("audio:fx", { type: "chime", at: { x: CAT_X, y: WATER_Y, z: 0 } })
+          fishBus.emit("audio:fx", { type: "chime", at: { x: CAT_X, y: WATER_Y, z: CAT_Z } })
           return
         }
       }
@@ -1468,7 +1480,7 @@ export default function FishTankCanvas({
           st.z,
         )
         const stageRadius = SUBMERGED_RADIUS + (1 - prog) * (SURFACE_RADIUS - SUBMERGED_RADIUS)
-        if (prog < CAMERA_CONFIG.submergedThreshold) {
+        if (prog > CAMERA_CONFIG.surfaceReturnThreshold && prog < CAMERA_CONFIG.submergedThreshold) {
           orbit.radiusT = stageRadius
         } else {
           orbit.radiusT = clamp(orbit.radiusT, MIN_ORBIT_RADIUS, MAX_ORBIT_RADIUS)
@@ -1499,6 +1511,12 @@ export default function FishTankCanvas({
         orbit.target.z + Math.cos(yaw) * Math.cos(pitch) * orbit.radius,
       )
       camera.lookAt(orbit.target)
+      // Keep the face in the free part of the viewport at every zoom distance.
+      // Fade the surface composition away during the dive and for fish focus.
+      const surfaceFrame = immersive && !selected ? 1 - prog : 0
+      const wideSurface = w > CAMERA_CONFIG.dossierSideOffsetBreakpointPx
+      camera.setViewOffset(w, h, wideSurface ? -w * 0.18 * surfaceFrame : 0,
+        (wideSurface ? 0.12 : 0.25) * h * surfaceFrame, w, h)
 
       // Recalculate 3D cursor unprojection on camera orbit/pan/dive.
       updateCursorRaycast()
@@ -1590,8 +1608,17 @@ export default function FishTankCanvas({
           y: cursor3D.y,
           z: cursor3D.z,
         }
-        const distToCat = Math.hypot(cursor3D.x - CAT_X, cursor3D.y - WATER_Y, cursor3D.z)
+        const distToCat = Math.hypot(cursor3D.x - CAT_X, cursor3D.y - WATER_Y, cursor3D.z - CAT_Z)
         catIsHunting = cursorIntent === "flee" || cursorIntent === "curious" || distToCat < CAT_CONFIG.huntCursorDistance
+        if (prog <= CAMERA_CONFIG.surfaceReturnThreshold && !catParts.rig.visible) {
+          // A plane in front of the face keeps mouse up/down and left/right
+          // intuitive when the camera zooms or orbits. Fish keep their water pick plane.
+          catCursor.set(CAT_FACE.x, CAT_FACE.y, CAT_FACE.z)
+          catGazeNormal.subVectors(camera.position, catCursor).normalize()
+          catGazePlane.set(catGazeNormal, -catGazeNormal.dot(catCursor) - 16)
+          raycaster.setFromCamera(pointer, camera)
+          if (raycaster.ray.intersectPlane(catGazePlane, catCursor)) catTargetPos = catCursor
+        }
       } else if (selected) {
         catTargetPos = {
           x: selected.position.x,
@@ -1603,7 +1630,7 @@ export default function FishTankCanvas({
         // Track closest fish or fish near surface
         let closestDistSq = Infinity
         let closestFishPos: Vec3 | null = null
-        const catWorldPos = { x: CAT_X, y: WATER_Y, z: 0 }
+        const catWorldPos = { x: CAT_X, y: WATER_Y, z: CAT_Z }
 
         for (const f of fishObjs) {
           const fx = f.mesh.position.x - catWorldPos.x
@@ -1641,7 +1668,8 @@ export default function FishTankCanvas({
       stepCatAnimation(catParts, catAnimState, {
         t,
         dt,
-        catWorldPos: { x: CAT_X, y: WATER_Y, z: 0 },
+        catWorldPos: { x: CAT_X, y: WATER_Y, z: CAT_Z },
+        gazeOrigin: catParts.rig.visible ? undefined : CAT_FACE,
         targetPos: catTargetPos,
         isHunting: catIsHunting,
         triggerSwat: catTriggerSwat,
@@ -1651,6 +1679,7 @@ export default function FishTankCanvas({
         },
       })
       catTriggerSwat = false
+      riggedCat.update()
 
       // Focus visuals: the reticle marks an unlocked hover state, the
       // architecture hologram takes over once a specimen is locked.
@@ -2117,6 +2146,7 @@ export default function FishTankCanvas({
 
     return () => {
       disposed = true
+      riggedCat.dispose()
       sceneryAbort.abort()
       for (const o of fishObjs) o.built.cancelGltf()
       applyPaletteRef.current = null
