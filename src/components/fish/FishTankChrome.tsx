@@ -80,17 +80,18 @@ export function FishTankChrome({
         <div className="ft-hero">
           <div className="ft-hero-card glass">
             <span className="ft-eyebrow">
-              <i className="ft-pulse" /> Surface deck · Andrew the cat builder
+              <i className="ft-pulse" /> Andrew · Agentic AI &amp; DevOps
             </span>
-            <h2>The cat builds the systems. The tank holds the proof.</h2>
+            <h2>Building AI agents and the systems behind them.</h2>
             <p>
-              Agentic backends, MCP servers, GOAP planners, multi-tenant
-              platforms. Below the waterline every fish is a shipped project.
+              I build AI agents, MCP integrations, and cloud platforms—from
+              agent orchestration to Kubernetes, Terraform, and CI/CD. My focus:
+              useful automation, reliable deployments, and efficient infrastructure.
             </p>
             <p>
-              <b className="text-(--fg)">Read the tank:</b> size = scope · depth
-              = age · glow = impact · speed = still alive · color = domain · a
-              school means it was a team.
+              <b className="text-(--fg)">Explore the work:</b> Each fish is a
+              shipped project. Dive in for the architecture, engineering
+              decisions, and impact.
             </p>
             <div className="ft-row">
               <button

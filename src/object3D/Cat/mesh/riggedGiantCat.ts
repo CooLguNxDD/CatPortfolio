@@ -55,10 +55,16 @@ export function bindGiantCat(model: THREE.Group, parts: CatParts) {
     }
   })
   const support = new THREE.Vector3()
+  const head = bones.get("head")!.node
+  const modelWorld = new THREE.Quaternion()
+  const modelToParent = new THREE.Quaternion()
+  const parentToModel = new THREE.Quaternion()
+  const tracking = new THREE.Quaternion()
+  const trackingAngles = new THREE.Euler(0, 0, 0, "YXZ")
   const update = () => {
     // Rear legs hang outside the glass; forelegs reach forward over its rim.
     pose("pelvis", -1.05, 0, 0)
-    pose("head", 1.45 + parts.headPivot.rotation.x * 0.25, 0.25 + parts.headPivot.rotation.y * 0.25, parts.headPivot.rotation.z * 0.3)
+    pose("head", 1.45, 0, 0)
     pose("spine", parts.body.rotation.x * 0.2, 0, parts.body.rotation.z * 0.2)
     pose("ear.L", (parts.earL.rotation.x - 0.08) * 0.3, 0, (parts.earL.rotation.z + 0.25) * 0.3)
     pose("ear.R", (parts.earR.rotation.x - 0.08) * 0.3, 0, (parts.earR.rotation.z - 0.25) * 0.3)
@@ -76,6 +82,21 @@ export function bindGiantCat(model: THREE.Group, parts: CatParts) {
     // Anchor the supporting wrist to the glass instead of floating on the water.
     model.position.set(0, 0, 0)
     model.updateMatrixWorld(true)
+    // Gaze angles use the cat's upright axes, not the tilted Blender bone axes.
+    // Conjugate the offset into the head parent's space, then apply it to the
+    // freshly restored climbing pose so repeated updates cannot accumulate.
+    model.getWorldQuaternion(modelWorld)
+    head.parent!.getWorldQuaternion(modelToParent).invert().multiply(modelWorld)
+    parentToModel.copy(modelToParent).invert()
+    trackingAngles.set(
+      Math.max(-0.45, Math.min(0.45, parts.headPivot.rotation.x)),
+      Math.max(-0.65, Math.min(0.65, parts.headPivot.rotation.y)),
+      parts.headPivot.rotation.z * 0.15,
+      "YXZ",
+    )
+    tracking.setFromEuler(trackingAngles)
+    modelToParent.multiply(tracking).multiply(parentToModel).multiply(head.quaternion)
+    head.quaternion.copy(modelToParent)
     model.worldToLocal(bones.get("front_paw.R")!.node.getWorldPosition(support))
     model.position.set(0, 0.9 - support.y * 18, 2 - support.z * 18)
     parts.hitBox.position.set(0, 2, model.position.z)

@@ -25,7 +25,7 @@ export const SWIM_Y_MAX = WATER_Y - 7.0
 export const SWIM_Y_MIN = FLOOR_Y + 3.5
 export const MAX_ORBIT_RADIUS = 62
 export const MIN_ORBIT_RADIUS = 8
-export const SURFACE_RADIUS = 38
+export const SURFACE_RADIUS = 54
 export const SUBMERGED_RADIUS = 30
 export const DEFAULT_PITCH = 0.1
 export const MAX_PITCH = 1.05
@@ -41,8 +41,11 @@ export const DIVE_DURATION_MS = 1100
 export const SURFACE_DURATION_MS = 750
 
 /** Where the cat perches on the rim. Shared by the mesh and the surface camera. */
-export const CAT_X = TANK_HALF_W + 2
+export const CAT_X = 12
 export const CAT_Y = WATER_Y + 1
+export const CAT_Z = -TANK_HALF_D - 2
+/** Face-level pivot; screen-space framing leaves room for the surface card. */
+export const CAT_FACE = { x: CAT_X + 2, y: WATER_Y + 20, z: CAT_Z + 8 } as const
 
 export interface FishSpecimenInput {
   slug: string
@@ -249,20 +252,13 @@ export function computeFishPose(
  */
 export function stageOrbitTarget(progress: number): Vec3 {
   const prog = clamp01(progress)
-  // Rim target sits just above the waterline and biased right of world origin:
-  // the hero card occupies the left half of the viewport, so the cat (placed to
-  // the right of origin) has to land in the free half, fully in frame.
-  // Surface: aim straight at the cat's perch (CAT_X, just above the waterline)
-  // so it is centred in frame by construction rather than by offset guesswork.
-  // The hero card overlays the left half of the viewport on top of it.
-  const rimY = WATER_Y + 1
   const diveY = TANK_CENTER_Y + 1.5 // slightly above true mid → more water below
-  // Aim left of the cat by roughly half the frustum width so the cat lands in
-  // the right third — the half of the viewport the hero card does not cover.
+  // Zoom orbits the face itself. A projection offset handles the hero card,
+  // so changing distance cannot push the face out of the frame.
   return {
-    x: (1 - prog) * (CAT_X - 16),
-    y: rimY + (diveY - rimY) * prog,
-    z: 0,
+    x: (1 - prog) * CAT_FACE.x,
+    y: CAT_FACE.y + (diveY - CAT_FACE.y) * prog,
+    z: (1 - prog) * CAT_FACE.z,
   }
 }
 
