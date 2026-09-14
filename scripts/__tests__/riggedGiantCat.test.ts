@@ -14,6 +14,38 @@ async function asset() {
 }
 
 describe("rigged giant cat", () => {
+  it("turns and nods on the mascot axes without cross-axis tilt or pose drift", async () => {
+    const model = await asset()
+    const { group, parts } = buildGiantCatMesh(12)
+    group.rotation.y = -0.8
+    group.add(model)
+    parts.headPivot.rotation.set(0, 0, 0)
+    const update = bindGiantCat(model, parts)
+    const head = model.getObjectByName("head")!
+    const neutral = head.getWorldQuaternion(new THREE.Quaternion())
+    const modelWorld = model.getWorldQuaternion(new THREE.Quaternion())
+    const movement = () => {
+      const delta = modelWorld.clone().invert()
+        .multiply(head.getWorldQuaternion(new THREE.Quaternion()))
+        .multiply(neutral.clone().invert()).multiply(modelWorld)
+      return new THREE.Vector3(0, 0, 1).applyQuaternion(delta)
+    }
+    for (const yaw of [-0.4, 0.4]) {
+      parts.headPivot.rotation.set(0, yaw, 0)
+      update()
+      expect(movement().x).toBeCloseTo(Math.sin(yaw))
+      expect(movement().y).toBeCloseTo(0)
+      update()
+      expect(movement().x).toBeCloseTo(Math.sin(yaw))
+    }
+    for (const pitch of [-0.3, 0.3]) {
+      parts.headPivot.rotation.set(pitch, 0, 0)
+      update()
+      expect(movement().y).toBeCloseTo(-Math.sin(pitch))
+      expect(movement().x).toBeCloseTo(0)
+    }
+  })
+
   it("loads the shipped skinned asset and drives its authored skeleton without accumulating rotations", async () => {
     const model = await asset()
     const { parts } = buildGiantCatMesh(12)
