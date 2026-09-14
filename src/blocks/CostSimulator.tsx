@@ -1,12 +1,14 @@
 /**
  * AWS cost reduction simulator — interactive OD matrix L4 demo.
- * Defaults approximate published −30% outcome ($4150 → ~$2800).
+ * Sample baseline $10,000; default levers illustrate a −30% cut ($10k → ~$7k).
+ * Not the live WelTel bill.
  */
 
 import { useMemo, useState } from "react";
 
-const BASE = 4150;
-const POOL = { runners: 900, nat: 320, spot: 200 };
+const BASE = 10000;
+const POOL = { runners: 3050, nat: 1080, spot: 680 };
+const FLOOR = 5000;
 
 /** Interactive AWS cost levers for matrix L4. */
 export function CostSim(_props: Record<string, unknown> = {}) {
@@ -19,7 +21,7 @@ export function CostSim(_props: Record<string, unknown> = {}) {
     const n = nat / 100;
     const s = spot / 100;
     const raw = Math.round(POOL.runners * r + POOL.nat * n + POOL.spot * s);
-    const afterVal = Math.max(1800, BASE - raw);
+    const afterVal = Math.max(FLOOR, BASE - raw);
     const savedVal = BASE - afterVal;
     return {
       after: afterVal,
@@ -43,8 +45,8 @@ export function CostSim(_props: Record<string, unknown> = {}) {
         AWS cost reduction simulator
       </h3>
       <p className="mt-1 text-[0.82rem] text-(--fg-muted)">
-        Drag levers · baseline ~$4,150 → optimized ~$2,800 (defaults match
-        reported outcome)
+        Drag levers · sample baseline $10,000 → ~$7,000 at default levers
+        (−30%, not the live bill)
       </p>
 
       <div className="cost-calc mt-3">
@@ -177,7 +179,7 @@ export function CostSim(_props: Record<string, unknown> = {}) {
         </svg>
 
         <p className="text-[0.72rem] font-mono text-(--fg-subtle)">
-          Saved ${saved}/mo ({pct}%). Demo model — defaults approx reported −30%.
+          Saved ${saved}/mo ({pct}%). Sample model — defaults illustrate a −30% cut.
         </p>
       </div>
     </article>
