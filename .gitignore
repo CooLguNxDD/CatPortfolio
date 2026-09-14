@@ -29,3 +29,8 @@ dist-ssr
 /.playwright-mcp
 /graphify-out/
 /test-results/
+
+# pullfrog runtime (event payload written by the workflow)
+.github/pullfrog/event.json
+config.env
+.opencode-runtime/
