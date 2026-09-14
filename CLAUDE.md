@@ -208,7 +208,8 @@ CatPortfolio/
 │   └── sampleDesign/
 ├── scripts/                    # compile-layout · gen-layout · gen-fragments · gen-themes · convert:fish
 ├── .claude/skills/             # react-app-guide · react_generator · agy-tdd-pipeline
-├── .github/workflows/          # ci.yml · deploy.yml · portfolio-gen.yml
+├── .github/workflows/          # ci.yml · deploy.yml · portfolio-gen.yml · pullfrog*.yml
+├── .github/pullfrog/           # Local Pullfrog agent config + plan/build/review instructions
 ├── public/                     # favicon.svg · config.json · models/ (fish/*.glb, props/*.glb, textures/color.png)
 ├── Dockerfile docker-compose.yml docker-entrypoint.sh nginx.conf nginx.ngrok.conf
 └── vite.config.ts              # base /CatPortfolio/, @ alias, port 11000, three manualChunk
@@ -265,6 +266,7 @@ Two modes, one contract — both end in a PR, never a push to `main`:
 - **Local:** `claude plugin marketplace add C:\OpenCat\Secret\OpenCat-Mcp-Full`, then `claude plugin install portfolio-gen@opencat-oct`, then `/portfolio-gen "<brief>"`. The agent edits `design/layout.yaml` (and may add block types via the checklist above), runs the full gate, branches, opens a PR with `gh`. With OCT running it pulls live context (`get_design_context`, `get_projects`, `get_star_stories`); otherwise it uses committed `design/` files.
 - **Pipeline:** `gh workflow run portfolio-gen.yml -f brief="..." -f audience=recruiter`. Uses `anthropics/claude-code-action@v1` with the plugin sparse-checked-out from OpenCat-Mcp-Full. Needs repo secrets `ANTHROPIC_API_KEY` and `OCT_REPO_TOKEN`.
 - `ci.yml` must pass on the PR (layout sync, lint, tests, build, mirror-drift). Branch protection on `main` recommended.
+- **Pullfrog agent CI** (local, no pullfrog.com dashboard): reusable `pullfrog.yml` plus `pullfrog-review.yml` / `pullfrog-triggers.yml` / `pullfrog-issues.yml` / `pullfrog-address-reviews.yml` / `pullfrog-ci-fix.yml`. Config and instruction manuals live in `.github/pullfrog/`. Setup: `.github/pullfrog/ENV_SETUP.md`. Never let Pullfrog edit `deploy.yml` or push `main`.
 
 **External context sources:** declared in `design/sources.yaml` (Zod-validated in tests), resolved via OCT `fetch_external_context` / `get_project_context`. With OCT offline, CI falls back to `gh api` for GitHub repos, `WebFetch` for URLs/GDocs, and skips notion/search. Never block generation on an unreachable source — note skipped sources in the PR body.
 
