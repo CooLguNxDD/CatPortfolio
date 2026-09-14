@@ -11,7 +11,7 @@ Run these commands from your local terminal with the GitHub CLI authenticated:
 ```bash
 # 1. Repository Variables (Configuration)
 gh variable set PULLFROG_AGENT --body "opencode"
-gh variable set PULLFROG_MODEL --body "openrouter/meta/muse-spark-1.3-contributor"
+gh variable set PULLFROG_MODEL --body "opencode/muse-spark-1.3-contributor-free"
 gh variable set PULLFROG_EFFORT --body "medium"
 
 # 2. Authentication Secret (Choose Option A or Option B)
@@ -38,7 +38,7 @@ Click **New repository variable**:
 | Variable Name | Value | Description |
 | :--- | :--- | :--- |
 | `PULLFROG_AGENT` | `opencode` | Forces the OpenCode agent harness. |
-| `PULLFROG_MODEL` | `openrouter/meta/muse-spark-1.3-contributor` | Default model (Muse Spark 1.3 Contributor / Free tier via OpenRouter). |
+| `PULLFROG_MODEL` | `opencode/muse-spark-1.3-contributor-free` | Default model (Muse Spark 1.3 Contributor / Free tier via OpenCode). |
 | `PULLFROG_EFFORT` | `medium` | Reasoning effort level (`minimal`, `low`, `medium`, `high`, `xhigh`, `max`). |
 
 ### 2. Secrets Tab (`Repository secrets`)

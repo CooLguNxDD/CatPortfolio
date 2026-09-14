@@ -4,10 +4,7 @@ name: Pullfrog PR review
 
 on:
   pull_request:
-    # synchronize = re-review on every push — expensive. Keep only if you need it.
-    types: [opened, ready_for_review, reopened]
-    # Uncomment to also re-review on push (costs more):
-    # types: [opened, ready_for_review, synchronize, reopened]
+    types: [opened, ready_for_review, reopened, synchronize]
 
 # Only cancel duplicate *reviews* for the same PR — never other Pullfrog features.
 concurrency:
@@ -16,9 +13,10 @@ concurrency:
 
 jobs:
   review:
-    if: github.event.pull_request.draft == false || github.event.action == 'ready_for_review'
+    # Draft skip and synchronize skip are config-aware in pullfrog.yml
+    # (include_drafts / on_synchronize). Do not gate them here.
     permissions:
-      contents: write
+      contents: read
       id-token: write
       pull-requests: write
       issues: write

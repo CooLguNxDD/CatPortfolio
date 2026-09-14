@@ -1,7 +1,7 @@
 # Build instructions (CatPortfolio)
 
 - This is a React 19 + Vite 8 + TypeScript SPA. Prefer npm scripts already in `package.json`.
-- Pre-commit / CI gate: `npm run check:layout && npm run lint && npm run test && npm run build`.
+- Pre-commit / CI gate: `npm run check:layout && npm run lint && npm run test && npm run test:e2e && npm run build`.
 - Never edit `src/content/layout.json` by hand — edit `design/layout.yaml`, then `npm run compile:layout`.
 - Never push `main`. Never touch `.github/workflows/deploy.yml`.
 - Generated/agent changes go on `portfolio-gen/<date>-<slug>` and land via PR.
