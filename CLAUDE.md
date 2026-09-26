@@ -210,7 +210,10 @@ CatPortfolio/
 ├── .claude/skills/             # react-app-guide · react_generator · agy-tdd-pipeline
 ├── .github/workflows/          # ci.yml · deploy.yml · portfolio-gen.yml · pullfrog*.yml
 ├── .github/pullfrog/           # Local Pullfrog agent config + plan/build/review instructions
-├── public/                     # favicon.svg · config.json · models/ (fish/*.glb, props/*.glb, textures/color.png)
+├── cloudflare-worker/        # Edge reverse proxy for GitHub Pages (hides OCT_API_KEY)
+│   ├── src/index.ts            # CORS, SSE stream pass-through, server-side auth injection
+│   ├── wrangler.jsonc          # Cloudflare Worker config
+│   └── README.md               # Setup and deployment instructions
 ├── Dockerfile docker-compose.yml docker-entrypoint.sh nginx.conf nginx.ngrok.conf
 └── vite.config.ts              # base /CatPortfolio/, @ alias, port 11000, three manualChunk
 ```
@@ -232,6 +235,8 @@ npm run gen:themes       # Pull theme JSON from OCT design-context theme_defs (m
 npm run check:themes     # Diff on-disk src/themes vs live OCT (needs OCT_URL; not CI)
 npm run convert:fish     # FBX → public/models GLB (local LayerLab pack; not CI)
 npm run test:e2e         # Playwright (starts Vite unless E2E_ORIGIN is set)
+npm run worker:dev       # Test Cloudflare Worker locally (port 8787)
+npm run worker:deploy    # Deploy Cloudflare Worker to edge
 ```
 
 **Docker:** `docker compose up --build` → http://localhost:11000/CatPortfolio/. After editing `design/layout.yaml`, run `compile:layout` **and rebuild the image** — the bind mount will not update an nginx root baked at build time.
