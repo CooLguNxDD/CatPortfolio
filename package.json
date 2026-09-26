@@ -17,7 +17,9 @@
     "check:layout": "tsx scripts/compile-layout.ts --check",
     "gen:themes": "tsx scripts/gen-themes.ts",
     "check:themes": "tsx scripts/gen-themes.ts --check",
-    "convert:fish": "node scripts/convert-fish-assets.mjs"
+    "convert:fish": "node scripts/convert-fish-assets.mjs",
+    "worker:dev": "wrangler dev --config cloudflare-worker/wrangler.jsonc",
+    "worker:deploy": "wrangler deploy --config cloudflare-worker/wrangler.jsonc"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
