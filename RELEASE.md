@@ -99,7 +99,16 @@ Check the run's SHA against that tag before treating the site as rolled back. Th
 
 ## Hotfix
 
-When `main` contains only commits you are willing to ship, patch from `main` and cut the next tag. When `main` has moved past the cut you need to patch, branch from the tag, open a pull request into `main`, and tag the merge commit.
+Pages serves one deployment: the latest successful `release-deploy` run. The tag you publish is the tree that goes live.
+
+When every commit on `main` since the previous tag belongs in this ship, patch on `main` and tag that merge commit.
+
+When `main` has moved and those newer commits must stay off the live site:
+
+1. Branch from the tag you are patching (`meow-1.0.1`), not from `main`.
+2. Bump only the patch semver on that branch (`1.0.1` → `1.0.2`) and run the gate.
+3. Publish the next tag from that hotfix commit (`gh release create meow-1.0.2 --target <hotfix-sha>`). That deploy contains the previous cut plus the fix.
+4. Forward-port the same fix onto `main` with a pull request. Do not tag that merge commit as the hotfix. It contains everything that landed on `main` in between, and publishing it would put that whole tree on Pages. Leave `main`'s package version where it already is when it is already newer than the patch.
 
 ## Constraints
 
