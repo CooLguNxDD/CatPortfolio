@@ -75,6 +75,8 @@ Ship from `main` only, after the version commit is merged. `main` requires the `
    gh release create meow-X.Y.Z --target main --title "meow-X.Y.Z" --notes-file path/to/notes.md
    ```
 
+The `github-pages` environment only deploys refs on its allow list. That list must include the `main` branch plus the tag patterns `meow-*` and `v*`. A tag missing from the list fails the deploy job before any step runs (`Tag "…" is not allowed to deploy to github-pages`).
+
 8. Watch `release-deploy` until it succeeds:
 
    ```bash
