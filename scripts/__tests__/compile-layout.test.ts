@@ -71,7 +71,7 @@ blocks:
     const committed = readFileSync(
       resolve(ROOT, "src/content/layout.json"),
       "utf-8",
-    );
+    ).replace(/\r\n/g, "\n");
     const committedGeneratedAt = JSON.parse(committed).meta.generatedAt;
     const { layout } = compileLayout(yamlText, {
       themeIds: readThemeIds(resolve(ROOT, "src/themes")),
