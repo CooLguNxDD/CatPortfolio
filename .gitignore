@@ -35,3 +35,4 @@ graphify-out
 .github/pullfrog/event.json
 config.env
 .opencode-runtime/
+.claude/
