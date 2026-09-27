@@ -70,6 +70,10 @@ https://<portfolio-host>/CatPortfolio/?j=<short_id>
 
 Wire envelopes are validated with Zod schemas in the same module (see `GraphEnvelopeSchema` / `BakeMetaSchema`).
 
+## Releases
+
+Published releases use the `meow-<semver>` tag. The first cut is `meow-1.0.1`. Publishing the GitHub Release deploys GitHub Pages. Steps: [`RELEASE.md`](./RELEASE.md).
+
 ## Project layout
 
 See [`CLAUDE.md`](./CLAUDE.md) for the full architecture index (matrix DAG, block registry, bake/send, CI gates).
