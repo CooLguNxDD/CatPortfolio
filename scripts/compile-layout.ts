@@ -189,7 +189,7 @@ function main() {
   let committedGeneratedAt: string | undefined;
   let committedJson: string | undefined;
   try {
-    committedJson = readFileSync(jsonPath, "utf-8");
+    committedJson = readFileSync(jsonPath, "utf-8").replace(/\r\n/g, "\n");
     committedGeneratedAt = JSON.parse(committedJson)?.meta?.generatedAt;
   } catch {
     committedJson = undefined;
