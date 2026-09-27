@@ -285,4 +285,5 @@ Two modes, one contract — both end in a PR, never a push to `main`:
 
 - One-time: GitHub → Settings → Pages → Source = **GitHub Actions**.
 - The Action only builds; layout generation stays behind the commit gate, never in CI.
+- **Deploy trigger:** Triggered on published GitHub Releases (`release: [published]`), tag pushes (`v*`), or manual `workflow_dispatch` — pushes to `main` no longer trigger automatic deploys.
 - Deep links work via `cp dist/index.html dist/404.html` in the workflow.

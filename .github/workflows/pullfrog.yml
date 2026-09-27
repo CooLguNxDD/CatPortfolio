@@ -77,7 +77,7 @@ on:
 
 env:
   # Fallback only; config.yml image.digest is the source of truth and must be sha256.
-  PULLFROG_AGENT_IMAGE: ghcr.io/coolgunxdd/pullfrog-agent@sha256:b5f10247aa03136da0f184b555e974687bb57846fe1bcf42b43a8df09a9735f3
+  PULLFROG_AGENT_IMAGE: ghcr.io/coolgunxdd/pullfrog-agent:latest
 
 jobs:
   pullfrog:
