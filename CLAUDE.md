@@ -215,6 +215,7 @@ CatPortfolio/
 │   ├── wrangler.jsonc          # Cloudflare Worker config
 │   └── README.md               # Setup and deployment instructions
 ├── Dockerfile docker-compose.yml docker-entrypoint.sh nginx.conf nginx.ngrok.conf
+├── RELEASE.md                  # meow-<semver> release guide (Pages deploy on publish)
 └── vite.config.ts              # base /CatPortfolio/, @ alias, port 11000, three manualChunk
 ```
 
@@ -285,5 +286,6 @@ Two modes, one contract — both end in a PR, never a push to `main`:
 
 - One-time: GitHub → Settings → Pages → Source = **GitHub Actions**.
 - The Action only builds; layout generation stays behind the commit gate, never in CI.
-- **Deploy trigger:** Triggered on published GitHub Releases (`release: [published]`), tag pushes (`v*`), or manual `workflow_dispatch` — pushes to `main` no longer trigger automatic deploys.
+- **Deploy trigger:** A published GitHub Release (`release: [published]`) deploys Pages. Tag pushes deploy only when the tag matches `v*`. Portfolio cuts use `meow-<semver>` (package `version` is the semver half; first tag `meow-1.0.1`). A `meow-*` tag does not match `v*`, so publish the Release — that is the deploy, and it does not double-fire with the tag push. Manual `workflow_dispatch` remains. Pushes to `main` do not deploy. Steps: [`RELEASE.md`](./RELEASE.md).
 - Deep links work via `cp dist/index.html dist/404.html` in the workflow.
+- The Cloudflare Worker is a separate deploy (`npm run worker:deploy`), only when `cloudflare-worker/` changes.
