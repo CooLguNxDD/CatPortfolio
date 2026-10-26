@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "id": "d3-security",
+  "title": "D3 Security — DevOps Engineer (Vancouver, 2026–present)",
+  "fish": [
+    {
+      "slug": "d3-aks-gitops",
+      "title": "D3 AKS · Pulumi · ArgoCD",
+      "species": "platform",
+      "size": 0.86,
+      "depth": 0.06,
+      "speed": 0.4,
+      "glow": 0.85,
+      "school": 1,
+      "tags": ["D3 Security", "Azure", "AKS", "ArgoCD", "Pulumi", "job"],
+      "blurb": "New AKS cluster brought up across Pulumi IaC, ArgoCD and monitoring; GitOps migration from k3s to AKS in progress.",
+      "description": "Platform track at D3 Security — brought up a new AKS cluster across Pulumi IaC, ArgoCD and monitoring: site service principal, App Gateway path rule, an ArgoCD instance with apps cloned from the existing POC cluster, and monitoring environment values. Also leading an in-progress GitOps migration of customer sites from self-managed k3s to Azure AKS, with reusable migration scripts and post-cutover data checks.",
+      "metrics": [
+        { "label": "repos", "value": "3" },
+        { "label": "IaC", "value": "Pulumi" },
+        { "label": "AKS migration", "value": "in progress" }
+      ],
+      "startYear": 2026.67
+    },
+    {
+      "slug": "d3-k8s-operator",
+      "title": "D3 Go Kubernetes operator",
+      "species": "devops",
+      "size": 0.9,
+      "depth": 0.1,
+      "speed": 0.45,
+      "glow": 0.9,
+      "school": 1,
+      "tags": ["D3 Security", "Go", "Kubernetes", "KEDA", "HPA", "job"],
+      "blurb": "Lifecycle operator features — one autoscaling mode (HPA, KEDA or off), conflicting-HPA guard, sync-all verb.",
+      "description": "DevOps track — built features in a Go Kubernetes operator that manages sites and apps: a single autoscaling mode (HPA, KEDA or off) with a guard against conflicting HPAs, a KEDA dashboard, a sync-all verb, and alert rules that send cluster crash and high-usage alerts to Google Chat. Roughly 100 commits across v2.1.22 → 2.1.32.",
+      "metrics": [
+        { "label": "operator commits", "value": "~100" },
+        { "label": "releases", "value": "v2.1.22→32" },
+        { "label": "autoscaling", "value": "HPA/KEDA" }
+      ],
+      "startYear": 2026.67
+    },
+    {
+      "slug": "d3-monitoring",
+      "title": "D3 monitoring · Alertmanager relay",
+      "species": "devops",
+      "size": 0.74,
+      "depth": 0.16,
+      "speed": 0.35,
+      "glow": 0.75,
+      "school": 1,
+      "tags": ["D3 Security", "Prometheus", "Grafana", "Alertmanager", "job"],
+      "blurb": "AI token-cost monitoring and an Alertmanager → Google Chat relay with one thread per firing episode.",
+      "description": "Monitoring track — built AI token-cost monitoring (Postgres collectors, Prometheus rules, Grafana dashboard, per-region Chat routing) and an Alertmanager → Google Chat relay that opens one thread per firing episode, on a Prometheus / Thanos / Alertmanager / Grafana stack.",
+      "metrics": [
+        { "label": "monitoring commits", "value": "~46" },
+        { "label": "stack", "value": "Prom/Thanos" },
+        { "label": "alerts", "value": "1 thread/episode" }
+      ],
+      "startYear": 2026.67
+    },
+    {
+      "slug": "d3-agent-fleet",
+      "title": "D3 AI DevOps agent fleet",
+      "species": "ai",
+      "size": 0.82,
+      "depth": 0.04,
+      "speed": 0.55,
+      "glow": 0.95,
+      "school": 1,
+      "tags": ["D3 Security", "Claude Code", "agents", "GitOps", "job"],
+      "blurb": "Planner / worker / reviewer agents with a read-only verify gate and human approval for prod, IAM, network and secrets.",
+      "description": "AI DevOps track — designed and built a multi-agent DevOps system on Claude Code: planner, worker and reviewer agents, a read-only verify gate, git worktree isolation, PR automation, and human approval for production, IAM, network and secrets changes — nothing is applied or pushed without approval. An eight-step reviewed fleet run delivered a pipeline that pins image digests per site and cluster through a pull request, with fail-closed hold-list parsing.",
+      "metrics": [
+        { "label": "fleet runs", "value": "9" },
+        { "label": "image-pin tests", "value": "168" },
+        { "label": "prod changes", "value": "human-approved" }
+      ],
+      "startYear": 2026.67
+    }
+  ],
+  "timeline": [
+    {
+      "date": "2026-09",
+      "title": "D3 Security — DevOps Engineer (job)",
+      "body": "AKS cluster bring-up + GitOps, Go Kubernetes operator (HPA/KEDA), Alertmanager relay, AI DevOps agent fleet with human approval gates. AKS migration in progress.",
+      "tag": "D3 DevOps"
+    }
+  ]
+}

@@ -11,6 +11,13 @@ import {
   type LayoutSource,
 } from "@/content/loadLayout"
 import type { Layout } from "@/content/schema"
+import {
+  loadProfilePieces,
+  mergeProfilePieces,
+  type ProfilePiece,
+} from "@/content/profilePieces"
+import { useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useLayoutStore } from "@/store"
 import { useDemoLayoutQuery, useDemoShortId } from "@/hooks/useDemoLayout"
 
@@ -65,8 +72,26 @@ export function resolvePageLayout(
   return liveResult ?? { layout: loadBaked(), source: "snapshot" }
 }
 
+const NO_PIECES: ProfilePiece[] = []
+
+/**
+ * Runtime profile pieces (`public/profile-pieces/`), fetched once per
+ * session. Fail-soft: the loader resolves `[]` on any error.
+ */
+function useProfilePieces(): ProfilePiece[] {
+  const query = useQuery({
+    queryKey: ["profile-pieces"],
+    queryFn: () => loadProfilePieces(),
+    staleTime: Infinity,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+  return query.data ?? NO_PIECES
+}
+
 /**
  * Resolve the layout for `/` (both view modes) from URL `j`, Query, and store.
+ * Profile pieces are merged on top of whichever layout wins.
  */
 export function usePageLayout(urlJ: string | undefined): {
   data: LayoutLoadResult
@@ -81,7 +106,9 @@ export function usePageLayout(urlJ: string | undefined): {
   const workingSource = useLayoutStore((s) => s.workingSource)
   const workingShortId = useLayoutStore((s) => s.shortId)
 
-  const data = resolvePageLayout({
+  const pieces = useProfilePieces()
+
+  const resolved = resolvePageLayout({
     shortId,
     isDemoSession,
     demoResult: shortId ? demo.result : null,
@@ -90,6 +117,12 @@ export function usePageLayout(urlJ: string | undefined): {
     workingSource,
     workingShortId,
   })
+  const merged = useMemo(
+    () => mergeProfilePieces(resolved.layout, pieces),
+    [resolved.layout, pieces],
+  )
+  const data =
+    merged === resolved.layout ? resolved : { ...resolved, layout: merged }
 
   return {
     data,
