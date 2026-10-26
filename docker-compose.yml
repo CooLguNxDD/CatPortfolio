@@ -15,6 +15,10 @@ services:
       - OCT_BASE_URL=${OCT_BASE_URL:-}
       - OCT_API_KEY=${OCT_API_KEY:-}
       - OCT_ASK_TIMEOUT_MS=${OCT_ASK_TIMEOUT_MS:-600000}
+    volumes:
+      # Runtime profile pieces — drop a JSON file here + list it in index.json,
+      # refresh the page, no rebuild. Shadows the copy baked into the image.
+      - ./public/profile-pieces:/usr/share/nginx/html/profile-pieces:ro
 
   # ── Optional: local dev server (hot-reload, no build step) ──────────────────
   catportfolio-dev:

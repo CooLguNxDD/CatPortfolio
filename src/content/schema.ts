@@ -118,22 +118,21 @@ const Chart = z.object({
   }),
 });
 
+/** One timeline row — also the shape runtime profile pieces append. */
+export const TimelineItem = z.object({
+  date: z.string(),
+  title: z.string(),
+  body: z.string().optional(),
+  tag: z.string().optional(),
+});
+
 const Timeline = z.object({
   type: z.literal("timeline"),
   id: z.string(),
   layout: BlockLayout,
   props: z.object({
     title: z.string().optional(),
-    items: z
-      .array(
-        z.object({
-          date: z.string(),
-          title: z.string(),
-          body: z.string().optional(),
-          tag: z.string().optional(),
-        }),
-      )
-      .default([]),
+    items: z.array(TimelineItem).default([]),
   }),
 });
 
@@ -335,7 +334,7 @@ const Scene2d = z.object({
  * numerics). Species reuses DomainId for accent tokens; no raw colours.
  * Append-only once emitted into a persisted bake.
  */
-const FishSpecimen = z.object({
+export const FishSpecimen = z.object({
   slug: z.string(),
   title: z.string(),
   species: DomainId,
