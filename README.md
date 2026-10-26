@@ -35,6 +35,29 @@ docker compose up --build
 
 Runtime backend URL is loaded from `public/config.json` (see `src/config/runtimeConfig.ts`). Docker injects the same fields via `docker-entrypoint.sh`.
 
+## Profile pieces (drop-in fish, no rebuild)
+
+`public/profile-pieces/` holds self-contained JSON "pieces" that the site fetches at runtime
+(`cache: no-store`) and merges into the tank: fish append to the `fishTank` block (same slug =
+piece wins, 40-fish cap), optional `timeline` rows go on top of the first timeline block. A
+missing index or a bad piece only logs a warning.
+
+```jsonc
+// public/profile-pieces/index.json
+{ "pieces": ["d3-security.json"] }
+// public/profile-pieces/<id>.json
+{ "version": 1, "id": "d3-security", "title": "…", "fish": [ /* FishSpecimen, 1..40 */ ],
+  "timeline": [ { "date": "2026-09", "title": "…", "body": "…", "tag": "…" } ] }
+```
+
+- **Docker box:** `docker-compose.yml` bind-mounts `./public/profile-pieces` read-only over
+  `/usr/share/nginx/html/profile-pieces`. Copy the piece into that folder of the checkout, add its
+  file name to `index.json`, reload the page. If the container predates the mount, recreate it once:
+  `docker compose up -d --force-recreate catportfolio`.
+- **Static build / GitHub Pages:** files in `public/profile-pieces/` land in `dist/profile-pieces/`;
+  dropping files into an existing `dist/profile-pieces/` also works.
+- The loader itself ships in the bundle, so the first deploy needs one image rebuild/release.
+
 ## nginx `/api` + `/mcp` proxy
 
 [`nginx.conf`](./nginx.conf) makes the browser talk **same-origin** to the portfolio host:

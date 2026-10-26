@@ -85,6 +85,15 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 - **Depth is the timeline.** `fish/bathymetry.ts` maps the existing `depth` ∈ [0,1] to year bands — no per-fish year field, so the layout schema and its Python mirror are untouched.
 - **Audio.** Positional cues pass `at` on `audio:fx` and route through an HRTF `PannerNode`; the listener tracks the camera at ~15Hz and `setImmersion` sweeps a lowpass 20kHz → 450Hz across the waterline. Still gated behind the user's sound toggle (autoplay policy).
 
+## Profile Pieces (runtime drop-in fish)
+
+`src/content/profilePieces.ts` — `ProfilePieceSchema` (`{version: 1, id, title, fish: FishSpecimen[1..40], timeline?: TimelineItem[]}`), `loadProfilePieces()` and pure `mergeProfilePieces(layout, pieces)`.
+
+- Fetches `${BASE_URL}profile-pieces/index.json` (`{"pieces": ["<file>.json", …]}`, plain file names only) then each piece, `cache: "no-store"`. Missing index, SPA-fallback HTML or an invalid piece = `console.warn`, layout unchanged.
+- `usePageLayout` loads pieces once via Query key `["profile-pieces"]` and merges on top of whichever layout wins (baked, live, demo or working copy). Fish: same slug → piece wins, new fish append up to the 40 cap; an authored `timeSpan` widens to cover piece years. Timeline rows are prepended to the first `timeline` block, skipping rows already present (idempotent).
+- Pieces live in `public/profile-pieces/` (default `d3-security.json`; tested by `src/content/__tests__/profilePieces.test.ts`). They are runtime content, not `layout.yaml`, so `check:layout` does not see them.
+- **Deploy:** Docker prod bind-mounts `./public/profile-pieces` read-only over `/usr/share/nginx/html/profile-pieces` — copy the file into the checkout folder, add it to `index.json`, reload. Static builds: `dist/profile-pieces/`. `.json` is outside the nginx immutable-cache regex, so no extra nginx location is needed. Only the loader itself needed an image rebuild.
+
 ## Modular 3D Cat Subsystem (`src/object3D/Cat/`)
 
 Extensible 2D/3D skeletal rigging and procedural animation framework:
@@ -154,7 +163,8 @@ CatPortfolio/
 │   ├── content/
 │   │   ├── schema.ts           # Zod LayoutSchema — 19-block union + meta
 │   │   ├── layout.json         # Compiled, committed, gated (never hand-edit)
-│   │   └── loadLayout.ts       # baked / live / for-query / compose / job loaders
+│   │   ├── loadLayout.ts       # baked / live / for-query / compose / job loaders
+│   │   └── profilePieces.ts    # runtime drop-in pieces (public/profile-pieces/) schema + loader + merge
 │   ├── render/
 │   │   ├── registry.ts         # type → component whitelist (`satisfies` completeness)
 │   │   ├── LayoutRenderer.tsx  # Matrix bands when meta.dag; else stagger + span grid
@@ -278,6 +288,7 @@ Two modes, one contract — both end in a PR, never a push to `main`:
 
 ## Content Streams (do not mix)
 
+- **D3 Security job work** (current employer; DevOps — runtime profile piece `public/profile-pieces/d3-security.json`, sourced only from `../myProfile/d3_projects/D3_DevOps_contribution.md` Shipped items)
 - **WelTel job work** (employer; AI / DevOps / Mobile / Platform tracks — the default tank school, sourced from employer contribution reports)
 - **OpenCat Tunnel** (personal OSS backend/MCP platform)
 - **CatPortfolio** (this SPA)
