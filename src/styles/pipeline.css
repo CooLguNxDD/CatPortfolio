@@ -1,0 +1,35 @@
+.pipeline-page { max-width: 66rem; margin: auto; padding: 3rem 1.25rem; line-height: 1.7; }
+.pipeline-page h1, .pipeline-page h2, .pipeline-page h3 { color: var(--fg); line-height: 1.25; font-weight: 650; }
+.pipeline-page h1 { font-size: clamp(2rem, 5vw, 3.5rem); max-width: 20ch; margin: .75rem 0 1.25rem; }
+.pipeline-page h2 { font-size: clamp(1.75rem, 4vw, 2.4rem); margin: .5rem 0 1rem; }
+.pipeline-page h3 { font-size: 1.1rem; }
+.pipeline-page p { margin: .75rem 0; }
+.pipeline-page section { border-top: 1px solid var(--hairline); margin-top: 3rem; padding-top: 2rem; scroll-margin-top: 7rem; }
+.pipeline-eyebrow { display: block; font-size: .75rem; letter-spacing: .09em; text-transform: uppercase; color: var(--fg-muted); }
+.pipeline-intro > p { max-width: 65ch; }
+.pipeline-act-links { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.25rem; }
+.pipeline-page a { text-decoration: underline; text-underline-offset: .25em; color: var(--fg); }
+.pipeline-page a:focus-visible { outline: 2px solid var(--amber); outline-offset: 5px; }
+.pipeline-status { display: inline-flex; align-items: center; gap: .5rem; font-size: .8rem; }
+.pipeline-dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--amber); }
+.pipeline-dot.is-reachable { background: var(--neon); }
+.pipeline-stages, .pipeline-hops { list-style: decimal; padding-left: 1.75rem; margin: 1.5rem 0; }
+.pipeline-stages > li, .pipeline-hops > li { padding: 1rem; border-bottom: 1px solid var(--hairline); break-inside: avoid; }
+.pipeline-stages > li::marker, .pipeline-hops > li::marker { color: var(--fg-muted); font-weight: 600; }
+.pipeline-stage-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.pipeline-llm { font-size: .75rem; border: 1px solid var(--hairline); border-radius: 1rem; padding: .15rem .65rem; }
+.pipeline-gates, .pipeline-record { padding: 1.5rem; margin: 2rem 0; border: 1px solid var(--hairline); border-radius: var(--radius-lg); background: var(--card); }
+.pipeline-gates ul { list-style: disc; padding-left: 1.25rem; margin-top: 1rem; }
+.pipeline-record dl { margin: 1.25rem 0; }
+.pipeline-record dl > div { display: grid; grid-template-columns: 7rem 1fr; gap: 1rem; margin: .65rem 0; }
+.pipeline-record dt { color: var(--fg-muted); }
+.pipeline-tank { border-top: 1px solid var(--hairline); padding-top: 1.5rem; }
+.pipeline-tank figcaption strong { display: block; margin-top: .5rem; }
+.pipeline-tank ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; padding: 1.5rem 0; }
+.pipeline-tank li { display: flex; flex-direction: column; align-items: center; border: 1px dashed var(--hairline); border-radius: var(--radius-lg); padding: 1rem .5rem; font-size: .75rem; color: var(--fg-muted); }
+.pipeline-tank li[data-highlighted="true"] { border: 2px solid var(--amber); color: var(--fg); background: var(--bg); }
+.pipeline-fish { font-size: 2rem; line-height: 1.5; }
+.pipeline-tank li[data-highlighted="false"] .pipeline-fish { opacity: .3; }
+.pipeline-back { display: inline-block; margin-top: 2rem; }
+@media (max-width: 600px) { .pipeline-tank ul { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pipeline-record dl > div { grid-template-columns: 1fr; gap: 0; } }
+/* Intentionally no animation: the motion slot is an optional enhancement, never the text source. */

@@ -3,7 +3,7 @@
 Date: 2026-08-31  
 Branch: `portfolio-gen/2026-08-31-pending-report-fixes` @ `e3d4481`  
 PR: https://github.com/CooLguNxDD/CatPortfolio/pull/36  
-Target: Docker `catportfolio` at `http://localhost:11000/CatPortfolio/`  
+Target: Docker `catportfolio` at local `/CatPortfolio/`
 Reports: `grok/2026-08-31-frontend-walkthrough.md`, `gemini/2026-08-31-frontend-audit-gemini.md`
 
 Playwright re-walk after the PR image rebuild (desktop 1440×900, mobile 390×844, Latte).

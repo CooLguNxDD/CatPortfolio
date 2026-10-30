@@ -4,7 +4,7 @@
 
 ---
 
-Playwright MCP pass over the live Docker image at `http://localhost:11000/CatPortfolio/`. Goal: find UX / layout / network improvements, not prove a specific PR.
+Playwright MCP pass over the live Docker image at local `/CatPortfolio/`. Goal: find UX / layout / network improvements, not prove a specific PR.
 
 This is a pending report. UI findings were **not** implemented. The Docker `config.json` permission crash **was** fixed so the walkthrough could run.
 
@@ -15,7 +15,7 @@ This is a pending report. UI findings were **not** implemented. The Docker `conf
 | Item | Value |
 |---|---|
 | Date | 2026-08-31 |
-| Target | CatPortfolio Docker (`catportfolio` → `localhost:11000`) |
+| Target | CatPortfolio Docker (`catportfolio`, local preview) |
 | Image | rebuilt from local source after the entrypoint fix (`catportfolio-catportfolio`) |
 | OCT | `open-cat-mcp-server` healthy on `:10000`; nginx proxies `/api/` and `/mcp` |
 | Browser | Playwright MCP, desktop 1440×900 then mobile 390×844 |
@@ -63,7 +63,7 @@ That is a real production-shape bug, not a walkthrough artifact. Fix is in `dock
 
 ## Steps
 
-### 1. Tank default — `http://localhost:11000/CatPortfolio/`
+### 1. Tank default — local `/CatPortfolio/`
 
 Why this catches a regression: this is the public front door. Header, WebGL canvas, dive CTA, and live layout fetch all have to work on first paint.
 

@@ -2,6 +2,11 @@ import { test, expect } from '@playwright/test';
 import { mockMcp } from './fixtures/mockMcp';
 
 test.describe('Ask Mode E2E', () => {
+  // Chat patches below author their own roster; runtime drop-ins are tested separately.
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/profile-pieces/index.json', (route) => route.fulfill({ json: { pieces: [] } }));
+  });
+
   test('1. Tank focus patch', async ({ page }) => {
     const discarded: string[] = [];
     page.on('console', (msg) => {
