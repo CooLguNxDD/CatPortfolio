@@ -6,6 +6,8 @@ Dockerfile text eol=lf
 nginx.conf text eol=lf
 docker-entrypoint.sh text eol=lf
 
+# Node scripts with a shebang: Vitest cannot import them from a CRLF checkout
+scripts/*.mjs text eol=lf
 # Vite SSR must strip the scanner's shebang before hoisting imports (CRLF breaks this).
 scripts/check-public-safety.mjs text eol=lf
 

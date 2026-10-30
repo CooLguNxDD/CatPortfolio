@@ -6,51 +6,61 @@
     "introduction": "The server-side pipeline turns a posting into a tailored portfolio, resume and cover letter. The stages below distinguish model work from deterministic steps.",
     "stages": [
       {
+        "id": "ingest",
         "name": "Ingest",
         "description": "Fetches the job posting from a URL or pasted text.",
         "llm": "no"
       },
       {
+        "id": "signals",
         "name": "Signals",
         "description": "Resolves company and role from the posting.",
         "llm": "partly"
       },
       {
+        "id": "liveness",
         "name": "Liveness",
         "description": "Checks the posting is still open.",
         "llm": "no"
       },
       {
+        "id": "fit",
         "name": "Fit",
         "description": "Scores the posting against the candidate profile on a 1–5 scale.",
         "llm": "yes"
       },
       {
+        "id": "bake",
         "name": "Bake",
         "description": "Builds a tailored portfolio through discovery, layout planning and composition; mints and stores a short id.",
         "llm": "yes"
       },
       {
+        "id": "links",
         "name": "Links",
         "description": "Builds the portfolio link with ?j=<short id>. A failed bake still yields a record without a link.",
         "llm": "no"
       },
       {
+        "id": "resume",
         "name": "Resume",
         "description": "Tailors the resume to the posting from the candidate's CV facts only.",
         "llm": "yes"
       },
       {
+        "id": "resume-pdf",
         "name": "Resume PDF",
         "description": "Renders the one-page PDF.",
         "llm": "no"
       },
       {
+        "id": "cover",
         "name": "Cover",
         "description": "Tailors a cover letter. Omits the portfolio link rather than inventing one.",
         "llm": "yes"
       },
       {
+        "id": "track",
         "name": "Track",
         "description": "Records the application status.",
         "llm": "no"
@@ -99,26 +109,32 @@
     "introduction": "The same tailored link, or an Ask request, follows this path. Only service roles are shown.",
     "hops": [
       {
+        "id": "browser",
         "role": "Browser",
         "description": "The visitor opens the portfolio link or asks a question."
       },
       {
+        "id": "github-pages",
         "role": "GitHub Pages",
         "description": "Serves the static portfolio site to the browser."
       },
       {
+        "id": "cloudflare-worker",
         "role": "Cloudflare Worker",
         "description": "The edge proxy holds the API key as an encrypted secret and injects it. The browser never sees a key."
       },
       {
+        "id": "home-router",
         "role": "Home router",
         "description": "Forwards the request to the home server."
       },
       {
+        "id": "agent-server",
         "role": "Whiskers Agent server",
         "description": "Serves stored layouts and routes model work when needed."
       },
       {
+        "id": "model",
         "role": "Local LLM or Claude",
         "description": "Model work runs on dual RTX 3060 via the LiteLLM gateway, or on Claude."
       }

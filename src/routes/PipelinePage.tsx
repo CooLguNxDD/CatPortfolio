@@ -1,3 +1,4 @@
+import { Component, lazy, Suspense, type ReactNode } from "react"
 import { Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { fetchAgentStatus } from "@/api/agentStatus"
@@ -7,9 +8,21 @@ import "@/styles/pipeline.css"
 
 const content = PipelineSchema.parse(snapshot)
 
-/** Reserved enhancement slot: both acts stay readable without motion (including reduced motion). */
-function PipelineMotion() {
-  return null
+/** Progressive enhancement in its own chunk: both acts stay readable without it (reduced motion, JS errors, chunk failure). */
+const PipelineMotion = lazy(() => import("@/pipeline/PipelineMotion"))
+
+/** A failed motion chunk renders nothing; the text page stays intact. */
+class MotionBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  componentDidCatch(error: Error) {
+    console.warn("[PipelinePage] motion enhancement failed:", error)
+  }
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
 }
 
 function PipelineStatus() {
@@ -47,7 +60,9 @@ export function PipelinePage() {
         </nav>
       </header>
 
-      <div data-pipeline-motion-slot aria-hidden="true"><PipelineMotion /></div>
+      <div data-pipeline-motion-slot>
+        <MotionBoundary><Suspense fallback={null}><PipelineMotion content={content} /></Suspense></MotionBoundary>
+      </div>
 
       <section id="tailor" data-testid="pipeline-act-tailor" aria-labelledby="tailor-title">
         <p className="pipeline-eyebrow">Posting → tailored pack → ?j= link</p>
@@ -55,7 +70,7 @@ export function PipelinePage() {
         <p>{tailor.introduction}</p>
         <ol className="pipeline-stages">
           {tailor.stages.map((stage) => (
-            <li key={stage.name}>
+            <li key={stage.id} data-stop-id={stage.id}>
               <div className="pipeline-stage-heading">
                 <h3>{stage.name}</h3>
                 <span className="pipeline-llm">LLM: {stage.llm}</span>
@@ -104,7 +119,7 @@ export function PipelinePage() {
         <h2 id="serve-title">Act 2 — Serve</h2>
         <p>{serve.introduction}</p>
         <ol className="pipeline-hops">
-          {serve.hops.map((hop) => <li key={hop.role}><h3>{hop.role}</h3><p>{hop.description}</p></li>)}
+          {serve.hops.map((hop) => <li key={hop.id} data-stop-id={hop.id}><h3>{hop.role}</h3><p>{hop.description}</p></li>)}
         </ol>
         <p>{serve.response}</p>
         <p className="pipeline-gates"><strong>{serve.fallback}</strong></p>
