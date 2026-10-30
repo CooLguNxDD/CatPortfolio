@@ -35,7 +35,7 @@
 - Browser tests use a dedicated strict Vite server (or explicit `E2E_ORIGIN`) rather than silently reusing another checkout; local concurrency is capped for GPU/timer stability. Existing Ask/GLB suites pin an empty runtime profile-piece index so their four-specimen fixtures stay deterministic; runtime piece merging is covered by its own unit suite.
 - The only live request is `fetchAgentStatus` via a page-owned Query, bounded timeout and no retries. Failure, null, and timeout read **offline (snapshot)**; neither status nor applicant data is displayed. Static content always renders.
 - `scripts/check-public-safety.mjs` (Node, no added dependencies) scans tracked text and `dist/`; `--files <path>...` narrows input. Findings are `path:line: rule` without matched values. It rejects IPv4, endpoint literals, unapproved hosts and common secret shapes. Tests: `scripts/__tests__/check-public-safety.test.ts`, `scripts/__tests__/compile-pipeline.test.ts`, `e2e/pipeline.spec.ts`.
-- Security: page copy contains service roles only, never network coordinates, applicant PII or credential names/values. The Cloudflare edge holds the API key as a secret; the browser should receive no key. Scanner host allowlists, exact development exceptions, syntax disambiguation and vendor/binary exclusions are commented in the script. Minified JS uses scheme-anchored hostname detection, supplemented by the rendered-DOM E2E scan. Worker deployment hardening and CI wiring are separate concerns; never edit protected workflows here.
+- Security: page copy contains service roles only, never network coordinates, applicant PII or credential names/values. The Cloudflare edge holds the API key as a secret; the browser should receive no key. Scanner host allowlists, exact development exceptions, syntax disambiguation and vendor/binary exclusions are commented in the script. Minified JS uses scheme-anchored hostname detection, supplemented by the rendered-DOM E2E scan. The scanner covers `cloudflare-worker/**` (source, config, tests and docs) with no whole-file dev exemption; only the exact local CORS origin in Worker source is excepted. `UPSTREAM_HOST` comes only from Worker secrets/dashboard vars, never a tracked default: missing/blank host returns 500 before any upstream fetch; malformed hosts also fail closed, and 502 bodies never echo upstream errors. Set the host before the next Worker deploy. Account selection uses the logged-in account or private `CLOUDFLARE_ACCOUNT_ID`. The ready-to-paste gitleaks + tracked-source/build scanner CI job is in `docs/ci-safety.md`; the session applies it, never edit protected workflows here.
 
 ## Routes & URL State
 
@@ -239,13 +239,15 @@ CatPortfolio/
 │   ├── fish/                   # tank3d extraction notes (README, body/css/js)
 │   ├── prototypes/             # Layout drafts + HTML prototypes
 │   └── sampleDesign/
+├── docs/ci-safety.md            # Session-applied CI safety job + local gitleaks/scanner commands
 ├── scripts/                    # compile-layout · compile-pipeline · check-public-safety · gen-layout · gen-fragments · gen-themes · convert:fish
 ├── .claude/skills/             # react-app-guide · react_generator · agy-tdd-pipeline
 ├── .github/workflows/          # ci.yml · deploy.yml · portfolio-gen.yml · pullfrog*.yml
 ├── .github/pullfrog/           # Local Pullfrog agent config + plan/build/review instructions
 ├── cloudflare-worker/        # Edge reverse proxy for GitHub Pages (hides OCT_API_KEY)
-│   ├── src/index.ts            # CORS, SSE stream pass-through, server-side auth injection
-│   ├── wrangler.jsonc          # Cloudflare Worker config
+│   ├── src/index.ts            # CORS, env-only upstream, safe errors, SSE pass-through, auth injection
+│   ├── __tests__/worker.test.ts # Node Vitest with stubbed fetch (no live upstream or Worker runtime)
+│   ├── wrangler.jsonc          # Cloudflare Worker config, no upstream/account values
 │   └── README.md               # Setup and deployment instructions
 ├── Dockerfile docker-compose.yml docker-entrypoint.sh nginx.conf nginx.ngrok.conf
 ├── RELEASE.md                  # meow-<semver> release guide (Pages deploy on publish)

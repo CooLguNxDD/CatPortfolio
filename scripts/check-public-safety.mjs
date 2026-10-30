@@ -32,7 +32,6 @@ const EXAMPLE_FILES = new Set([
 const DEV_FILES = new Set([
   "vite.config.ts", "playwright.config.ts", "Dockerfile", "docker-compose.yml",
   "scripts/gen-layout.ts", "scripts/gen-themes.ts", "scripts/gen-fragments.ts",
-  "cloudflare-worker/src/index.ts", // S02 owns Worker hardening; existing origins include dev loopback only.
   "scripts/check-public-safety.mjs", // The scanner's explicit loopback policy constants, not deployment coordinates.
 ])
 function devFile(path) {
@@ -87,6 +86,15 @@ function isSyntaxEndpoint(match, line, path) {
   if (/^dist\/.*\.js$/.test(path) && !/(?:["'`]|\/\/)$/.test(line.slice(0, match.index))) return true
   return false
 }
+// Worker CORS accepts precisely this quoted local development origin. This is not
+// a whole-file dev exemption: every other host, endpoint and IP remains checked.
+function workerDevOrigin(match, line, path) {
+  if (path !== "cloudflare-worker/src/index.ts") return false
+  const origin = '"http://localhost:11000"'
+  const offset = match[0] === "http://localhost:11000" ? 1
+    : match[0] === "localhost:11000" ? 8 : null
+  return offset !== null && line.slice(match.index - offset, match.index - offset + origin.length) === origin
+}
 export function scanText(text, path) {
   const findings = []
   for (const [index, line] of text.split(/\r?\n/).entries()) {
@@ -95,7 +103,7 @@ export function scanText(text, path) {
       if (isIP(match[0]) === 4 && !(devFile(path) && ["0.0.0.0", "127.0.0.1"].includes(match[0]))) rules.add("IPv4")
     }
     for (const match of line.matchAll(ENDPOINT)) {
-      if (!isSyntaxEndpoint(match, line, path) && !(devFile(path) && ["localhost", "127.0.0.1", "0.0.0.0"].includes(match[1].toLowerCase()))) rules.add("host:port")
+      if (!isSyntaxEndpoint(match, line, path) && !workerDevOrigin(match, line, path) && !(devFile(path) && ["localhost", "127.0.0.1", "0.0.0.0"].includes(match[1].toLowerCase()))) rules.add("host:port")
     }
     for (const match of line.matchAll(URL_HOST)) {
       // Parse the authority (including userinfo) rather than trusting a prefix before @.
@@ -108,7 +116,7 @@ export function scanText(text, path) {
           && host === "localhost"
           && line.slice(Math.max(0, match.index - 13), match.index) === "this.origin=`"
           && line.slice(match.index + match[0].length).startsWith("`),this.history")
-        if (!routerSentinel && !allowedHost(host, path)) rules.add("hostname")
+        if (!routerSentinel && !workerDevOrigin(match, line, path) && !allowedHost(host, path)) rules.add("hostname")
       } catch { rules.add("hostname") }
     }
     const minified = /^dist\/.*\.js$/.test(path)
