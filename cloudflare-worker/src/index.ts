@@ -2,8 +2,7 @@
  * Cloudflare Worker: CatPortfolio Public Gateway Proxy
  *
  * Sits at the edge to securely proxy /mcp and /api calls from GitHub Pages
- * (https://coolgunxdd.github.io) to the Whiskers Agent / OCT backend
- * (https://whiskers-agent.<redacted>.xyz).
+ * to the Whiskers Agent / OCT backend configured only through Worker secrets/vars.
  *
  * Injects `Authorization: Bearer <OCT_API_KEY>` server-side so the API key
  * is never bundled into the client JS bundle or visible in browser DevTools.
@@ -14,12 +13,9 @@ export interface Env {
   UPSTREAM_HOST?: string;
 }
 
-const DEFAULT_UPSTREAM = "whiskers-agent.<redacted>.xyz";
-
 const ALLOWED_ORIGINS = new Set([
   "https://coolgunxdd.github.io",
   "http://localhost:11000",
-  "http://127.0.0.1:11000",
 ]);
 
 function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
@@ -60,13 +56,33 @@ export default {
       });
     }
 
-    const upstreamHost = env.UPSTREAM_HOST || DEFAULT_UPSTREAM;
+    const upstreamHost = env.UPSTREAM_HOST;
+    if (!upstreamHost?.trim()) {
+      return new Response(
+        JSON.stringify({ error: "Worker misconfigured: UPSTREAM_HOST is not set" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders(origin) },
+        }
+      );
+    }
+    // Hostname only: reject schemes, ports, paths, whitespace and URL delimiters.
+    // Never include the configured value in a client-facing configuration error.
+    if (upstreamHost.length > 253 || !/^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*$/i.test(upstreamHost)) {
+      return new Response(
+        JSON.stringify({ error: "Worker misconfigured: UPSTREAM_HOST must be a hostname" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders(origin) },
+        }
+      );
+    }
 
     // 3. Build upstream destination URL
     const targetUrl = new URL(request.url);
     targetUrl.protocol = "https:";
     targetUrl.hostname = upstreamHost;
-    targetUrl.port = "443";
+    targetUrl.port = "";
 
     // 4. Clone headers and inject server-side credentials
     const forwardHeaders = new Headers(request.headers);
@@ -99,11 +115,10 @@ export default {
         statusText: response.statusText,
         headers: responseHeaders,
       });
-    } catch (err) {
+    } catch {
       return new Response(
         JSON.stringify({
           error: "Gateway connection failed",
-          details: err instanceof Error ? err.message : String(err),
         }),
         {
           status: 502,
