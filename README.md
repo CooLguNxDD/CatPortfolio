@@ -122,6 +122,15 @@ hostname detection to avoid treating member access as DNS. Never put private net
 coordinates or credentials in page content, fixtures, or build output. The edge proxy
 holds the API key as a secret; the browser should receive no key.
 
+The [Cloudflare Worker](./cloudflare-worker/README.md) reads its backend hostname
+only from `UPSTREAM_HOST` in Worker secrets/dashboard vars. Set it before deploying:
+missing/blank configuration returns a clear 500 before any upstream fetch, and gateway
+errors never expose upstream details. No backend hostname or account identifier is
+stored in Wrangler config. The scanner covers `cloudflare-worker/**`, including its
+Node Vitest fixtures. See [CI safety integration](./docs/ci-safety.md) for the
+ready-to-paste gitleaks + source/build scan job and local commands; the session
+applies it to CI without changing the protected deployment workflow.
+
 ## Releases
 
 Published releases use the `meow-<semver>` tag. The first cut is `meow-1.0.1`. Publishing the GitHub Release deploys GitHub Pages. Steps: [`RELEASE.md`](./RELEASE.md).

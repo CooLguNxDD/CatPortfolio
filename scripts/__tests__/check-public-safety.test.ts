@@ -77,6 +77,29 @@ describe("public safety CLI", () => {
     expect(scanText("localhost" + ":4321", "src/routes/page.ts").join()).toContain("host:port")
   })
 
+  it("scans Worker source, config, docs and tests without whole-file network exemptions", () => {
+    const host = ["upstream", "invalid"].join(".")
+    const loopback = ["127", "0", "0", "1"].join(".")
+    const privateIp = ["10", "21", "3", "4"].join(".")
+    for (const path of ["cloudflare-worker/src/index.ts", "cloudflare-worker/wrangler.jsonc", "cloudflare-worker/README.md", "cloudflare-worker/__tests__/worker.test.ts"]) {
+      expect(scanText(`const upstream = "${host}"`, path).join()).toContain("hostname")
+      expect(scanText(privateIp, path).join()).toContain("IPv4")
+      expect(scanText(loopback, path).join()).toContain("IPv4")
+      expect(scanText("Use https://<backend-host> as the upstream.", path)).toEqual([])
+    }
+  })
+
+  it("allows only the exact Worker local development origin, not arbitrary loopbacks or endpoints", () => {
+    const path = "cloudflare-worker/src/index.ts"
+    const origin = ["http:", "", ["localhost", 11000].join(":")].join("/")
+    expect(scanText(`  "${origin}",`, path)).toEqual([])
+    expect(scanText("localhost" + ":4321", path).join()).toContain("host:port")
+    expect(scanText(origin + ".untrusted", path).join()).toContain("hostname")
+    expect(scanText(origin, "cloudflare-worker/README.md").join()).toContain("host:port")
+    expect(scanText(["http:", "", "localhost"].join("/"), path).join()).toContain("hostname")
+    expect(scanText(`"${origin}", "${"localhost" + ":4321"}"`, path).join()).toContain("host:port")
+  })
+
   it("reports every affected line", () => {
     const result = scan(["10", "21", "3", "4"].join(".") + "\n" + "ghp_" + "A".repeat(36))
     expect(result.status).toBe(1)
