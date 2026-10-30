@@ -10,7 +10,7 @@
 - **`/ask`** — kept as a `beforeLoad` redirect to `/` (same search params) so old links still resolve. Bare `/ask` now opens the tank, matching the single front door.
 - Layout source of truth is `design/layout.yaml` → `npm run compile:layout` → `src/content/layout.json`. CI verifies sync (`check:layout`), never generates.
 - Backend is **OpenCat Tunnel (OCT)**, an MCP + REST server. All calls degrade to the baked snapshot — the site never hard-fails on a backend outage (it backs a public HR-facing link).
-- Deployed to GitHub Pages (`base: "/CatPortfolio/"`); also runs under local Docker/nginx on **localhost:11000**.
+- Deployed to GitHub Pages (`base: "/CatPortfolio/"`); also runs under local Docker/nginx on the configured local server.
 
 ## Dev Rules
 
@@ -25,9 +25,28 @@
 9. `graphify-out/` and `test-results/` are generated local artifacts; both are gitignored and excluded from Docker build context.
 10. - **test**: test should run on docker container unless it is a worktree
 
+## Pipeline Walkthrough & Public Safety
+
+- `/pipeline` is a lazy route (`routes/PipelinePage.tsx`), linked from the shared navigation and text home view. It preserves demo search state without invoking the shell's home-only `?j=` repair. `/` and the `/ask` redirect remain unchanged.
+- Page content is **not a layout block**: `design/pipeline.yaml` → `scripts/compile-pipeline.ts` → committed `src/content/pipeline.json`, validated by `src/content/pipelineSchema.ts`. Never hand-edit the JSON. `compile:pipeline` writes it; `check:pipeline` fails on drift and is chained into `check:layout`. No Python mirror change.
+- Act 1 is ten ordered stages with LLM labels, local quality gates, human review, and one anonymised recorded bake. The 2D specimen illustration highlights the AI/platform tracks without importing three. Act 2 is a role-only service overview. Text never depends on motion.
+- **Request-token motion (`src/pipeline/`).** Every stage and hop carries a stable content `id` (kebab case, unique, first hop `browser`; schema-enforced) rendered as `data-stop-id` on its `li`. `timeline.ts` is pure (no DOM/UI imports): `buildStops(content)` = Act 1 stages, hops out, hops reversed back to `browser`; `createTimeline(stops)` gives `actBoundary`, `indexAt`/`stopAt(progress)` (clamped, NaN = 0, monotonic, first 0 / last 1), `progressFor`, `nextStop`/`prevStop` (hold at the ends), `indexOfId`. `PipelineMotion.tsx` is `React.lazy`-loaded by `PipelinePage` into its own chunk (`Suspense fallback={null}` + a boundary that renders nothing on chunk failure) and receives the parsed content as a prop, so neither `pipeline.json` nor the page markup lands in the motion chunk. It draws a sticky rail with token `data-testid="pipeline-token"` (`data-stop`, `data-act` `tailor|serve`, `data-leg` `stage|out|back`), `pipeline-step-prev`/`pipeline-step-next` buttons (`aria-disabled` at the ends, focus kept), a polite live region with the stop name, and a `pipeline-motion-caption` ("the request you just saw") at the act boundary. The active `li` gets `aria-current="step"`. Scroll drives it through an IntersectionObserver centre band (10% of viewport height as a pixel `rootMargin`, rebuilt on resize, never a percentage margin since those can resolve against width; nearest item wins; a return-leg stop is kept while its hop is in view); the buttons never scroll. CSS transitions only, theme variables only (no colour literals in `src/pipeline/` or `styles/pipeline*.css`), no three.
+- **Reduced motion:** `prefers-reduced-motion: reduce` renders only a hidden `pipeline-motion-static` marker: no token, no controls, no reserved rail height, no `aria-current`. The rail space (`--pipeline-motion-h`) and sticky slot are reserved only under `no-preference`, so the lazy load does not shift layout. Tests: `src/pipeline/__tests__/timeline.test.ts`, `e2e/pipeline.spec.ts` (token path, scroll into Act 2, reduced motion `getAnimations()`, chunk failure).
+- Browser tests use a dedicated strict Vite server (or explicit `E2E_ORIGIN`) rather than silently reusing another checkout; local concurrency is capped for GPU/timer stability. Existing Ask/GLB suites pin an empty runtime profile-piece index so their four-specimen fixtures stay deterministic; runtime piece merging is covered by its own unit suite.
+- The only live request is `fetchAgentStatus` via a page-owned Query, bounded timeout and no retries. Failure, null, and timeout read **offline (snapshot)**; neither status nor applicant data is displayed. Static content always renders.
+- `scripts/check-public-safety.mjs` (Node, no added dependencies) scans tracked text and `dist/`; `--files <path>...` narrows input. Findings are `path:line: rule` without matched values. It rejects IPv4, endpoint literals, unapproved hosts and common secret shapes. Tests: `scripts/__tests__/check-public-safety.test.ts`, `scripts/__tests__/compile-pipeline.test.ts`, `e2e/pipeline.spec.ts`.
+- Security: page copy contains service roles only, never network coordinates, applicant PII or credential names/values. The Cloudflare edge holds the API key as a secret; the browser should receive no key. Scanner host allowlists, exact development exceptions, syntax disambiguation and vendor/binary exclusions are commented in the script. Minified JS uses scheme-anchored hostname detection, supplemented by the rendered-DOM E2E scan. The scanner covers `cloudflare-worker/**` (source, config, tests and docs) with no whole-file dev exemption; only the exact local CORS origin in Worker source is excepted. `UPSTREAM_HOST` comes only from Worker secrets/dashboard vars, never a tracked default: missing/blank host returns 500 before any upstream fetch; malformed hosts also fail closed, and 502 bodies never echo upstream errors. Set the host before the next Worker deploy. Account selection uses the logged-in account or private `CLOUDFLARE_ACCOUNT_ID`. The ready-to-paste gitleaks + tracked-source/build scanner CI job is in `docs/ci-safety.md`; the session applies it, never edit protected workflows here.
+
 ## Routes & URL State
 
-`src/router.tsx` — code-based tree, `basepath = import.meta.env.BASE_URL`. Both routes share `demoSearchSchema`:
+`src/router.tsx` — code-based tree, `basepath = import.meta.env.BASE_URL`. Home, legacy redirect and pipeline share `demoSearchSchema`:
+
+| Route | Component / behavior |
+|-------|----------------------|
+| `/` | `HomePage`, tank or text portfolio |
+| `/ask` | Redirect to `/`, preserving search |
+| `/pipeline` | Lazy `PipelinePage`, Tailor + Serve text walkthrough |
+
 
 | Param | Meaning |
 |-------|---------|
@@ -148,7 +167,7 @@ Loaders in `src/content/loadLayout.ts` — every one falls back to `loadBaked()`
 - **MCP:** `api/octClient.ts` uses `StreamableHTTPClientTransport`. `callTool` passes SDK `RequestOptions` (`timeout`, `resetTimeoutOnProgress: true`, `onprogress`) — **not** a bare `Promise.race`. Without `onprogress` the client sends no `progressToken`, the server skips keepalives, and long agent turns die at the 60s SDK default.
 - **One-shot CLI agent:** when OCT's core LLM is `claude-cli`/`agy-cli`, `askOct` still calls `run_graph` once; the server short-circuits to a headless CLI spawn and returns `meta.cli`. `extractCliMeta` renders a `one-shot cli · claude|agy` pill. Layout carry is best-effort there — REST `loadLayoutForQuery` stays the fallback.
 - **Agent status:** `api/agentStatus.ts` polls public `GET /api/portfolio/public/agent-status` (`{job_id, status, updated_at}` only — never applicant PII), rendered by `AgentStatusPill` at `refetchInterval: 8000`. Polling by design; no SSE.
-- **nginx (`nginx.conf`, `nginx.ngrok.conf`):** serves the SPA under `/CatPortfolio/` and reverse-proxies `/api/` and `/mcp` to `host.docker.internal:10000` so the browser stays same-origin. 600s read/send timeouts; Authorization forwarded on `/mcp`.
+- **nginx (`nginx.conf`, `nginx.ngrok.conf`):** serves the SPA under `/CatPortfolio/` and reverse-proxies `/api/` and `/mcp` to the private runtime-configured upstream so the browser stays same-origin. 600s read/send timeouts; Authorization forwarded on `/mcp`.
 
 ## Project Structure
 
@@ -156,11 +175,13 @@ Loaders in `src/content/loadLayout.ts` — every one falls back to `loadBaked()`
 CatPortfolio/
 ├── src/
 │   ├── main.tsx                # Root: runtime config gate → ThemeProvider > QueryClient > Router
-│   ├── router.tsx              # Route / + /ask→/ redirect, demoSearchSchema (j / v / f)
+│   ├── router.tsx              # Route / + /ask→/ redirect + lazy /pipeline, demoSearchSchema (j / v / f)
 │   ├── App.tsx                 # Shell: nav, theme + accent switcher, demo chip, Outlet
 │   ├── index.css               # Tailwind v4 CSS-first config + OKLCH tokens + shadcn bridge
 │   ├── config/runtimeConfig.ts # public/config.json fetch (octBaseUrl, askTimeoutMs; mcpApiKey from env only)
 │   ├── content/
+│   │   ├── pipelineSchema.ts   # Strict page-content contract, not a layout block
+│   │   ├── pipeline.json       # Generated from design/pipeline.yaml (never hand-edit)
 │   │   ├── schema.ts           # Zod LayoutSchema — 19-block union + meta
 │   │   ├── layout.json         # Compiled, committed, gated (never hand-edit)
 │   │   ├── loadLayout.ts       # baked / live / for-query / compose / job loaders
@@ -191,7 +212,8 @@ CatPortfolio/
 │   │                           # shaders/ (noiseCommon water caustic godRay spineDeform absorption
 │   │                           #   causticProjection underwaterPass) · postprocessing/tankComposer
 │   │                           # components/ (HoloReticle ArchHologram) · catMesh.ts (re-export from @/object3D/Cat)
-│   ├── routes/                 # HomePage viewMode.ts
+│   ├── routes/                 # HomePage viewMode.ts PipelinePage (lazy; lazy PipelineMotion slot)
+│   ├── pipeline/               # timeline.ts (pure stop math) · PipelineMotion.tsx (lazy request-token rail)
 │   ├── components/
 │   │   ├── FishTankStage.tsx FishTankErrorBoundary.tsx
 │   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber
@@ -203,10 +225,11 @@ CatPortfolio/
 │   │                           # useThemeRegistry useThemeTokens useLayoutSessionHydrated
 │   ├── api/                    # octClient harness instructions agentStatus
 │   ├── themes/                 # cozy / neon / paper + Catppuccin; globbed by registry.ts (isLight from --bg)
-│   ├── styles/                 # matrix.css (level bands, lighting) · fish-tank.css
+│   ├── styles/                 # matrix.css (level bands, lighting) · fish-tank.css · pipeline.css
 │   ├── lib/                    # utils.ts (cn) · demoSearch.ts
 │   └── types/three.d.ts
 ├── design/                     # Generation source of truth (human/agent editable)
+│   ├── pipeline.yaml           # Walkthrough source → pipeline.json
 │   ├── layout.yaml             # Matrix + fish tank source → layout.json
 │   ├── design.md               # Design contract: tokens, voice, audience, block + matrix rules
 │   ├── fragments.json          # Cached OCT fragment catalog (gen:fragments; includes themes: ids)
@@ -216,29 +239,34 @@ CatPortfolio/
 │   ├── fish/                   # tank3d extraction notes (README, body/css/js)
 │   ├── prototypes/             # Layout drafts + HTML prototypes
 │   └── sampleDesign/
-├── scripts/                    # compile-layout · gen-layout · gen-fragments · gen-themes · convert:fish
+├── docs/ci-safety.md            # Session-applied CI safety job + local gitleaks/scanner commands
+├── scripts/                    # compile-layout · compile-pipeline · check-public-safety · gen-layout · gen-fragments · gen-themes · convert:fish
 ├── .claude/skills/             # react-app-guide · react_generator · agy-tdd-pipeline
 ├── .github/workflows/          # ci.yml · deploy.yml · portfolio-gen.yml · pullfrog*.yml
 ├── .github/pullfrog/           # Local Pullfrog agent config + plan/build/review instructions
 ├── cloudflare-worker/        # Edge reverse proxy for GitHub Pages (hides OCT_API_KEY)
-│   ├── src/index.ts            # CORS, SSE stream pass-through, server-side auth injection
-│   ├── wrangler.jsonc          # Cloudflare Worker config
+│   ├── src/index.ts            # CORS, env-only upstream, safe errors, SSE pass-through, auth injection
+│   ├── __tests__/worker.test.ts # Node Vitest with stubbed fetch (no live upstream or Worker runtime)
+│   ├── wrangler.jsonc          # Cloudflare Worker config, no upstream/account values
 │   └── README.md               # Setup and deployment instructions
 ├── Dockerfile docker-compose.yml docker-entrypoint.sh nginx.conf nginx.ngrok.conf
 ├── RELEASE.md                  # meow-<semver> release guide (Pages deploy on publish)
-└── vite.config.ts              # base /CatPortfolio/, @ alias, port 11000, three manualChunk
+└── vite.config.ts              # base /CatPortfolio/, @ alias, dev port, three manualChunk
 ```
 
 ## Essential Commands
 
 ```bash
-npm run dev              # Vite dev server at http://localhost:11000/CatPortfolio/
+npm run dev              # Vite dev server (configured in vite.config.ts)
 npm run build            # tsc -b + production build
-npm run preview          # Preview the build (port 11000)
+npm run preview          # Preview the build (port from vite.config.ts)
 npm run test             # Vitest (content, registry, fish, store, scripts)
 npm run lint             # oxlint
 npm run compile:layout   # design/layout.yaml → Zod validate → src/content/layout.json
-npm run check:layout     # Fail if layout.json is stale (CI)
+npm run check:layout     # Fail if layout.json OR pipeline.json is stale (CI)
+npm run compile:pipeline # design/pipeline.yaml → strict Zod validation → pipeline.json
+npm run check:pipeline   # Fail if the page-content snapshot is stale
+node scripts/check-public-safety.mjs # Scan tracked text + dist, no matched values printed
 npm run gen:layout [-- --audience=recruiter|hiring-manager|peer|default]
                          # Seed layout.yaml from local OCT, then compile. Never in CI
 npm run gen:fragments    # Refresh design/fragments.json from OCT (manual only)
@@ -246,11 +274,11 @@ npm run gen:themes       # Pull theme JSON from OCT design-context theme_defs (m
 npm run check:themes     # Diff on-disk src/themes vs live OCT (needs OCT_URL; not CI)
 npm run convert:fish     # FBX → public/models GLB (local LayerLab pack; not CI)
 npm run test:e2e         # Playwright (starts Vite unless E2E_ORIGIN is set)
-npm run worker:dev       # Test Cloudflare Worker locally (port 8787)
+npm run worker:dev       # Test Cloudflare Worker locally (Wrangler default port)
 npm run worker:deploy    # Deploy Cloudflare Worker to edge
 ```
 
-**Docker:** `docker compose up --build` → http://localhost:11000/CatPortfolio/. After editing `design/layout.yaml`, run `compile:layout` **and rebuild the image** — the bind mount will not update an nginx root baked at build time.
+**Docker:** `docker compose up --build` → `/CatPortfolio/` on the configured local server. After editing `design/layout.yaml`, run `compile:layout` **and rebuild the image** — the bind mount will not update an nginx root baked at build time.
 
 ## Tech Stack
 

@@ -6,7 +6,7 @@
 
 **Audit Date:** 2026-08-31  
 **Auditor:** Gemini Agentic Reviewer  
-**Target:** `http://localhost:11000/CatPortfolio/`  
+**Target:** local `/CatPortfolio/`
 **Recording Artifact:** `catportfolio_review_1788152356100.webp`
 
 ---
@@ -27,7 +27,7 @@ The core visual design is rich and interactive. However, several friction points
 
 | Item | Value |
 | :--- | :--- |
-| **URL** | `http://localhost:11000/CatPortfolio/` |
+| **URL** | local `/CatPortfolio/` |
 | **Base Path** | `/CatPortfolio/` (configured in Vite) |
 | **Tested Viewports** | Desktop 1440×900, Desktop 1280×800, Mobile 390×844, Mobile 375×667 |
 | **Engine / Framework** | React 19, Vite, TanStack Router, TanStack Query, Tailwind CSS v4, Three.js, Lucide Icons |

@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react"
-import { useNavigate, useSearch } from "@tanstack/react-router"
+import { Link, useNavigate, useSearch } from "@tanstack/react-router"
 import { LayoutRenderer } from "@/render/LayoutRenderer"
 import { usePageLayout } from "@/hooks/usePageLayout"
 import { sceneFromLayout } from "@/fish/sceneFromLayout"
@@ -233,6 +233,9 @@ export function HomePage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 md:py-8 space-y-6">
+      <Link to="/pipeline" search={demoSearch} data-testid="pipeline-text-link" className="inline-block text-sm underline underline-offset-4">
+        How this portfolio tailors itself
+      </Link>
       {/* Top bar with status pills and 3D / Flat / Text view router pills */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">

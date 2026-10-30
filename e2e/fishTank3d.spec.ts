@@ -2,6 +2,12 @@ import { test, expect, devices } from "@playwright/test"
 
 const FLAGSHIP_GLBS = ["MantaRay", "GreateWhiteShark", "Clownfish", "GreenTurtle"] as const
 
+// This suite verifies the four baked flagship rigs, not optional runtime roster additions.
+// Keep drop-in content independent so adding a profile piece cannot change these assertions.
+test.beforeEach(async ({ page }) => {
+  await page.route("**/profile-pieces/index.json", (route) => route.fulfill({ json: { pieces: [] } }))
+})
+
 test.describe("Fish tank 3D GLB integration", () => {
   test.skip(({ browserName }) => browserName !== "chromium")
 

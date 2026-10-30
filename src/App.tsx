@@ -59,18 +59,19 @@ function App() {
     select: (s) => (s.location.search as DemoSearch | undefined) ?? EMPTY_SEARCH,
   })
   const searchJ = liveSearch?.j
+  const onHome = useRouterState({ select: (s) => s.matches.some((match) => match.routeId === "/") })
 
   // If the temporary store has a shortId but URL lost `j`, bake it back
   // without dropping view/focus params (v/f).
   useEffect(() => {
-    if (!isDemoSession || !shortId) return
+    if (!onHome || !isDemoSession || !shortId) return
     if (searchJ === shortId) return
     void navigate({
       to: "/",
       search: (prev) => mergeDemoSearch(prev as DemoSearch, shortId),
       replace: true,
     })
-  }, [isDemoSession, shortId, searchJ, navigate])
+  }, [onHome, isDemoSession, shortId, searchJ, navigate])
 
   // Preserve j/v/f across header nav links.
   const demoSearch: DemoSearch = {
@@ -133,8 +134,8 @@ function App() {
       {...accentAttr}
     >
       <header className="sticky top-0 z-30 backdrop-blur-md border-b border-(--hairline) bg-(--bg)/80">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-6 min-w-0">
+        <div className="max-w-6xl mx-auto px-4 min-h-14 py-2 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 min-w-0">
             <Link
               to="/"
               search={demoSearch}
@@ -142,6 +143,11 @@ function App() {
             >
               🐱 Cat Portfolio
             </Link>
+            <nav aria-label="Portfolio">
+              <Link to="/pipeline" search={demoSearch} className="text-xs underline underline-offset-4">
+                How this portfolio tailors itself
+              </Link>
+            </nav>
             {isDemoSession && shortId ? (
               <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-(--amber)/40 bg-(--amber)/10 px-2.5 py-0.5 text-[11px] font-mono text-(--amber) max-w-[14rem] truncate">
                 <span className="truncate" title={shortId}>

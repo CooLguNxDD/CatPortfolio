@@ -1,10 +1,10 @@
 /**
- * TanStack Router tree. `/` is the only page; `/ask` redirects here so
+ * TanStack Router tree. `/` is the portfolio; `/pipeline` is a lazy walkthrough; `/ask` redirects home so
  * old links keep working. Optional `?j=<short_id>` keeps the demo bake in
  * the URL (react-app-guide: params as shareable route state).
  */
 
-import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router"
+import { createRootRoute, createRoute, createRouter, redirect, lazyRouteComponent } from "@tanstack/react-router"
 import { z } from "zod"
 import App from "./App"
 import { HomePage } from "./routes/HomePage"
@@ -44,9 +44,16 @@ const askRoute = createRoute({
   component: () => null,
 })
 
-/** The app's single TanStack Router instance — `/` (home) plus the `/ask` → `/` redirect. See file header. */
+const pipelineRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/pipeline",
+  validateSearch: demoSearchSchema,
+  component: lazyRouteComponent(() => import("@/routes/PipelinePage"), "PipelinePage"),
+})
+
+/** Portfolio, lazy walkthrough and legacy redirect share the deployment basepath. */
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([homeRoute, askRoute]),
+  routeTree: rootRoute.addChildren([homeRoute, askRoute, pipelineRoute]),
   basepath: import.meta.env.BASE_URL,
 })
 

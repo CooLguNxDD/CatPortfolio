@@ -9,7 +9,7 @@ OpenCat MCP (“OCT”) can bake job-specific layouts (`?j=<short_id>`), power t
 - React 19 + Vite + TypeScript
 - TanStack Router / Query, Zustand preferences
 - Zod layout schema (`src/content/schema.ts`) mirrored with OCT `utils/ui_layout_schema.py`
-- Local Docker: nginx on **localhost:11000** (`base: /CatPortfolio/`)
+- Local Docker: nginx (`base: /CatPortfolio/`)
 
 ## Quick start
 
@@ -28,9 +28,9 @@ npm run check:layout
 npm run test
 npm run lint
 
-# Production Docker (nginx :11000 proxies /api and /mcp to OpenCat)
+# Production Docker (nginx proxies /api and /mcp to OpenCat)
 docker compose up --build
-# open http://localhost:11000/CatPortfolio/
+# Open /CatPortfolio/ on the configured local server.
 ```
 
 Runtime backend URL is loaded from `public/config.json` (see `src/config/runtimeConfig.ts`). Docker injects the same fields via `docker-entrypoint.sh`.
@@ -62,10 +62,10 @@ missing index or a bad piece only logs a warning.
 
 [`nginx.conf`](./nginx.conf) makes the browser talk **same-origin** to the portfolio host:
 
-| Path | Upstream (default) | Purpose |
-|------|--------------------|---------|
-| `/api/` | `host.docker.internal:10000/api/` | Public OCT REST (job layouts, layout-for-query, compose, agent-status) |
-| `/mcp` | `host.docker.internal:10000/mcp` | MCP Streamable HTTP (`run_graph` for Ask) |
+- `/api/`: public OCT REST (job layouts, layout-for-query, compose, agent-status).
+- `/mcp`: MCP Streamable HTTP (`run_graph` for Ask).
+
+The private upstream is supplied at runtime, never documented as a network endpoint.
 
 Timeouts are 600s so long agent turns (with progress keepalives) do not die. `ngrok` variants use `nginx.ngrok.conf`.
 
@@ -92,6 +92,44 @@ https://<portfolio-host>/CatPortfolio/?j=<short_id>
 - One-shot CLI pill (`extractCliMeta`)
 
 Wire envelopes are validated with Zod schemas in the same module (see `GraphEnvelopeSchema` / `BakeMetaSchema`).
+
+## How this portfolio tailors itself
+
+Open `/pipeline` from the navigation or the text view. This lazy-loaded, text-first
+walkthrough explains **Act 1 — Tailor** (ten stages, LLM usage, local quality gates,
+human review, and an anonymised recorded bake) and **Act 2 — Serve** (service roles,
+not network coordinates). The static tank illustration needs no WebGL. Both acts
+remain readable with reduced motion and when the status dot reads **offline (snapshot)**.
+The page only reads public agent status; it never runs an application pipeline.
+
+Author `design/pipeline.yaml`, then run `npm run compile:pipeline` to generate
+`src/content/pipeline.json`. Do not edit the JSON directly. `npm run check:pipeline`
+fails on drift; `npm run check:layout` checks both content snapshots. The strict Zod
+contract is `src/content/pipelineSchema.ts`, independent of the layout block union.
+
+## Public safety
+
+Run `node scripts/check-public-safety.mjs` after the production build. It checks
+tracked text and `dist/` for network addresses, unapproved hostnames and common
+secret shapes. It prints only `path:line: rule`, never sensitive matched values.
+Use `--files <path>...` for targeted scans. Unit tests plant values at runtime rather
+than embedding them in the public source.
+
+Allowlisted public documentation/standards hosts and narrow development exceptions
+live in the script with reasons. Lockfiles, binary/vendor assets and the generated
+browser test reporter are not authored inputs. Minified JavaScript uses URL-anchored
+hostname detection to avoid treating member access as DNS. Never put private network
+coordinates or credentials in page content, fixtures, or build output. The edge proxy
+holds the API key as a secret; the browser should receive no key.
+
+The [Cloudflare Worker](./cloudflare-worker/README.md) reads its backend hostname
+only from `UPSTREAM_HOST` in Worker secrets/dashboard vars. Set it before deploying:
+missing/blank configuration returns a clear 500 before any upstream fetch, and gateway
+errors never expose upstream details. No backend hostname or account identifier is
+stored in Wrangler config. The scanner covers `cloudflare-worker/**`, including its
+Node Vitest fixtures. See [CI safety integration](./docs/ci-safety.md) for the
+ready-to-paste gitleaks + source/build scan job and local commands; the session
+applies it to CI without changing the protected deployment workflow.
 
 ## Releases
 
