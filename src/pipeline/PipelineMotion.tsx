@@ -46,7 +46,7 @@ export default function PipelineMotion({ content }: { content: PipelineContent }
     const page = rootRef.current?.closest("article")
     if (reduced || !page || typeof IntersectionObserver === "undefined") return
     const inBand = new Set<HTMLElement>()
-    const observer = new IntersectionObserver((entries) => {
+    const onIntersect: IntersectionObserverCallback = (entries) => {
       for (const entry of entries) {
         const item = entry.target as HTMLElement
         if (entry.isIntersecting) inBand.add(item)
@@ -68,9 +68,23 @@ export default function PipelineMotion({ content }: { content: PipelineContent }
         const next = timeline.indexOfId(id)
         return next === -1 ? current : next
       })
-    }, { rootMargin: "-45% 0px -45% 0px" })
-    page.querySelectorAll<HTMLElement>("[data-stop-id]").forEach((item) => observer.observe(item))
-    return () => observer.disconnect()
+    }
+    // The centre band is 10% of the viewport height. Pixels, not percentages: a percentage
+    // rootMargin may resolve against the root's width, which collapses the band on landscape screens.
+    let observer: IntersectionObserver | undefined
+    const observe = () => {
+      observer?.disconnect()
+      inBand.clear()
+      const inset = Math.round(window.innerHeight * 0.45)
+      observer = new IntersectionObserver(onIntersect, { rootMargin: `-${inset}px 0px -${inset}px 0px` })
+      page.querySelectorAll<HTMLElement>("[data-stop-id]").forEach((item) => observer?.observe(item))
+    }
+    observe()
+    window.addEventListener("resize", observe)
+    return () => {
+      window.removeEventListener("resize", observe)
+      observer?.disconnect()
+    }
   }, [reduced, timeline])
 
   if (reduced) return <span hidden data-testid="pipeline-motion-static" />

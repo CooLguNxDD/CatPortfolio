@@ -86,6 +86,20 @@ test("scrolling the Serve section moves the token into Act 2", async ({ page }) 
   await expect(token).toHaveAttribute("data-stop", "fit")
 })
 
+test("scroll tracking holds on a wide landscape viewport and after a resize", async ({ page }) => {
+  // Width far above height: a width-resolved percentage band would have no height here.
+  await page.setViewportSize({ width: 1920, height: 600 })
+  await page.goto("./pipeline")
+  const token = page.getByTestId("pipeline-token")
+  await expect(token).toHaveAttribute("data-act", "tailor")
+  const centre = (id: string) => page.locator(`li[data-stop-id="${id}"]`).evaluate((item) => item.scrollIntoView({ block: "center" }))
+  await centre("cloudflare-worker")
+  await expect(token).toHaveAttribute("data-stop", "cloudflare-worker")
+  await page.setViewportSize({ width: 800, height: 1000 })
+  await centre("fit")
+  await expect(token).toHaveAttribute("data-stop", "fit")
+})
+
 test("reduced motion: no token animation, both acts stay readable", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" })
   await page.goto("./pipeline")
