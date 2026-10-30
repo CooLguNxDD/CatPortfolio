@@ -46,6 +46,8 @@ for (const failure of ["null", "http", "timeout"]) {
       await route.fulfill(failure === "http" ? { status: 503, body: "unavailable" } : { json: { activity: null } })
     })
     await page.goto("./pipeline")
+    // A pending probe is not yet a verdict: the held request reads as checking until it times out.
+    if (failure === "timeout") await expect(page.getByTestId("pipeline-status")).toHaveText("checking backend")
     await expect(page.getByTestId("pipeline-status")).toHaveText("offline (snapshot)")
     await expect(page.getByTestId("pipeline-status")).toHaveAttribute("aria-busy", "false")
     await expect(page.getByTestId("pipeline-act-serve")).toBeVisible()
@@ -84,9 +86,14 @@ test("rendered copy and resource links reveal no private network details", async
   const text = [rendered.text, ...rendered.links].join("\n")
   expect(text).not.toMatch(/\b(?:\d{1,3}\.){3}\d{1,3}\b/)
   expect(text).not.toMatch(/\b[a-z\d.-]+:\d{2,5}\b/i)
-  for (const match of text.matchAll(/(?:https?:)?\/\/([^\s/"'<>]+)/gi)) {
-    expect(["github.com", "www.w3.org"]).toContain(match[1])
+  const allowedHosts = ["github.com", "github.io", "www.w3.org"]
+  // URL origins: every scheme-anchored host must be allowlisted.
+  for (const match of text.matchAll(/(?:https?:)?\/\/([^\s/:"'<>?#]+)/gi)) {
+    expect(allowedHosts, `rendered URL host ${match[1]}`).toContain(match[1].toLowerCase())
   }
-  // Bare hostnames, too (not merely URL origins).
-  expect(text).not.toMatch(/\b[\w-]+\.(?:com|net|org|io|dev|internal|local)\b/i)
+  // Bare hostnames too (not merely URL origins): any dotted name ending in a common
+  // public or private-network suffix must be allowlisted.
+  const bareHost = /\b(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+(?:com|net|org|io|dev|app|ai|co|cloud|me|xyz|site|internal|local|lan|home|arpa)\b/gi
+  const bareHosts = [...text.matchAll(bareHost)].map((match) => match[0].toLowerCase())
+  expect(bareHosts.filter((host) => !allowedHosts.includes(host))).toEqual([])
 })

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Public-source/build guard. Findings contain locations and rule names, NEVER matched values.
 // Two tiers: authored text includes bare DNS names; minified dist JS uses scheme-anchored
-// hosts (member access is not DNS). IPs and secrets are checked in full in both tiers.
+// hosts plus whole-string hostname literals (member access is not DNS). IPs and secrets
+// are checked in full in both tiers.
 import { execFileSync } from "node:child_process"
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs"
 import { resolve, relative, extname } from "node:path"
@@ -110,7 +111,11 @@ export function scanText(text, path) {
         if (!routerSentinel && !allowedHost(host, path)) rules.add("hostname")
       } catch { rules.add("hostname") }
     }
-    for (const match of /^dist\/.*\.js$/.test(path) ? [] : line.matchAll(BARE_HOST)) {
+    const minified = /^dist\/.*\.js$/.test(path)
+    for (const match of line.matchAll(BARE_HOST)) {
+      // Minified JS: member access is not DNS, but a string literal that is exactly a
+      // hostname is a leaked config value (e.g. a baked backend name), so check those.
+      if (minified && !(/["'`]$/.test(line.slice(0, match.index)) && line[match.index + match[0].length] === line[match.index - 1])) continue
       // File names/import paths with recognised source extensions are not DNS names.
       if (match[0] === "docker-entrypoint.sh" || match[0] === "env.example") continue
       if (/\.(?:xyz|xy|rgba)$/.test(match[0]) && /\.(?:[jt]s|glsl)$/.test(path) && /^\s*[;,)]/.test(line.slice(match.index + match[0].length))) continue

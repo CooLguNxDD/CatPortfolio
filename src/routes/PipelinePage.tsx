@@ -13,17 +13,19 @@ function PipelineMotion() {
 }
 
 function PipelineStatus() {
-  const { data, isError, isFetching } = useQuery({
+  const { data, isError, isFetching, isPending } = useQuery({
     queryKey: ["pipeline", "agent-status"],
     queryFn: () => fetchAgentStatus({ timeoutMs: 2500 }),
     retry: false,
     refetchInterval: 8000,
   })
   const reachable = !!data && !isError
+  // First probe still in flight: neither verdict is known yet. Later refetches keep the last verdict.
+  const label = isPending ? "checking backend" : reachable ? "backend reachable" : "offline (snapshot)"
   return (
     <span data-testid="pipeline-status" role="status" aria-busy={isFetching} className="pipeline-status">
       <span aria-hidden="true" className={reachable ? "pipeline-dot is-reachable" : "pipeline-dot"} />
-      {reachable ? "backend reachable" : "offline (snapshot)"}
+      {label}
     </span>
   )
 }

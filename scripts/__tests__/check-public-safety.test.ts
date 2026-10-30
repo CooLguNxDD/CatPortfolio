@@ -60,7 +60,11 @@ describe("public safety CLI", () => {
       expect(scanText(`const upstream = "${ip}"`, path).join()).toContain("IPv4")
       expect(scanText('const secret = "' + "ghp_" + "A".repeat(36) + '"', path).join()).toContain("secret")
     }
+    const bareHost = "private-host" + ".net"
+    expect(scanText(`const upstream="${bareHost}"`, "dist/assets/sample.js").join()).toContain("hostname")
+    expect(scanText(`const upstream='${bareHost}'`, "dist/assets/sample.js").join()).toContain("hostname")
     expect(scanText('const ratio = value > 0 ? length/value' + ':1; const point = position.x;', "dist/assets/sample.js")).toEqual([])
+    expect(scanText("const id = config.private" + ".net + 1", "dist/assets/sample.js")).toEqual([])
     expect(scanText('.card { padding:0; z-index:20; opacity:1; }', "dist/assets/sample.css")).toEqual([])
   })
 

@@ -246,7 +246,7 @@ CatPortfolio/
 │   └── README.md               # Setup and deployment instructions
 ├── Dockerfile docker-compose.yml docker-entrypoint.sh nginx.conf nginx.ngrok.conf
 ├── RELEASE.md                  # meow-<semver> release guide (Pages deploy on publish)
-└── vite.config.ts              # base /CatPortfolio/, @ alias, port 11000, three manualChunk
+└── vite.config.ts              # base /CatPortfolio/, @ alias, dev port, three manualChunk
 ```
 
 ## Essential Commands
@@ -254,7 +254,7 @@ CatPortfolio/
 ```bash
 npm run dev              # Vite dev server (configured in vite.config.ts)
 npm run build            # tsc -b + production build
-npm run preview          # Preview the build (port 11000)
+npm run preview          # Preview the build (port from vite.config.ts)
 npm run test             # Vitest (content, registry, fish, store, scripts)
 npm run lint             # oxlint
 npm run compile:layout   # design/layout.yaml → Zod validate → src/content/layout.json
@@ -269,7 +269,7 @@ npm run gen:themes       # Pull theme JSON from OCT design-context theme_defs (m
 npm run check:themes     # Diff on-disk src/themes vs live OCT (needs OCT_URL; not CI)
 npm run convert:fish     # FBX → public/models GLB (local LayerLab pack; not CI)
 npm run test:e2e         # Playwright (starts Vite unless E2E_ORIGIN is set)
-npm run worker:dev       # Test Cloudflare Worker locally (port 8787)
+npm run worker:dev       # Test Cloudflare Worker locally (Wrangler default port)
 npm run worker:deploy    # Deploy Cloudflare Worker to edge
 ```
 
