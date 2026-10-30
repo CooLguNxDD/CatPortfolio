@@ -10,7 +10,7 @@
 - **`/ask`** — kept as a `beforeLoad` redirect to `/` (same search params) so old links still resolve. Bare `/ask` now opens the tank, matching the single front door.
 - Layout source of truth is `design/layout.yaml` → `npm run compile:layout` → `src/content/layout.json`. CI verifies sync (`check:layout`), never generates.
 - Backend is **OpenCat Tunnel (OCT)**, an MCP + REST server. All calls degrade to the baked snapshot — the site never hard-fails on a backend outage (it backs a public HR-facing link).
-- Deployed to GitHub Pages (`base: "/CatPortfolio/"`); also runs under local Docker/nginx on **localhost:11000**.
+- Deployed to GitHub Pages (`base: "/CatPortfolio/"`); also runs under local Docker/nginx on the configured local server.
 
 ## Dev Rules
 
@@ -25,9 +25,26 @@
 9. `graphify-out/` and `test-results/` are generated local artifacts; both are gitignored and excluded from Docker build context.
 10. - **test**: test should run on docker container unless it is a worktree
 
+## Pipeline Walkthrough & Public Safety
+
+- `/pipeline` is a lazy route (`routes/PipelinePage.tsx`), linked from the shared navigation and text home view. It preserves demo search state without invoking the shell's home-only `?j=` repair. `/` and the `/ask` redirect remain unchanged.
+- Page content is **not a layout block**: `design/pipeline.yaml` → `scripts/compile-pipeline.ts` → committed `src/content/pipeline.json`, validated by `src/content/pipelineSchema.ts`. Never hand-edit the JSON. `compile:pipeline` writes it; `check:pipeline` fails on drift and is chained into `check:layout`. No Python mirror change.
+- Act 1 is ten ordered stages with LLM labels, local quality gates, human review, and one anonymised recorded bake. The 2D specimen illustration highlights the AI/platform tracks without importing three. Act 2 is a role-only service overview. `styles/pipeline.css` has no animation; the null `PipelineMotion` slot is reserved for progressive enhancement. Text never depends on motion.
+- Browser tests use a dedicated strict Vite server (or explicit `E2E_ORIGIN`) rather than silently reusing another checkout; local concurrency is capped for GPU/timer stability. Existing Ask/GLB suites pin an empty runtime profile-piece index so their four-specimen fixtures stay deterministic; runtime piece merging is covered by its own unit suite.
+- The only live request is `fetchAgentStatus` via a page-owned Query, bounded timeout and no retries. Failure, null, and timeout read **offline (snapshot)**; neither status nor applicant data is displayed. Static content always renders.
+- `scripts/check-public-safety.mjs` (Node, no added dependencies) scans tracked text and `dist/`; `--files <path>...` narrows input. Findings are `path:line: rule` without matched values. It rejects IPv4, endpoint literals, unapproved hosts and common secret shapes. Tests: `scripts/__tests__/check-public-safety.test.ts`, `scripts/__tests__/compile-pipeline.test.ts`, `e2e/pipeline.spec.ts`.
+- Security: page copy contains service roles only, never network coordinates, applicant PII or credential names/values. The Cloudflare edge holds the API key as a secret; the browser should receive no key. Scanner host allowlists, exact development exceptions, syntax disambiguation and vendor/binary exclusions are commented in the script. Minified JS uses scheme-anchored hostname detection, supplemented by the rendered-DOM E2E scan. Worker deployment hardening and CI wiring are separate concerns; never edit protected workflows here.
+
 ## Routes & URL State
 
-`src/router.tsx` — code-based tree, `basepath = import.meta.env.BASE_URL`. Both routes share `demoSearchSchema`:
+`src/router.tsx` — code-based tree, `basepath = import.meta.env.BASE_URL`. Home, legacy redirect and pipeline share `demoSearchSchema`:
+
+| Route | Component / behavior |
+|-------|----------------------|
+| `/` | `HomePage`, tank or text portfolio |
+| `/ask` | Redirect to `/`, preserving search |
+| `/pipeline` | Lazy `PipelinePage`, Tailor + Serve text walkthrough |
+
 
 | Param | Meaning |
 |-------|---------|
@@ -148,7 +165,7 @@ Loaders in `src/content/loadLayout.ts` — every one falls back to `loadBaked()`
 - **MCP:** `api/octClient.ts` uses `StreamableHTTPClientTransport`. `callTool` passes SDK `RequestOptions` (`timeout`, `resetTimeoutOnProgress: true`, `onprogress`) — **not** a bare `Promise.race`. Without `onprogress` the client sends no `progressToken`, the server skips keepalives, and long agent turns die at the 60s SDK default.
 - **One-shot CLI agent:** when OCT's core LLM is `claude-cli`/`agy-cli`, `askOct` still calls `run_graph` once; the server short-circuits to a headless CLI spawn and returns `meta.cli`. `extractCliMeta` renders a `one-shot cli · claude|agy` pill. Layout carry is best-effort there — REST `loadLayoutForQuery` stays the fallback.
 - **Agent status:** `api/agentStatus.ts` polls public `GET /api/portfolio/public/agent-status` (`{job_id, status, updated_at}` only — never applicant PII), rendered by `AgentStatusPill` at `refetchInterval: 8000`. Polling by design; no SSE.
-- **nginx (`nginx.conf`, `nginx.ngrok.conf`):** serves the SPA under `/CatPortfolio/` and reverse-proxies `/api/` and `/mcp` to `host.docker.internal:10000` so the browser stays same-origin. 600s read/send timeouts; Authorization forwarded on `/mcp`.
+- **nginx (`nginx.conf`, `nginx.ngrok.conf`):** serves the SPA under `/CatPortfolio/` and reverse-proxies `/api/` and `/mcp` to the private runtime-configured upstream so the browser stays same-origin. 600s read/send timeouts; Authorization forwarded on `/mcp`.
 
 ## Project Structure
 
@@ -156,11 +173,13 @@ Loaders in `src/content/loadLayout.ts` — every one falls back to `loadBaked()`
 CatPortfolio/
 ├── src/
 │   ├── main.tsx                # Root: runtime config gate → ThemeProvider > QueryClient > Router
-│   ├── router.tsx              # Route / + /ask→/ redirect, demoSearchSchema (j / v / f)
+│   ├── router.tsx              # Route / + /ask→/ redirect + lazy /pipeline, demoSearchSchema (j / v / f)
 │   ├── App.tsx                 # Shell: nav, theme + accent switcher, demo chip, Outlet
 │   ├── index.css               # Tailwind v4 CSS-first config + OKLCH tokens + shadcn bridge
 │   ├── config/runtimeConfig.ts # public/config.json fetch (octBaseUrl, askTimeoutMs; mcpApiKey from env only)
 │   ├── content/
+│   │   ├── pipelineSchema.ts   # Strict page-content contract, not a layout block
+│   │   ├── pipeline.json       # Generated from design/pipeline.yaml (never hand-edit)
 │   │   ├── schema.ts           # Zod LayoutSchema — 19-block union + meta
 │   │   ├── layout.json         # Compiled, committed, gated (never hand-edit)
 │   │   ├── loadLayout.ts       # baked / live / for-query / compose / job loaders
@@ -191,7 +210,7 @@ CatPortfolio/
 │   │                           # shaders/ (noiseCommon water caustic godRay spineDeform absorption
 │   │                           #   causticProjection underwaterPass) · postprocessing/tankComposer
 │   │                           # components/ (HoloReticle ArchHologram) · catMesh.ts (re-export from @/object3D/Cat)
-│   ├── routes/                 # HomePage viewMode.ts
+│   ├── routes/                 # HomePage viewMode.ts PipelinePage (lazy; null PipelineMotion slot)
 │   ├── components/
 │   │   ├── FishTankStage.tsx FishTankErrorBoundary.tsx
 │   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber
@@ -203,10 +222,11 @@ CatPortfolio/
 │   │                           # useThemeRegistry useThemeTokens useLayoutSessionHydrated
 │   ├── api/                    # octClient harness instructions agentStatus
 │   ├── themes/                 # cozy / neon / paper + Catppuccin; globbed by registry.ts (isLight from --bg)
-│   ├── styles/                 # matrix.css (level bands, lighting) · fish-tank.css
+│   ├── styles/                 # matrix.css (level bands, lighting) · fish-tank.css · pipeline.css
 │   ├── lib/                    # utils.ts (cn) · demoSearch.ts
 │   └── types/three.d.ts
 ├── design/                     # Generation source of truth (human/agent editable)
+│   ├── pipeline.yaml           # Walkthrough source → pipeline.json
 │   ├── layout.yaml             # Matrix + fish tank source → layout.json
 │   ├── design.md               # Design contract: tokens, voice, audience, block + matrix rules
 │   ├── fragments.json          # Cached OCT fragment catalog (gen:fragments; includes themes: ids)
@@ -216,7 +236,7 @@ CatPortfolio/
 │   ├── fish/                   # tank3d extraction notes (README, body/css/js)
 │   ├── prototypes/             # Layout drafts + HTML prototypes
 │   └── sampleDesign/
-├── scripts/                    # compile-layout · gen-layout · gen-fragments · gen-themes · convert:fish
+├── scripts/                    # compile-layout · compile-pipeline · check-public-safety · gen-layout · gen-fragments · gen-themes · convert:fish
 ├── .claude/skills/             # react-app-guide · react_generator · agy-tdd-pipeline
 ├── .github/workflows/          # ci.yml · deploy.yml · portfolio-gen.yml · pullfrog*.yml
 ├── .github/pullfrog/           # Local Pullfrog agent config + plan/build/review instructions
@@ -232,13 +252,16 @@ CatPortfolio/
 ## Essential Commands
 
 ```bash
-npm run dev              # Vite dev server at http://localhost:11000/CatPortfolio/
+npm run dev              # Vite dev server (configured in vite.config.ts)
 npm run build            # tsc -b + production build
 npm run preview          # Preview the build (port 11000)
 npm run test             # Vitest (content, registry, fish, store, scripts)
 npm run lint             # oxlint
 npm run compile:layout   # design/layout.yaml → Zod validate → src/content/layout.json
-npm run check:layout     # Fail if layout.json is stale (CI)
+npm run check:layout     # Fail if layout.json OR pipeline.json is stale (CI)
+npm run compile:pipeline # design/pipeline.yaml → strict Zod validation → pipeline.json
+npm run check:pipeline   # Fail if the page-content snapshot is stale
+node scripts/check-public-safety.mjs # Scan tracked text + dist, no matched values printed
 npm run gen:layout [-- --audience=recruiter|hiring-manager|peer|default]
                          # Seed layout.yaml from local OCT, then compile. Never in CI
 npm run gen:fragments    # Refresh design/fragments.json from OCT (manual only)
@@ -250,7 +273,7 @@ npm run worker:dev       # Test Cloudflare Worker locally (port 8787)
 npm run worker:deploy    # Deploy Cloudflare Worker to edge
 ```
 
-**Docker:** `docker compose up --build` → http://localhost:11000/CatPortfolio/. After editing `design/layout.yaml`, run `compile:layout` **and rebuild the image** — the bind mount will not update an nginx root baked at build time.
+**Docker:** `docker compose up --build` → `/CatPortfolio/` on the configured local server. After editing `design/layout.yaml`, run `compile:layout` **and rebuild the image** — the bind mount will not update an nginx root baked at build time.
 
 ## Tech Stack
 

@@ -2,7 +2,7 @@
 
 **Audit Date:** 2026-09-02  
 **Auditor:** Gemini Agentic Reviewer  
-**Target:** `http://localhost:11000/CatPortfolio/`  
+**Target:** local `/CatPortfolio/`
 **Recording Artifact:** `aquarium_deep_audit_1788337178659.webp`  
 
 ---

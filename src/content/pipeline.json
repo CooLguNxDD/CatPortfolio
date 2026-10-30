@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "title": "How this portfolio tailors itself",
+  "introduction": "One job posting becomes a tailored pack and a portfolio link. Two acts show how it is prepared and how it is served.",
+  "tailor": {
+    "introduction": "The server-side pipeline turns a posting into a tailored portfolio, resume and cover letter. The stages below distinguish model work from deterministic steps.",
+    "stages": [
+      {
+        "name": "Ingest",
+        "description": "Fetches the job posting from a URL or pasted text.",
+        "llm": "no"
+      },
+      {
+        "name": "Signals",
+        "description": "Resolves company and role from the posting.",
+        "llm": "partly"
+      },
+      {
+        "name": "Liveness",
+        "description": "Checks the posting is still open.",
+        "llm": "no"
+      },
+      {
+        "name": "Fit",
+        "description": "Scores the posting against the candidate profile on a 1–5 scale.",
+        "llm": "yes"
+      },
+      {
+        "name": "Bake",
+        "description": "Builds a tailored portfolio through discovery, layout planning and composition; mints and stores a short id.",
+        "llm": "yes"
+      },
+      {
+        "name": "Links",
+        "description": "Builds the portfolio link with ?j=<short id>. A failed bake still yields a record without a link.",
+        "llm": "no"
+      },
+      {
+        "name": "Resume",
+        "description": "Tailors the resume to the posting from the candidate's CV facts only.",
+        "llm": "yes"
+      },
+      {
+        "name": "Resume PDF",
+        "description": "Renders the one-page PDF.",
+        "llm": "no"
+      },
+      {
+        "name": "Cover",
+        "description": "Tailors a cover letter. Omits the portfolio link rather than inventing one.",
+        "llm": "yes"
+      },
+      {
+        "name": "Track",
+        "description": "Records the application status.",
+        "llm": "no"
+      }
+    ],
+    "qualityGates": [
+      "CV fact gate — every claim must exist in the CV.",
+      "Exactly one page with at least 95% fill.",
+      "Roles in reverse-chronological order."
+    ],
+    "humanReview": "A human always reviews and submits. Nothing is applied automatically.",
+    "recordedRun": {
+      "role": "Software Developer 1, API platform team",
+      "company": "a large fintech company",
+      "fit": "3.7 / 5",
+      "resume": "1 page · 99.2% fill · fact gate passed · reverse-chronological roles",
+      "cover": "Includes an honest gaps paragraph — no production federated GraphQL router or API metering yet.",
+      "previewLabel": "Illustration of a real bake",
+      "curationLabel": "Tailored for an API platform role",
+      "previewDescription": "A ?j= link loads a stored layout, with no LLM at view time. Highlighted specimens stay bright; the rest dim. Any failure falls back to the baked snapshot.",
+      "specimens": [
+        {
+          "slug": "weltel-ai",
+          "label": "AI",
+          "highlighted": true
+        },
+        {
+          "slug": "weltel-devops",
+          "label": "DevOps",
+          "highlighted": false
+        },
+        {
+          "slug": "weltel-mobile",
+          "label": "Mobile",
+          "highlighted": false
+        },
+        {
+          "slug": "weltel-platform",
+          "label": "Platform",
+          "highlighted": true
+        }
+      ]
+    }
+  },
+  "serve": {
+    "introduction": "The same tailored link, or an Ask request, follows this path. Only service roles are shown.",
+    "hops": [
+      {
+        "role": "Browser",
+        "description": "The visitor opens the portfolio link or asks a question."
+      },
+      {
+        "role": "GitHub Pages",
+        "description": "Serves the static portfolio site to the browser."
+      },
+      {
+        "role": "Cloudflare Worker",
+        "description": "The edge proxy holds the API key as an encrypted secret and injects it. The browser never sees a key."
+      },
+      {
+        "role": "Home router",
+        "description": "Forwards the request to the home server."
+      },
+      {
+        "role": "Whiskers Agent server",
+        "description": "Serves stored layouts and routes model work when needed."
+      },
+      {
+        "role": "Local LLM or Claude",
+        "description": "Model work runs on dual RTX 3060 via the LiteLLM gateway, or on Claude."
+      }
+    ],
+    "response": "The response returns the same way, back to the browser.",
+    "fallback": "Any hop down → baked snapshot. The portfolio remains readable when the backend is offline."
+  }
+}
