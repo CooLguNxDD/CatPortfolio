@@ -5,7 +5,7 @@
  * sessionStorage/localStorage). URL `?j=` re-seeds identity after reload.
  */
 
-import { Suspense, lazy, useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import {
@@ -21,18 +21,12 @@ import {
 } from "@/themes/registry"
 import { Check, Moon, Palette, Sun } from "lucide-react"
 import { Popover } from "radix-ui"
-import { Button } from "@/components/ui/button"
 import type { DemoSearch } from "@/router"
 import { clearDemoSearch, mergeDemoSearch } from "@/lib/demoSearch"
 
-// Dev-only companion. Lazy, because the `@/object3D/Cat` barrel pulls three.js,
-// and a static import made every page (text view and landscape gate included)
-// modulepreload the whole three chunk.
-const CatDOMCompanion = lazy(() =>
-  import("@/object3D/Cat/components/CatDOMCompanion").then((m) => ({
-    default: m.CatDOMCompanion,
-  })),
-)
+// The dev-only Cat companion (`@/object3D/Cat` CatDOMCompanion) is no longer
+// mounted from the shell. Keep it out of App's static imports: that barrel
+// pulls three.js and would make every page modulepreload the three chunk.
 
 // Stable identity so the router selector doesn't return a fresh object
 // (and re-render the shell) every time `location.search` is undefined.
@@ -63,7 +57,6 @@ function App() {
   const bakeTheme = useLayoutStore((s) => s.bakeTheme)
   const clearDemo = useLayoutStore((s) => s.clearDemo)
   const setThemeOverride = useLayoutStore((s) => s.setThemeOverride)
-  const [showCompanion, setShowCompanion] = useState(false)
 
   const liveSearch = useRouterState({
     select: (s) => (s.location.search as DemoSearch | undefined) ?? EMPTY_SEARCH,
@@ -288,17 +281,6 @@ function App() {
                 </Popover.Content>
               </Popover.Portal>
             </Popover.Root>
-            {import.meta.env.DEV ? (
-              <Button
-                size="xs"
-                variant={showCompanion ? "default" : "outline"}
-                onClick={() => setShowCompanion(!showCompanion)}
-                title="Toggle 3D Interactive Cat Companion (Dev only)"
-                className="hidden sm:inline-flex"
-              >
-                🐾 Companion
-              </Button>
-            ) : null}
           </div>
         </div>
       </header>
@@ -306,12 +288,6 @@ function App() {
       <main className="flex-1">
         <Outlet />
       </main>
-
-      {import.meta.env.DEV && showCompanion && (
-        <Suspense fallback={null}>
-          <CatDOMCompanion initialPosition={{ x: 24, y: 80 }} />
-        </Suspense>
-      )}
 
       {liveSearch?.v === "text" && (
         <footer className="py-6 text-center text-xs font-mono text-(--fg-muted) border-t border-(--hairline) max-w-6xl mx-auto w-full px-4">

@@ -59,7 +59,7 @@
 
 - `/` → `routes/HomePage.tsx` — `usePageLayout` resolves demo (`?j=`), live default, or a patched working copy. Tank mode renders `FishTankStage` (Ask dock + chrome); text mode is the two-column ask + matrix.
 - `/ask` → `beforeLoad` redirect onto `/` with the same search params. No page component.
-- `App.tsx` shell — nav, one "Appearance" popover (radix `Popover`: mode, accent, theme; portaled with `data-accent` spread so it follows the accent), demo chip. The dev-only `CatDOMCompanion` is `React.lazy` — a static import of the `@/object3D/Cat` barrel made every page modulepreload three. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`). `data-accent` lives on this shell `<div>`, not `<html>` (ThemeProvider's inline theme vars on `documentElement` would beat an attribute selector there). Accent tokens are mode-aware: `html[data-light="true"]` in `index.css` tunes `--accent-*` for light themes that don't declare their own (only `paper` today). The fish tank reads CSS tokens from that same `[data-accent]` shell (`fishTankTokens.ts::accentScopeElement`), not `<html>`, so it inherits the picked accent instead of always seeing the theme's base amber.
+- `App.tsx` shell — nav, one "Appearance" popover (radix `Popover`: mode, accent, theme; portaled with `data-accent` spread so it follows the accent), demo chip. The dev-only Cat companion is no longer mounted from the shell (its header toggle was removed); never statically import the `@/object3D/Cat` barrel into the shell, or every page modulepreloads three. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`). `data-accent` lives on this shell `<div>`, not `<html>` (ThemeProvider's inline theme vars on `documentElement` would beat an attribute selector there). Accent tokens are mode-aware: `html[data-light="true"]` in `index.css` tunes `--accent-*` for light themes that don't declare their own (only `paper` today). The fish tank reads CSS tokens from that same `[data-accent]` shell (`fishTankTokens.ts::accentScopeElement`), not `<html>`, so it inherits the picked accent instead of always seeing the theme's base amber.
 
 ## Fish Tank
 
@@ -135,7 +135,7 @@ Extensible 2D/3D skeletal rigging and procedural animation framework:
 | Idle Breathing & Tail Wave | `animations/BreathingLayer.ts` | Harmonic chest expansion and 7-segment fluid sinusoidal tail travelling wave. |
 | Stylized Low-Poly Geometry | `mesh/CatMeshBuilder.ts` | Procedural Three.js Cat geometry bound to bones with glowing golden eyes. |
 | Giant Perched Mascot | `mesh/catGiantMesh.ts`, `mesh/riggedGiantCat.ts` | Rigged charcoal GLB at `public/models/cat/reference-cat-rigged.glb`, with the procedural mascot retained as loading/error fallback and animation driver. A 6× model scale and upright pelvis pose place the body outside the right glass wall; the support wrist anchors to the rim while head, ears, forepaw and curled tail animate. Inset eyes remain as modeled. Load status: canvas `data-tank-cat-model`. Source Blender file: `../3dModels/cat_reference.blend`. |
-| React & DOM Views | `components/Cat3DView.tsx`, `components/CatDOMCompanion.tsx` | Isolated WebGL canvas view & draggable dev companion widget (`import.meta.env.DEV`). |
+| React & DOM Views | `components/Cat3DView.tsx`, `components/CatDOMCompanion.tsx` | Isolated WebGL canvas view & draggable companion widget. The companion is not mounted anywhere today (header toggle removed); kept for reuse. |
 
 - **Zero-Discontinuity Look-At**: Eliminates atan2 branch cuts along negative axes via forward-hemisphere projection and $\arcsin$ vector normalization.
 - **Rear Attention Attenuation**: When targets move behind the cat ($\Delta z < 0$), a cosine-based smoothstep falloff smoothly relaxes the head to neutral forward gaze, preventing singularity jitter when orbiting the camera around to the cat's back.
@@ -210,7 +210,7 @@ CatPortfolio/
 │   │       ├── rig/            # RigBone.ts · CatRig.ts · types.ts (bone hierarchy, anatomical constraints)
 │   │       ├── animations/     # AnimationLayer.ts · GazeTrackingLayer.ts · BlinkLayer.ts · PurrReactionLayer.ts · BreathingLayer.ts · CatAnimationEngine.ts
 │   │       ├── mesh/           # CatMeshBuilder.ts · CatGLTFLoader.ts · catGiantMesh.ts · riggedGiantCat.ts (skinned giant mascot with procedural fallback)
-│   │       ├── components/     # Cat3DView.tsx · CatDOMCompanion.tsx (dev-only floating companion)
+│   │       ├── components/     # Cat3DView.tsx · CatDOMCompanion.tsx (floating companion, currently unmounted)
 │   │       └── index.ts        # Module export barrel
 │   ├── fish/                   # Pure models: sceneFromLayout matchFish formFromDomain speciesMeshes
 │   │                           # modelLoader (async GLTF cache) assetRegistry gltfFacing gltfQuality seabedFlora fishCatalogMetadata
