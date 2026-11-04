@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils"
 import { fishBus, type FishAnchor } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
-import { getModelInfo } from "@/fish/modelLoader"
+import { getModelInfo } from "@/fish/modelInfo"
 
 export interface FishDossierProps {
   fish: FishSpecimenInput | null

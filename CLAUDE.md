@@ -6,6 +6,8 @@
 - **Self-rendering:** the page is data. A Zod-validated layout spec (`src/content/layout.json`) flows through a whitelisted block registry (`src/render/registry.ts`). Layout grows; component code doesn't change. Unknown block type = skipped, never crashes.
 - **One front door on `/`:**
   - **Fish tank (default)** — a WebGL aquarium where each fish is a project/track. Falls back to the text layout when WebGL2 is missing, `prefers-reduced-motion` is set (unless the URL says `?v=tank` explicitly — an opt-in to motion: shader clocks stay frozen, fish and camera still move), no tank is authored and no fish exist, or `?v=text`. The default bake authors four WelTel specimens (`weltel-ai`, `weltel-devops`, `weltel-mobile`, `weltel-platform`). An authored `fishTank` with `fish: []` still opens an empty aquarium.
+  - **Landscape gate (portrait phones)** — when the tank would open on a touch device held upright (`PHONE_PORTRAIT_QUERY` in `routes/viewMode.ts`), `HomePage` renders `components/fish/LandscapeGate.tsx` *instead of* `FishTankStage`, so no WebGL or three chunk loads. Rotating opens the tank; buttons offer "Continue in portrait" or the text view. The answer is `fishTankSlice.orientationAck` (non-persisted, outside `DEFAULTS` so a stage reset keeps it); landscape once seen also counts, so rotating back never re-gates. A reload asks again. E2E: `e2e/landscapeGate.spec.ts`.
+  - **Fallback notice** — when the visitor did not ask for `?v=text` but the tank was skipped, the text view says why (`data-testid="tank-fallback-notice"`) and hides the 3D/Flat pills. Reduced motion also offers "Open the 3D tank anyway" (`?v=tank`, the explicit opt-in above); missing WebGL2 has no override.
   - **Text matrix (`?v=text`)** — recruiter index (`FishFlatGrid`, highlight then timeline years) + chat panel + live layout. Ask questions are stored in `portfolio_ask_turns` (length-capped; that is not consent). Canonical/OG URL is the absolute `?v=text` link.
 - **`/ask`** — kept as a `beforeLoad` redirect to `/` (same search params) so old links still resolve. Bare `/ask` now opens the tank, matching the single front door.
 - Layout source of truth is `design/layout.yaml` → `npm run compile:layout` → `src/content/layout.json`. CI verifies sync (`check:layout`), never generates.
@@ -57,7 +59,7 @@
 
 - `/` → `routes/HomePage.tsx` — `usePageLayout` resolves demo (`?j=`), live default, or a patched working copy. Tank mode renders `FishTankStage` (Ask dock + chrome); text mode is the two-column ask + matrix.
 - `/ask` → `beforeLoad` redirect onto `/` with the same search params. No page component.
-- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`). `data-accent` lives on this shell `<div>`, not `<html>` (ThemeProvider's inline theme vars on `documentElement` would beat an attribute selector there). Accent tokens are mode-aware: `html[data-light="true"]` in `index.css` tunes `--accent-*` for light themes that don't declare their own (only `paper` today). The fish tank reads CSS tokens from that same `[data-accent]` shell (`fishTankTokens.ts::accentScopeElement`), not `<html>`, so it inherits the picked accent instead of always seeing the theme's base amber.
+- `App.tsx` shell — nav, one "Appearance" popover (radix `Popover`: mode, accent, theme; portaled with `data-accent` spread so it follows the accent), demo chip. The dev-only Cat companion is no longer mounted from the shell (its header toggle was removed); never statically import the `@/object3D/Cat` barrel into the shell, or every page modulepreloads three. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`). `data-accent` lives on this shell `<div>`, not `<html>` (ThemeProvider's inline theme vars on `documentElement` would beat an attribute selector there). Accent tokens are mode-aware: `html[data-light="true"]` in `index.css` tunes `--accent-*` for light themes that don't declare their own (only `paper` today). The fish tank reads CSS tokens from that same `[data-accent]` shell (`fishTankTokens.ts::accentScopeElement`), not `<html>`, so it inherits the picked accent instead of always seeing the theme's base amber.
 
 ## Fish Tank
 
@@ -86,7 +88,10 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Sonar / bathymetry projection (pure) | `fish/sonarProjection.ts`, `fish/bathymetry.ts` |
 | Transient UI: scene, chrome, query, domain, bake dim, depth lock, sonar | `store/fishTankSlice.ts` (non-persisted; rAF smoothstep dive/surface) |
 | Controller & hotkeys composing all of the above | `hooks/{useFishTank,useTankHotkeys}.ts` |
-| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber,ShortcutsModal}.tsx` |
+| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber,ShortcutsModal,LandscapeGate,SceneControls,TankTutorial}.tsx` |
+| Reusable swipe deck | `components/ui/scroll-cards.tsx` (`ScrollCards`: scroll-snap cards, dots, arrow keys, `renderActions`, controlled or not) |
+| Touch gestures (pure): pinch radius, double-tap | `fish/touchGestures.ts` (wired in `FishTankCanvas` pointer handlers) |
+| Pure catalog lookups (no three) | `fish/modelInfo.ts` (`getModelInfo`, `resolveModelId`; re-exported by `modelLoader`). DOM views import this, never `modelLoader`, or three lands in the entry chunk. |
 | WebGL only — sole importer of `three` | `blocks/FishTankCanvas.tsx` (lazy chunk; `manualChunks` splits `three` out of index) |
 | Registry block | `blocks/FishTank.tsx` → registry `fishTank` |
 
@@ -100,6 +105,9 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 - **Fish are swimmers, not path samples.** `computeFishPose` is a *target*; `fish/fishLocomotion.ts` owns each fish position, velocity and heading. It matches the target velocity as well as chasing its position (so a fish arrives *on* its path at path speed instead of braking onto it), and it only ever reads steering as a heading and a throttle — the body makes way along its own facing and can never slide, stall or pivot in place. Every input goes through it: boids output is a velocity bias, never a displaced target, because a separation term flips sign as two fish pass and a flipping target spins the fish. Shoal bias gain is 0.18 x cruise, measured: above ~0.2 the shoal term beats the path and fish wag.
 - **Feeding is a state machine.** `fish/fishBehavior.ts`: `cruise → hunt → feed → sated → cruise`, with `focused` outranking all of them. Sense 28 / release 34 gives hysteresis on a sinking pellet; a 6 s hunt timeout covers pellets resting below the swim band; the 2.5 s sated cooldown stops one pellet holding the whole shoal. Behaviour decides *what a fish wants*; locomotion decides how fast it can get there.
 - **Ambient shoal.** 240 (high) / 80 (low) GPU commit-minnows in one `InstancedMesh`; orbit path *and* spine wave run in the vertex shader. High tier also adds a small LayerLab ambient GLB shoal (`fish/ambientSchool.ts`). Hero specimens keep a CPU spine rig only while the procedural fallback is visible — after a GLB swap the mixer owns the body.
+- **Underwater bar + Scene controls (design review v2).** The submerged toolbar is search/filters (desktop only) over three primary actions: **Browse projects** (`view:chrome` → flat index), **Ask**, **Controls**. `SceneControls` (bus `controls:toggle` / `controls:close`) holds lighting, sound, sonar, feeding, job highlight, the inline timeline and a gesture/keys guide. `FishTankStage` keeps one panel open at a time (Controls closes Ask/shortcuts and, under 960px, releases the dossier; Ask, fish pick and shortcuts close Controls); Escape order is shortcuts → controls → ask → dossier → surface. Phones show only the three buttons, start with sonar hidden, and toggle it from the panel. `DepthScrubber` is compact chips ("All years" + one per band): a floating strip under the corner pills on desktop, inline in the panel everywhere. E2E: `e2e/tankControls.spec.ts`.
+- **First-run tutorial.** `TankTutorial` (four `ScrollCards`, touch or mouse wording) opens once per device when the 3D stage mounts, after the landscape gate; `?f=` deep links skip it. Seen = persisted preference `tankTutorialSeen` (any close counts). Scene controls → "Show tutorial" (bus `tutorial:open`) reopens it; it is first in the Escape order and pauses tank hotkeys. E2E suites that exercise other tank features call `e2e/fixtures/tutorial.ts::skipTankTutorial`; the tour itself is `e2e/tankTutorial.spec.ts`.
+- **Touch.** The canvas sets `touch-action: none`; one finger orbits, two fingers pinch-zoom (same gate and clamps as the wheel), a double-tap feeds (a synthesised `dblclick` within 600 ms is ignored), and a tap aims the raycast at the finger (taps fire no `pointermove`). `pointercancel` clears tracked touches.
 - **HUD observations.** Sonar contacts ride the bus at ~10Hz (`tank:sonar`), the dossier anchor and dive progress at 60fps; all three are written to DOM refs, never React state. `tank:depth` (bathymetry) and `view:sonar` are commands, handled in `useFishTank`.
 - **Depth is the timeline.** `fish/bathymetry.ts` maps the existing `depth` ∈ [0,1] to year bands — no per-fish year field, so the layout schema and its Python mirror are untouched.
 - **Audio.** Positional cues pass `at` on `audio:fx` and route through an HRTF `PannerNode`; the listener tracks the camera at ~15Hz and `setImmersion` sweeps a lowpass 20kHz → 450Hz across the waterline. Still gated behind the user's sound toggle (autoplay policy).
@@ -129,7 +137,7 @@ Extensible 2D/3D skeletal rigging and procedural animation framework:
 | Idle Breathing & Tail Wave | `animations/BreathingLayer.ts` | Harmonic chest expansion and 7-segment fluid sinusoidal tail travelling wave. |
 | Stylized Low-Poly Geometry | `mesh/CatMeshBuilder.ts` | Procedural Three.js Cat geometry bound to bones with glowing golden eyes. |
 | Giant Perched Mascot | `mesh/catGiantMesh.ts`, `mesh/riggedGiantCat.ts` | Rigged charcoal GLB at `public/models/cat/reference-cat-rigged.glb`, with the procedural mascot retained as loading/error fallback and animation driver. A 6× model scale and upright pelvis pose place the body outside the right glass wall; the support wrist anchors to the rim while head, ears, forepaw and curled tail animate. Inset eyes remain as modeled. Load status: canvas `data-tank-cat-model`. Source Blender file: `../3dModels/cat_reference.blend`. |
-| React & DOM Views | `components/Cat3DView.tsx`, `components/CatDOMCompanion.tsx` | Isolated WebGL canvas view & draggable dev companion widget (`import.meta.env.DEV`). |
+| React & DOM Views | `components/Cat3DView.tsx`, `components/CatDOMCompanion.tsx` | Isolated WebGL canvas view & draggable companion widget. The companion is not mounted anywhere today (header toggle removed); kept for reuse. |
 
 - **Zero-Discontinuity Look-At**: Eliminates atan2 branch cuts along negative axes via forward-hemisphere projection and $\arcsin$ vector normalization.
 - **Rear Attention Attenuation**: When targets move behind the cat ($\Delta z < 0$), a cosine-based smoothstep falloff smoothly relaxes the head to neutral forward gaze, preventing singularity jitter when orbiting the camera around to the cat's back.
@@ -176,7 +184,7 @@ CatPortfolio/
 ├── src/
 │   ├── main.tsx                # Root: runtime config gate → ThemeProvider > QueryClient > Router
 │   ├── router.tsx              # Route / + /ask→/ redirect + lazy /pipeline, demoSearchSchema (j / v / f)
-│   ├── App.tsx                 # Shell: nav, theme + accent switcher, demo chip, Outlet
+│   ├── App.tsx                 # Shell: nav, Appearance popover (mode/accent/theme), demo chip, Outlet
 │   ├── index.css               # Tailwind v4 CSS-first config + OKLCH tokens + shadcn bridge
 │   ├── config/runtimeConfig.ts # public/config.json fetch (octBaseUrl, askTimeoutMs; mcpApiKey from env only)
 │   ├── content/
@@ -204,7 +212,7 @@ CatPortfolio/
 │   │       ├── rig/            # RigBone.ts · CatRig.ts · types.ts (bone hierarchy, anatomical constraints)
 │   │       ├── animations/     # AnimationLayer.ts · GazeTrackingLayer.ts · BlinkLayer.ts · PurrReactionLayer.ts · BreathingLayer.ts · CatAnimationEngine.ts
 │   │       ├── mesh/           # CatMeshBuilder.ts · CatGLTFLoader.ts · catGiantMesh.ts · riggedGiantCat.ts (skinned giant mascot with procedural fallback)
-│   │       ├── components/     # Cat3DView.tsx · CatDOMCompanion.tsx (dev-only floating companion)
+│   │       ├── components/     # Cat3DView.tsx · CatDOMCompanion.tsx (floating companion, currently unmounted)
 │   │       └── index.ts        # Module export barrel
 │   ├── fish/                   # Pure models: sceneFromLayout matchFish formFromDomain speciesMeshes
 │   │                           # modelLoader (async GLTF cache) assetRegistry gltfFacing gltfQuality seabedFlora fishCatalogMetadata
@@ -216,12 +224,12 @@ CatPortfolio/
 │   ├── pipeline/               # timeline.ts (pure stop math) · PipelineMotion.tsx (lazy request-token rail)
 │   ├── components/
 │   │   ├── FishTankStage.tsx FishTankErrorBoundary.tsx
-│   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber
+│   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber LandscapeGate SceneControls TankTutorial
 │   │   ├── chat/               # ChatPanel ChatMessage
 │   │   ├── ThemeProvider.tsx AgenticHeader.tsx SourceCitations.tsx AgentStatusPill.tsx
-│   │   └── ui/                 # shadcn: button card chart (Recharts ChartContainer)
+│   │   └── ui/                 # shadcn: button card chart (Recharts ChartContainer) · scroll-cards (ScrollCards deck)
 │   ├── store/                  # index.ts + preferences (persisted) / layout / fishTank / chat slices, applyLayout.ts
-│   ├── hooks/                  # useFishTank useDemoLayout usePageLayout useLayoutDag useLayoutTheme
+│   ├── hooks/                  # useFishTank useDemoLayout usePageLayout useLayoutDag useLayoutTheme usePhonePortrait
 │   │                           # useThemeRegistry useThemeTokens useLayoutSessionHydrated
 │   ├── api/                    # octClient harness instructions agentStatus
 │   ├── themes/                 # cozy / neon / paper + Catppuccin; globbed by registry.ts (isLight from --bg)

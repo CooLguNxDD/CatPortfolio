@@ -9,6 +9,11 @@ import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js"
 import { FISH_CATALOG_METADATA, type ModelMetadata } from "./fishCatalogMetadata"
 import { applyRigFacing, isCreatureRig, type CreatureRig } from "./gltfFacing"
 import { assetRegistry, ensureAssetManifest } from "./assetRegistry"
+import { resolveModelId } from "./modelInfo"
+
+// Pure catalog lookups live in ./modelInfo (no three import) so DOM-only
+// views like FishDossier don't drag three into the entry chunk.
+export { getModelInfo, resolveModelId, type ModelInfo } from "./modelInfo"
 import { FISH_GLTF_CONFIG } from "@/blocks/fishTankConfig"
 
 export interface LoadedFishInstance {
@@ -122,29 +127,6 @@ function fetchGltfTemplate(relPath: string): Promise<{ scene: THREE.Group; anima
     gltfCache.set(relPath, cachedPromise)
   }
   return cachedPromise
-}
-
-/**
- * Maps a domain ID (ai, devops, mobile, platform) or custom species slug to a concrete model ID.
- * Prefers the manifest-backed `assetRegistry`; catalog metadata fills display-name gaps.
- */
-export function resolveModelId(speciesOrDomain: string): string {
-  const fromRegistry = assetRegistry.resolve(speciesOrDomain)
-  // Domain aliases + heuristics resolve before the manifest fetch.
-  if (fromRegistry !== "AchilesTang") return fromRegistry
-
-  const norm = speciesOrDomain.toLowerCase().replace(/[-_\s]/g, "")
-  for (const group of Object.values(FISH_CATALOG_METADATA)) {
-    for (const model of group.models) {
-      const mNorm = model.id.toLowerCase().replace(/[-_\s]/g, "")
-      const nameNorm = (model.displayName || model.display_name || "").toLowerCase().replace(/[-_\s]/g, "")
-      if (norm === mNorm || norm === nameNorm) {
-        return model.id
-      }
-    }
-  }
-
-  return fromRegistry
 }
 
 /**
@@ -316,38 +298,4 @@ export async function loadPropModelInstance(
     materials,
     isGltf: true,
   }
-}
-
-export interface ModelInfo {
-  modelId: string
-  displayName: string
-  groupName: string
-  family: string
-  rig: string
-  vertices: number
-  triangles: number
-  bones: number
-}
-
-/**
- * Returns complete catalog information for a given species or domain.
- */
-export function getModelInfo(speciesOrDomain: string): ModelInfo | null {
-  const modelId = resolveModelId(speciesOrDomain)
-  for (const group of Object.values(FISH_CATALOG_METADATA)) {
-    const model = group.models.find((m) => m.id === modelId)
-    if (model) {
-      return {
-        modelId: model.id,
-        displayName: model.displayName || model.display_name || model.id,
-        groupName: group.name,
-        family: group.family,
-        rig: group.rig,
-        vertices: model.vertices,
-        triangles: model.triangles,
-        bones: model.bones,
-      }
-    }
-  }
-  return null
 }

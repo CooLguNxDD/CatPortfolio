@@ -17,12 +17,14 @@ import { FishTankChrome } from "@/components/fish/FishTankChrome"
 import { SonarMiniMap } from "@/components/fish/SonarMiniMap"
 import { DepthScrubber } from "@/components/fish/DepthScrubber"
 import { ShortcutsModal } from "@/components/fish/ShortcutsModal"
+import { SceneControls } from "@/components/fish/SceneControls"
+import { TankTutorial } from "@/components/fish/TankTutorial"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { useFishTank } from "@/hooks/useFishTank"
 import { useTankHotkeys } from "@/hooks/useTankHotkeys"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
 import { fishBus } from "@/fish/fishBus"
-import { useChatStore } from "@/store"
+import { useChatStore, useFishTankStore, usePreferencesStore } from "@/store"
 import { canDiveOnScroll } from "@/fish/tankMachine"
 import type { Layout } from "@/content/schema"
 import type { DemoSearch } from "@/router"
@@ -44,6 +46,23 @@ export function FishTankStage({
   const tank = useFishTank(layout)
   const [askOpen, setAskOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  // Scene controls panel — one expanded panel at a time with Ask / dossier.
+  const [controlsOpen, setControlsOpen] = useState(false)
+  // Read by the bus handler so the toggle needs no impure state updater.
+  const controlsOpenRef = useRef(false)
+  controlsOpenRef.current = controlsOpen
+  // First-run tour: once per device (persisted preference), skipped for
+  // `?f=` deep links, which already point at one project.
+  const [tutorialOpen, setTutorialOpen] = useState(
+    () => !usePreferencesStore.getState().tankTutorialSeen && !demoSearch.f,
+  )
+  // The tour only renders in the 3D view; in Flat it stays pending (it shows
+  // once the visitor switches to 3D) and must not swallow Escape or hotkeys.
+  const tutorialVisible = tutorialOpen && tank.chrome === "3d"
+  const closeTutorial = () => {
+    setTutorialOpen(false)
+    usePreferencesStore.getState().setTankTutorialSeen(true)
+  }
   const stageRef = useRef<HTMLDivElement | null>(null)
   const askDockRef = useRef<HTMLElement | null>(null)
 
@@ -72,7 +91,7 @@ export function FishTankStage({
   }
 
   useTankHotkeys({
-    enabled: tank.chrome === "3d" && !shortcutsOpen,
+    enabled: tank.chrome === "3d" && !shortcutsOpen && !tutorialVisible,
     domains: tank.domains,
     onPrevSpecimen: tank.focusedSlug ? handlePrev : undefined,
     onNextSpecimen: tank.focusedSlug ? handleNext : undefined,
@@ -80,6 +99,7 @@ export function FishTankStage({
 
   useEffect(() => {
     function onAskToggle() {
+      setControlsOpen(false)
       setAskOpen((prev) => {
         const next = !prev
         if (next && typeof window !== "undefined" && window.innerWidth < 960 && tank.focusedSlug) {
@@ -89,6 +109,7 @@ export function FishTankStage({
       })
     }
     function onAskOpen(payload?: { prompt?: string } | void) {
+      setControlsOpen(false)
       if (typeof window !== "undefined" && window.innerWidth < 960 && tank.focusedSlug) {
         fishBus.emit("fish:release")
       }
@@ -101,24 +122,53 @@ export function FishTankStage({
       setAskOpen(false)
     }
     function onFishPick() {
+      setControlsOpen(false)
       if (typeof window !== "undefined" && window.innerWidth < 960) {
         setAskOpen(false)
       }
     }
     function onShortcutsToggle() {
+      setControlsOpen(false)
       setShortcutsOpen((prev) => !prev)
+    }
+    function onControlsToggle() {
+      const next = !controlsOpenRef.current
+      setControlsOpen(next)
+      if (next) {
+        setAskOpen(false)
+        setShortcutsOpen(false)
+        // Phones: the dossier and the controls sheet would cover each other.
+        if (typeof window !== "undefined" && window.innerWidth < 960 && tank.focusedSlug) {
+          fishBus.emit("fish:release")
+        }
+      }
+    }
+    function onControlsClose() {
+      setControlsOpen(false)
+    }
+    function onTutorialOpen() {
+      setControlsOpen(false)
+      setAskOpen(false)
+      setShortcutsOpen(false)
+      setTutorialOpen(true)
     }
     fishBus.on("ask:toggle", onAskToggle)
     fishBus.on("ask:open", onAskOpen)
     fishBus.on("ask:close", onAskClose)
     fishBus.on("fish:pick", onFishPick)
     fishBus.on("shortcuts:toggle", onShortcutsToggle)
+    fishBus.on("controls:toggle", onControlsToggle)
+    fishBus.on("controls:close", onControlsClose)
+    fishBus.on("tutorial:open", onTutorialOpen)
     return () => {
       fishBus.off("ask:toggle", onAskToggle)
       fishBus.off("ask:open", onAskOpen)
       fishBus.off("ask:close", onAskClose)
       fishBus.off("fish:pick", onFishPick)
       fishBus.off("shortcuts:toggle", onShortcutsToggle)
+      fishBus.off("controls:toggle", onControlsToggle)
+      fishBus.off("controls:close", onControlsClose)
+      fishBus.off("tutorial:open", onTutorialOpen)
     }
   }, [tank.focusedSlug])
 
@@ -140,8 +190,16 @@ export function FishTankStage({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return
+      if (tutorialVisible) {
+        closeTutorial()
+        return
+      }
       if (shortcutsOpen) {
         setShortcutsOpen(false)
+        return
+      }
+      if (controlsOpen) {
+        setControlsOpen(false)
         return
       }
       if (askOpen) {
@@ -159,7 +217,25 @@ export function FishTankStage({
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [shortcutsOpen, askOpen, tank.focusedSlug, tank.tankScene])
+  }, [tutorialVisible, shortcutsOpen, controlsOpen, askOpen, tank.focusedSlug, tank.tankScene])
+
+  // The panel belongs to the submerged scene (and the 3D view).
+  useEffect(() => {
+    if (tank.tankScene !== "tank" || tank.chrome !== "3d") setControlsOpen(false)
+  }, [tank.tankScene, tank.chrome])
+
+  // Phones start with sonar hidden (review v2: no always-open HUD); it is one
+  // tap away in Scene controls. Desktop keeps the slice default (visible).
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return
+    try {
+      if (matchMedia("(max-width: 640px), (pointer: coarse) and (max-height: 500px)").matches) {
+        useFishTankStore.getState().toggleSonar(false)
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [])
 
   useEffect(() => {
     if (tank.chrome !== "3d") return
@@ -300,7 +376,7 @@ export function FishTankStage({
                 ? tank.curationLabel
                 : null
             }
-            showBake={Boolean(layout.meta?.tailored || demoSearch.j)}
+            controlsOpen={controlsOpen}
           />
           <SonarMiniMap fish={tank.fish} />
           <DepthScrubber />
@@ -315,6 +391,14 @@ export function FishTankStage({
         onNext={handleNext}
         onClose={() => fishBus.emit("fish:release")}
       />
+
+      <SceneControls
+        open={controlsOpen && tank.chrome === "3d"}
+        onClose={() => setControlsOpen(false)}
+        showBake={Boolean(layout.meta?.tailored || demoSearch.j)}
+      />
+
+      <TankTutorial open={tutorialVisible} onClose={closeTutorial} />
 
       <ShortcutsModal
         open={shortcutsOpen}

@@ -152,6 +152,7 @@ import {
   type SwimBody,
 } from "@/fish/fishLocomotion"
 import { WakeTrailPool } from "@/fish/wakeTrails"
+import { isDoubleTap, pinchRadius, pointerDistance, type TapSample } from "@/fish/touchGestures"
 import type { DomainIdType } from "@/content/schema"
 
 /** Stable empty highlight set — a per-render `[]` remounts the WebGL scene. */
@@ -331,6 +332,9 @@ export default function FishTankCanvas({
     renderer.domElement.style.display = "block"
     renderer.domElement.style.borderRadius = immersive ? "0" : "var(--radius)"
     renderer.domElement.style.cursor = "grab"
+    // Touch drags orbit / pinch the camera; without this the browser claims
+    // them for scrolling and fires pointercancel mid-gesture.
+    renderer.domElement.style.touchAction = "none"
     renderer.domElement.setAttribute("aria-label", "Interactive portfolio fish tank")
     renderer.domElement.setAttribute("aria-keyshortcuts", "F")
     // Keyboard-focusable so the double-click "drop food" action (below) has
@@ -1270,7 +1274,42 @@ export default function FishTankCanvas({
       fishBus.emit("fish:release")
     }
 
+    // --- Touch: pinch-to-zoom and double-tap feed (math in fish/touchGestures.ts) ---
+    const touches = new Map<number, { x: number; y: number }>()
+    let pinch: { startDist: number; startRadius: number } | null = null
+    let lastTap: TapSample | null = null
+    /** Last double-tap feed, so a browser-synthesised dblclick doesn't feed twice. */
+    let lastTouchFeedAt = -Infinity
+
+    function setPointerFromEvent(e: PointerEvent) {
+      updateCachedRect()
+      const rect = cachedRect
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+      hasPointer = true
+    }
+
+    function zoomAllowed(): boolean {
+      // Same gate as the wheel: no zoom mid-dive, none while a fish is held.
+      if (progRef.current > CAMERA_CONFIG.surfaceReturnThreshold && !isSubmerged(progRef.current)) return false
+      return !selected
+    }
+
     function onPointerDown(e: PointerEvent) {
+      if (e.pointerType === "touch") {
+        touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        // A tap fires no pointermove first; aim the raycast at the finger.
+        setPointerFromEvent(e)
+        updateCursorRaycast()
+        if (touches.size >= 2) {
+          const [a, b] = [...touches.values()]
+          pinch = { startDist: pointerDistance(a, b), startRadius: orbit.radiusT }
+          orbit.dragging = false
+          // A pinch is never a click or a tap.
+          orbit.moved = Number.MAX_SAFE_INTEGER
+          return
+        }
+      }
       orbit.dragging = true
       orbit.moved = 0
       orbit.lx = e.clientX
@@ -1284,6 +1323,47 @@ export default function FishTankCanvas({
     }
 
     function onPointerUp(e: PointerEvent) {
+      if (e.pointerType === "touch") {
+        // Already handled: a lifted finger's pointerleave follows its
+        // pointerup. Re-running here would clear orbit.dragging and undo the
+        // pinch hand-off just set up for the finger still down.
+        if (!touches.has(e.pointerId)) return
+        touches.delete(e.pointerId)
+        const wasPinching = pinch !== null
+        if (touches.size < 2) pinch = null
+        // Lifting one finger of a pinch hands the gesture to the other finger:
+        // keep orbiting from where it is now (orbit.moved is still past the
+        // tap tolerance from the pinch, so this never counts as a tap).
+        if (wasPinching && touches.size === 1) {
+          const [rest] = [...touches.values()]
+          orbit.dragging = true
+          orbit.lx = rest.x
+          orbit.ly = rest.y
+          try {
+            renderer.domElement.releasePointerCapture?.(e.pointerId)
+          } catch {
+            /* ignore */
+          }
+          return
+        }
+        // pointerleave follows pointerup for touch; only count the real lift.
+        if (e.type === "pointerup" && touches.size === 0) {
+          if (orbit.moved <= CAMERA_CONFIG.clickDragTolerancePx) {
+            const tap: TapSample = { x: e.clientX, y: e.clientY, t: performance.now() }
+            if (isDoubleTap(lastTap, tap)) {
+              lastTap = null
+              setPointerFromEvent(e)
+              updateCursorRaycast()
+              feedAtCursor()
+              lastTouchFeedAt = tap.t
+            } else {
+              lastTap = tap
+            }
+          } else {
+            lastTap = null
+          }
+        }
+      }
       orbit.dragging = false
       renderer.domElement.style.cursor = "grab"
       try {
@@ -1304,6 +1384,23 @@ export default function FishTankCanvas({
       pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
       hasPointer = true
+
+      if (e.pointerType === "touch" && touches.has(e.pointerId)) {
+        touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        if (pinch && touches.size >= 2) {
+          if (zoomAllowed()) {
+            const [a, b] = [...touches.values()]
+            orbit.radiusT = pinchRadius(
+              pinch.startRadius,
+              pinch.startDist,
+              pointerDistance(a, b),
+              isSubmerged(progRef.current) ? MIN_ORBIT_RADIUS : CAMERA_CONFIG.surfaceMinRadius,
+              MAX_ORBIT_RADIUS,
+            )
+          }
+          return
+        }
+      }
 
       if (orbit.dragging && !selected) {
         const dx = e.clientX - orbit.lx
@@ -1388,6 +1485,12 @@ export default function FishTankCanvas({
     }
 
     function onDblClick() {
+      // Touch double-tap already fed; mobile browsers may also synthesise dblclick.
+      if (performance.now() - lastTouchFeedAt < 600) return
+      feedAtCursor()
+    }
+
+    function feedAtCursor() {
       if (!isSubmerged(progRef.current)) return
       if (hasCursor3D) {
         spawnFood({
@@ -1409,6 +1512,7 @@ export default function FishTankCanvas({
     renderer.domElement.addEventListener("pointerdown", onPointerDown)
     renderer.domElement.addEventListener("pointerup", onPointerUp)
     renderer.domElement.addEventListener("pointerleave", onPointerUp)
+    renderer.domElement.addEventListener("pointercancel", onPointerUp)
     window.addEventListener("pointerleave", onPointerLeave)
     window.addEventListener("pointermove", onPointerMove)
     window.addEventListener("scroll", updateCachedRect, { passive: true })
@@ -2161,6 +2265,7 @@ export default function FishTankCanvas({
       renderer.domElement.removeEventListener("pointerdown", onPointerDown)
       renderer.domElement.removeEventListener("pointerup", onPointerUp)
       renderer.domElement.removeEventListener("pointerleave", onPointerUp)
+      renderer.domElement.removeEventListener("pointercancel", onPointerUp)
       window.removeEventListener("pointerleave", onPointerLeave)
       window.removeEventListener("pointermove", onPointerMove)
       window.removeEventListener("scroll", updateCachedRect)

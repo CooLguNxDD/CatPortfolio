@@ -1,10 +1,12 @@
 import { test, expect, devices } from "@playwright/test"
+import { skipTankTutorial } from "./fixtures/tutorial"
 
 const FLAGSHIP_GLBS = ["MantaRay", "GreateWhiteShark", "Clownfish", "GreenTurtle"] as const
 
 // This suite verifies the four baked flagship rigs, not optional runtime roster additions.
 // Keep drop-in content independent so adding a profile piece cannot change these assertions.
 test.beforeEach(async ({ page }) => {
+  await skipTankTutorial(page)
   await page.route("**/profile-pieces/index.json", (route) => route.fulfill({ json: { pieces: [] } }))
 })
 
@@ -93,6 +95,8 @@ test.describe("Fish tank low tier (mobile)", () => {
     })
 
     await page.goto("./")
+    // Portrait phone: answer the landscape gate first (see landscapeGate.spec.ts).
+    await page.getByRole("button", { name: "Continue in portrait" }).click()
     const canvas = page.locator('canvas[aria-label="Interactive portfolio fish tank"]')
     await expect(canvas).toBeVisible({ timeout: 20_000 })
     await expect(canvas).toHaveAttribute("data-tank-tier", "low")

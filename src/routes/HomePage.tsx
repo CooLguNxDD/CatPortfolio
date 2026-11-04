@@ -12,6 +12,8 @@ import { sceneFromLayout } from "@/fish/sceneFromLayout"
 import { FishTankStage } from "@/components/FishTankStage"
 import { FishTankErrorBoundary } from "@/components/FishTankErrorBoundary"
 import { FishFlatGrid } from "@/components/fish/FishFlatGrid"
+import { LandscapeGate } from "@/components/fish/LandscapeGate"
+import { usePhonePortrait } from "@/hooks/usePhonePortrait"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AgentStatusPill } from "@/components/AgentStatusPill"
 import { fishBus } from "@/fish/fishBus"
@@ -20,6 +22,7 @@ import {
   prefersReducedMotion,
   probeWebGL2,
   resolveViewMode,
+  shouldGateOrientation,
 } from "@/routes/viewMode"
 import { cn } from "@/lib/utils"
 import type { LayoutLoadResult } from "@/content/loadLayout"
@@ -71,6 +74,34 @@ export function HomePage() {
     [],
   )
   const mode = resolveViewMode({ v }, caps, scene.fish.length, scene.hasAuthoredTank)
+
+  // Say why the tank was skipped, unless the visitor asked for text. A silent
+  // fallback reads as a broken 3D button (design review 2026-11-04, P1).
+  // Reduced motion only changes the default: `?v=tank` is the explicit opt-in
+  // (resolveViewMode), so that notice offers it. No WebGL2 has no override.
+  const fallbackNotice: { text: string; offerTank: boolean } | null =
+    mode === "text" && v !== "text"
+      ? !caps.webgl2
+        ? { text: "3D isn't available in this browser, so you're seeing the text portfolio.", offerTank: false }
+        : caps.reducedMotion
+          ? { text: "Showing the text portfolio to respect your reduced-motion setting.", offerTank: true }
+          : null
+      : null
+
+  // Landscape gate: a portrait phone answers before any WebGL mounts.
+  const phonePortrait = usePhonePortrait()
+  const orientationAck = useFishTankStore((s) => s.orientationAck)
+  const gateTank = shouldGateOrientation(mode, {
+    phonePortrait,
+    acknowledged: orientationAck,
+  })
+  useEffect(() => {
+    // Landscape (or desktop) once seen counts as the answer, so rotating
+    // back to portrait mid-dive never yanks the visitor out of the tank.
+    if (mode === "tank" && !phonePortrait) {
+      useFishTankStore.getState().ackOrientation()
+    }
+  }, [mode, phonePortrait])
 
   const demoSearch: DemoSearch = {
     ...(j ? { j } : {}),
@@ -218,6 +249,15 @@ export function HomePage() {
     </div>
   )
 
+  if (mode === "tank" && gateTank) {
+    return (
+      <LandscapeGate
+        onContinue={() => useFishTankStore.getState().ackOrientation()}
+        onText={() => setView("text")}
+      />
+    )
+  }
+
   if (mode === "tank") {
     return (
       <FishTankErrorBoundary fallback={matrix}>
@@ -233,12 +273,30 @@ export function HomePage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 md:py-8 space-y-6">
-      <Link to="/pipeline" search={demoSearch} data-testid="pipeline-text-link" className="inline-block text-sm underline underline-offset-4">
-        How this portfolio tailors itself
-      </Link>
-      {/* Top bar with status pills and 3D / Flat / Text view router pills */}
+      {fallbackNotice ? (
+        <p
+          role="status"
+          data-testid="tank-fallback-notice"
+          className="rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card)/60 px-4 py-3 text-sm text-(--fg-muted)"
+        >
+          {fallbackNotice.text}
+          {fallbackNotice.offerTank ? (
+            <>
+              {" "}
+              <button
+                type="button"
+                className="font-medium text-(--amber) underline underline-offset-4"
+                onClick={() => setView("tank")}
+              >
+                Open the 3D tank anyway
+              </button>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+      {/* Top bar: status pills + pipeline link, then 3D / Flat / Text view pills */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <div
             className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono inline-flex items-center gap-2 w-fit"
             title={
@@ -272,11 +330,20 @@ export function HomePage() {
             </div>
           ) : null}
           <AgentStatusPill />
-          <span className="text-[11px] font-mono text-(--fg-subtle) hidden sm:inline">
+          <Link
+            to="/pipeline"
+            search={demoSearch}
+            data-testid="pipeline-text-link"
+            className="text-pipeline-pill rounded-full border border-(--amber)/40 bg-(--amber)/10 px-3 py-1 text-xs font-medium text-(--amber) no-underline hover:bg-(--amber)/20 transition-colors"
+          >
+            How this portfolio tailors itself →
+          </Link>
+          <span className="text-[11px] font-mono text-(--fg-subtle) hidden xl:inline">
             live layout engine · chat patches the blocks it needs
           </span>
         </div>
 
+        {fallbackNotice ? null : (
         <div
           className="ft-view-pills shrink-0"
           role="group"
@@ -310,12 +377,14 @@ export function HomePage() {
             Text
           </button>
         </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:items-start">
         {scene.fish.length > 0 ? (
           <div className="order-1 min-w-0 lg:col-start-2">
             <FishFlatGrid
+              className="ft-flat--text"
               fish={scene.fish}
               highlightSlugs={
                 layout.meta?.highlightSlugs ?? scene.highlightSlugs

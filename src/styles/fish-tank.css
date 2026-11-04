@@ -3,6 +3,23 @@
  * Same visual system as matrix/text layout (no fixed cyan “foam” palette).
  */
 
+/*
+ * Tank tokens also live on the App shell (`.app-root`, which carries
+ * `data-accent`): the text view renders the same view pills, chips and flat
+ * grid *outside* `.ft-stage`, where these would otherwise be undefined —
+ * an invisible active "Text" pill and "All" chip. Same element as the
+ * accent attribute, so `--amber` here resolves to the picked accent.
+ */
+.app-root {
+  --ft-bg: var(--bg);
+  --ft-ink: var(--fg);
+  --ft-dim: var(--fg-muted);
+  --ft-accent: var(--amber);
+  --ft-line: var(--hairline);
+  --ft-glass: color-mix(in oklab, var(--card) 88%, transparent);
+  --ft-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 .ft-stage {
   --ft-bg: var(--bg);
   --ft-ink: var(--fg);
@@ -164,6 +181,13 @@
   color: var(--bg);
   font-weight: 700;
   border-color: var(--ft-accent);
+}
+
+/* .ft-btn:hover sets light ink and outranks .ft-cta: keep the dark label on
+   the accent fill (Dive into the tank, gate, tutorial, Back to exploring). */
+.ft-cta:hover {
+  color: var(--bg);
+  filter: brightness(1.08);
 }
 
 /* ---------- 3D overlay ---------- */
@@ -585,69 +609,73 @@
   z-index: 12;
 }
 
-/* --- Bathymetry scrubber: the depth axis read as a timeline --- */
+/* --- Timeline chips: the depth axis read as years (review v2: compact) --- */
+.ft-timeline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--ft-mono);
+}
+
+/* Floating copy: one slim strip under the corner pills, not a tall rail. */
 .ft-bathymetry {
   position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 12px;
+  top: 64px;
   z-index: 25;
-  font-family: var(--ft-mono);
-  font-size: 12px;
-  color: var(--ft-ink, var(--fg));
-  background: color-mix(in oklab, var(--card) 30%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  flex-wrap: nowrap;
+  padding: 4px 6px 4px 12px;
+  border-radius: 999px;
   border: 1px solid var(--ft-line);
-  border-radius: 16px;
-  padding: 18px 16px;
+  background: color-mix(in oklab, var(--card) 45%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  gap: 12vh;
   pointer-events: auto;
   transition: opacity 0.4s;
 }
 
-.ft-bathy-stop,
-.ft-bathy-clear {
-  pointer-events: auto;
-  background: transparent;
-  border: 0;
-  border-right: 2px solid transparent;
-  padding: 4px 8px 4px 0;
-  color: inherit;
-  font: inherit;
-  text-align: right;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  transition: color 0.2s, border-color 0.2s;
+.ft-timeline-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ft-dim);
+  margin-right: 4px;
 }
 
-.ft-bathy-stop:hover,
-.ft-bathy-clear:hover {
-  color: var(--ft-accent, var(--amber));
+.ft-bathy-stop {
+  font: inherit;
+  font-family: var(--ft-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--ft-ink, var(--fg));
+  background: transparent;
+  border: 1px solid var(--ft-line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.ft-bathy-stop:hover {
+  border-color: var(--ft-accent, var(--amber));
 }
 
 .ft-bathy-stop.is-on {
-  color: var(--ft-accent, var(--amber));
-  border-right-color: currentColor;
-}
-
-.ft-bathy-year {
-  font-size: 13px;
+  color: var(--bg);
+  background: var(--ft-accent, var(--amber));
+  border-color: var(--ft-accent, var(--amber));
   font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--ft-ink, var(--fg));
 }
 
-.ft-bathy-label {
-  font-size: 11px;
-  opacity: 0.85;
-  color: var(--ft-ink, var(--fg));
+.ft-bathy-stop:focus-visible {
+  outline: 2px solid var(--ft-accent, var(--amber));
+  outline-offset: 2px;
+}
+
+.ft-timeline--inline {
+  margin-top: 8px;
 }
 
 /* Both HUD widgets belong to the submerged scene only. */
@@ -871,6 +899,17 @@
 
 .ft-flat .ft-eyebrow {
   margin-bottom: 8px;
+  max-width: 100%;
+  flex-wrap: wrap;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  /* A wrapped two-line pill reads as a broken capsule; soften it. */
+  .ft-flat .ft-eyebrow {
+    border-radius: 12px;
+    letter-spacing: 0.06em;
+  }
 }
 
 .ft-flat h2 {
@@ -930,6 +969,20 @@
   }
 }
 
+/* Text view: the grid shares the row with the Ask panel, so four-up cards
+   collapse titles and metrics into fragments. Two-up, three on wide screens. */
+@media (min-width: 1024px) {
+  .ft-flat--text .ft-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1440px) {
+  .ft-flat--text .ft-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .ft-card {
   border-radius: 20px;
   padding: 20px;
@@ -974,7 +1027,9 @@
 
 .ft-kv {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Reflow to fewer columns in narrow cards (4-up desktop grid) instead
+     of pushing long labels ("AUTOSCALING") past the card edge. */
+  grid-template-columns: repeat(auto-fit, minmax(min(5.75rem, 100%), 1fr));
   gap: 8px;
   padding: 10px 12px;
   border-radius: 14px;
@@ -984,8 +1039,23 @@
   border: 1px solid var(--ft-line);
 }
 
+.ft-kv div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.ft-kv div span,
+.ft-kv div b {
+  /* Break only a word that cannot fit on its own line. */
+  overflow-wrap: break-word;
+}
+
 .ft-kv div span {
   display: block;
+  line-height: 1.3;
   font-family: var(--ft-mono);
   font-size: 9px;
   color: var(--fg-subtle, var(--ft-dim));
@@ -1368,5 +1438,595 @@
     background: color-mix(in oklab, var(--card) 75%, transparent);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
+  }
+}
+
+/* ---------- Underwater bar: Browse · Ask · Controls (review v2) ---------- */
+.ft-dock-btn--main {
+  font-size: 12px;
+  padding: 7px 14px;
+  gap: 8px;
+}
+
+.ft-dock-btn--primary {
+  color: var(--bg);
+  background: var(--ft-accent);
+  border-color: var(--ft-accent);
+  font-weight: 700;
+}
+
+.ft-dock-btn--primary:hover {
+  color: var(--bg);
+  filter: brightness(1.08);
+}
+
+.ft-dock-btn--main.on {
+  color: var(--ft-ink);
+  background: color-mix(in oklab, var(--ft-accent) 18%, transparent);
+  border-color: var(--ft-accent);
+}
+
+/* ---------- Scene controls panel ---------- */
+.ft-controls {
+  position: absolute;
+  right: 16px;
+  bottom: 150px;
+  z-index: 65;
+  width: min(360px, calc(100vw - 32px));
+  /* Starts below the timeline strip (top 64px + ~40px) and above the bar. */
+  max-height: calc(100% - 270px);
+  overflow-y: auto;
+  border-radius: 20px;
+  padding: 18px 18px 16px;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  border: 1px solid var(--ft-line);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: var(--ft-ink);
+  animation: ftAskFadeIn 0.18s ease-out;
+}
+
+.ft-controls-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.ft-controls-eyebrow {
+  margin: 0 0 4px;
+  font-family: var(--ft-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ft-accent);
+}
+
+.ft-controls h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+
+.ft-controls-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--ft-line);
+  background: transparent;
+  color: var(--ft-ink);
+  cursor: pointer;
+}
+
+.ft-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ft-line);
+}
+
+.ft-controls-block {
+  padding: 12px 0 10px;
+  border-bottom: 1px solid var(--ft-line);
+}
+
+.ft-controls-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ft-controls-hint {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ft-dim);
+}
+
+.ft-controls-btn {
+  font: inherit;
+  font-size: 12px;
+  font-family: var(--ft-mono);
+  white-space: nowrap;
+  min-height: 36px;
+  min-width: 76px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ft-line);
+  background: color-mix(in oklab, var(--bg) 50%, transparent);
+  color: var(--ft-ink);
+  cursor: pointer;
+}
+
+.ft-controls-btn[aria-pressed="true"] {
+  border-color: var(--ft-accent);
+  color: var(--ft-accent);
+}
+
+.ft-controls-btn:hover {
+  border-color: var(--ft-accent);
+}
+
+.ft-controls-btn:focus-visible,
+.ft-controls-close:focus-visible,
+.ft-controls-link:focus-visible {
+  outline: 2px solid var(--ft-accent);
+  outline-offset: 2px;
+}
+
+.ft-controls-gestures {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  font-size: 12px;
+  color: var(--ft-dim);
+}
+
+.ft-controls-gestures b {
+  color: var(--ft-ink);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.ft-controls-link {
+  margin-top: 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ft-accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ft-controls-done {
+  width: 100%;
+  justify-content: center;
+  margin-top: 14px;
+  padding: 11px 16px;
+}
+
+/* ---------- First-run tank tutorial (ScrollCards) ---------- */
+.ft-tutorial {
+  position: absolute;
+  inset: 0;
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: color-mix(in oklab, var(--bg) 45%, transparent);
+}
+
+.ft-tutorial-card {
+  position: relative;
+  width: min(420px, 100%);
+  border-radius: 22px;
+  padding: 22px 20px 18px;
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  border: 1px solid var(--ft-line);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  animation: ftAskFadeIn 0.2s ease-out;
+}
+
+.ft-tutorial-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+}
+
+@media (max-width: 640px) {
+  .ft-tutorial {
+    align-items: flex-end;
+    padding: 12px;
+  }
+}
+
+@media (max-height: 500px) and (pointer: coarse) {
+  .ft-tutorial-card {
+    padding: 14px 16px 12px;
+  }
+}
+
+/* ---------- Landscape gate (portrait phones, before any WebGL) ---------- */
+.ft-gate {
+  --ft-accent: var(--amber);
+  --ft-line: var(--hairline);
+  --ft-ink: var(--fg);
+  --ft-dim: var(--fg-muted);
+  --ft-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  min-height: calc(100svh - 3.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  color: var(--fg);
+  background:
+    radial-gradient(
+      120% 70% at 50% 100%,
+      color-mix(in oklab, var(--cyan, var(--amber)) 22%, transparent),
+      transparent 70%
+    ),
+    var(--bg);
+}
+
+.ft-gate-card {
+  width: min(420px, 100%);
+  border-radius: 22px;
+  padding: 28px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  background: color-mix(in oklab, var(--card) 70%, transparent);
+  border: 1px solid var(--ft-line);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.3);
+}
+
+.ft-gate-card h2 {
+  margin: 4px 0 0;
+  font-size: 1.9rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--fg);
+}
+
+.ft-gate-card p {
+  margin: 0;
+  color: var(--ft-dim);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.ft-gate-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.ft-gate-actions .ft-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.ft-gate-card .ft-gate-note {
+  font-family: var(--ft-mono);
+  font-size: 11px;
+  color: var(--fg-subtle, var(--ft-dim));
+}
+
+.ft-gate-phone {
+  align-self: center;
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+}
+
+.ft-gate-phone-body {
+  width: 40px;
+  height: 68px;
+  border-radius: 9px;
+  border: 2px solid var(--ft-accent);
+  background: color-mix(in oklab, var(--ft-accent) 12%, transparent);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+}
+
+.ft-gate-arrow {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  font-size: 20px;
+  color: var(--ft-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ft-gate-phone-body {
+    animation: ft-gate-rotate 2.8s ease-in-out infinite;
+  }
+}
+
+@keyframes ft-gate-rotate {
+  0%,
+  20% {
+    transform: rotate(0deg);
+  }
+  45%,
+  75% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* ---------- Portrait phone ("continue in portrait") ---------- */
+@media (max-width: 640px) {
+  .ft-hero {
+    padding: 16px 12px;
+  }
+
+  .ft-hero .ft-hero-card {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .ft-hero h2 {
+    font-size: 1.65rem;
+    margin: 12px 0 8px;
+  }
+
+  .ft-hero p {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* The CTA already says "dive"; the cue only collided with it. */
+  .ft-hero .ft-hero-more,
+  .ft-scenecue {
+    display: none;
+  }
+
+  .ft-hero .ft-row {
+    margin-top: 12px;
+  }
+
+  /* Submerged HUD: one widget per corner instead of a pile-up. */
+  .ft-bathymetry {
+    display: none;
+  }
+
+  .ft-waterline .ft-hint {
+    display: none;
+  }
+
+  .ft-waterline .ft-bar {
+    padding: 10px 14px;
+    gap: 4px;
+  }
+
+  .ft-sonar {
+    left: auto;
+    right: 12px;
+    top: 60px;
+    bottom: auto;
+    align-items: flex-end;
+  }
+
+  .ft-sonar-disc {
+    width: 88px;
+    height: 88px;
+  }
+
+  .ft-sonar-legend {
+    display: none;
+  }
+
+  .ft-waterline {
+    width: calc(100vw - 24px - 100px);
+  }
+
+  .ft-tankui {
+    bottom: 12px;
+    width: calc(100vw - 24px);
+  }
+
+  /* Domain chips scroll sideways instead of stacking three rows deep. */
+  .ft-toolbar .ft-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+
+  .ft-toolbar .ft-chip {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* Review v2 mobile bar: Browse · Ask · Controls, nothing else. Search and
+     filters live in Browse (the flat index); scene toggles in Controls. */
+  .ft-toolbar {
+    padding: 8px;
+  }
+
+  .ft-toolbar .ft-toolbar-row1 {
+    display: none;
+  }
+
+  .ft-toolbar .ft-toolbar-row2 {
+    border-top: 0;
+    padding-top: 0;
+    gap: 6px;
+  }
+
+  .ft-dock-btn--main {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px 6px;
+    font-size: 13px;
+  }
+
+  .ft-dock-btn--main .ft-dock-label {
+    display: inline;
+  }
+
+  /* Sonar is switched from Scene controls on phones. */
+  .ft-sonar-toggle {
+    display: none;
+  }
+
+  .ft-controls {
+    left: 12px;
+    right: 12px;
+    bottom: 78px;
+    width: auto;
+    max-height: calc(100% - 150px);
+  }
+
+  /* Flat index starts below the floating corner pills. */
+  .ft-stage[data-view="flat"] .ft-flat {
+    padding-top: 64px;
+  }
+}
+
+/* ---------- Landscape phone (short + touch) ---------- */
+@media (max-height: 500px) and (pointer: coarse) {
+  .ft-stage,
+  .ft-stage[data-view="flat"] {
+    min-height: calc(100svh - 3.5rem);
+  }
+
+  .ft-hero {
+    width: min(440px, 50vw);
+    padding: 12px 16px;
+    justify-content: center;
+  }
+
+  .ft-hero .ft-hero-card {
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--card) 65%, transparent);
+  }
+
+  .ft-hero h2 {
+    font-size: 1.45rem;
+    margin: 10px 0 6px;
+  }
+
+  .ft-hero p {
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 0;
+  }
+
+  .ft-hero .ft-hero-more,
+  .ft-scenecue,
+  .ft-bathymetry,
+  .ft-sonar-legend,
+  .ft-waterline .ft-hint,
+  .ft-toolbar .ft-chips {
+    display: none;
+  }
+
+  .ft-hero .ft-row {
+    margin-top: 10px;
+  }
+
+  .ft-waterline {
+    top: 12px;
+    left: 12px;
+    width: min(260px, 34vw);
+  }
+
+  .ft-waterline .ft-bar {
+    padding: 8px 12px;
+    gap: 2px;
+  }
+
+  .ft-sonar {
+    left: 12px;
+    top: 84px;
+    bottom: auto;
+  }
+
+  .ft-sonar-disc {
+    width: 84px;
+    height: 84px;
+  }
+
+  /* Same three-button bar as portrait, centred and slimmer. */
+  .ft-tankui {
+    bottom: 10px;
+    width: min(520px, calc(100vw - 24px));
+  }
+
+  .ft-toolbar {
+    padding: 6px;
+  }
+
+  .ft-toolbar .ft-toolbar-row1 {
+    display: none;
+  }
+
+  .ft-toolbar .ft-toolbar-row2 {
+    border-top: 0;
+    padding-top: 0;
+    gap: 6px;
+  }
+
+  .ft-dock-btn--main {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  .ft-dock-btn--main .ft-dock-label {
+    display: inline;
+  }
+
+  .ft-sonar-toggle {
+    display: none;
+  }
+
+  .ft-controls {
+    right: 12px;
+    /* Below the Surface / 3D pills so they stay reachable. */
+    top: 60px;
+    bottom: 64px;
+    max-height: none;
+    width: min(360px, 46vw);
+  }
+
+  .ft-ask-dock {
+    top: 12px;
+    max-height: calc(100svh - 3.5rem - 24px);
+  }
+
+  .ft-stage[data-view="flat"] .ft-flat {
+    padding-top: 60px;
   }
 }

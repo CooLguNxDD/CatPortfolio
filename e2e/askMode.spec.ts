@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { mockMcp } from './fixtures/mockMcp';
+import { skipTankTutorial } from './fixtures/tutorial';
 
 test.describe('Ask Mode E2E', () => {
   // Chat patches below author their own roster; runtime drop-ins are tested separately.
   test.beforeEach(async ({ page }) => {
+    await skipTankTutorial(page);
     await page.route('**/profile-pieces/index.json', (route) => route.fulfill({ json: { pieces: [] } }));
   });
 

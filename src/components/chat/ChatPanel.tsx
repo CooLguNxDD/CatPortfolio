@@ -708,16 +708,16 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
           placeholder={
             isOnline
               ? "Ask about projects, or paste a job description to bake a layout…"
-              : "Chat is disabled because OCT is offline..."
+              : "Chat offline"
           }
           disabled={pending || !isOnline}
-          className="flex-1 min-h-10 max-h-24 p-2 text-sm bg-background border border-(--hairline) rounded-xl resize-none outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:opacity-50 text-(--fg) placeholder:text-(--fg-subtle) transition-all"
+          className="flex-1 min-h-10 max-h-24 p-2 text-sm bg-background border border-(--hairline) rounded-xl resize-none outline-none focus:border-(--amber) focus:ring-1 focus:ring-(--amber) disabled:opacity-50 text-(--fg) placeholder:text-(--fg-subtle) transition-all"
           rows={1}
         />
         <Button
           onClick={handleSend}
           disabled={pending || !input.trim() || !isOnline}
-          className="bg-linear-to-r from-(--amber) to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white rounded-xl font-medium px-4 h-10 transition-all select-none"
+          className="bg-(--amber) text-(--bg) hover:bg-(--amber) hover:brightness-110 rounded-xl font-semibold px-4 h-10 transition-all select-none"
         >
           Send
         </Button>

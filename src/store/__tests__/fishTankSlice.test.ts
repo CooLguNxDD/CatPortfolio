@@ -108,4 +108,13 @@ describe("fishTankSlice", () => {
     expect(useStore.getState().getProgress()).toBe(0)
     expect(useStore.getState().state).toBe("surface")
   })
+
+  it("landscape gate ack survives a stage reset", () => {
+    expect(useStore.getState().orientationAck).toBe(false)
+    useStore.getState().ackOrientation()
+    expect(useStore.getState().orientationAck).toBe(true)
+    // Text → 3D round trip unmounts the stage; must not re-prompt.
+    useStore.getState().resetFishTankUi()
+    expect(useStore.getState().orientationAck).toBe(true)
+  })
 })

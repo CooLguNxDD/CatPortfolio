@@ -64,7 +64,9 @@ export function sanitizePersistedPreferences(persistedState: unknown): Partial<P
     digest: typeof rawNotifications.digest === "boolean" ? rawNotifications.digest : DEFAULT_NOTIFICATIONS.digest,
   }
 
-  return { theme, accent, density, circadian, notifications }
+  const tankTutorialSeen = raw.tankTutorialSeen === true
+
+  return { theme, accent, density, circadian, notifications, tankTutorialSeen }
 }
 
 /**
@@ -96,6 +98,7 @@ export const usePreferencesStore = create<PreferencesStore>()(
         density: state.density,
         circadian: state.circadian,
         notifications: state.notifications,
+        tankTutorialSeen: state.tankTutorialSeen,
       }),
     },
   ),

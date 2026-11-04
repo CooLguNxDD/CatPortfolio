@@ -65,4 +65,10 @@ describe("sanitizePersistedPreferences", () => {
   it("does not throw when notifications itself is not an object", () => {
     expect(() => sanitizePersistedPreferences({ notifications: "garbage" })).not.toThrow()
   })
+
+  it("tankTutorialSeen is true only for a literal true", () => {
+    expect(sanitizePersistedPreferences({ tankTutorialSeen: true }).tankTutorialSeen).toBe(true)
+    expect(sanitizePersistedPreferences({ tankTutorialSeen: "yes" }).tankTutorialSeen).toBe(false)
+    expect(sanitizePersistedPreferences({}).tankTutorialSeen).toBe(false)
+  })
 })
