@@ -57,6 +57,13 @@ export interface FishTankSlice {
    * once the dive lands. See tankMachine.ts `canFocus`.
    */
   pendingFocus: string | null
+  /**
+   * Phone landscape gate answered (rotated, or "continue in portrait").
+   * Deliberately outside DEFAULTS: `resetFishTankUi` runs on every stage
+   * unmount, and a Text → 3D round trip must not re-prompt. Not persisted —
+   * a reload asks again.
+   */
+  orientationAck: boolean
 
   dive: () => void
   surface: () => void
@@ -72,6 +79,8 @@ export interface FishTankSlice {
   toggleSound: (enabled?: boolean) => void
   setDepthFocus: (depth01: number | null) => void
   toggleSonar: (open?: boolean) => void
+  /** Mark the landscape gate answered for this SPA session. */
+  ackOrientation: () => void
   dropFood: (pos?: { x?: number; y?: number; z?: number }) => void
   /** Full reset when leaving tank mode / unmounting stage. */
   resetFishTankUi: () => void
@@ -130,6 +139,7 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
 
   return {
     ...DEFAULTS,
+    orientationAck: false,
 
     dive: () => {
       const target = next(get().state, "dive")
@@ -222,6 +232,10 @@ export const createFishTankSlice: StateCreator<FishTankSlice> = (set, get) => {
         set({ state: target })
         runTransition(1, DIVE_DURATION_MS)
       }
+    },
+
+    ackOrientation: () => {
+      if (!get().orientationAck) set({ orientationAck: true })
     },
 
     toggleSonar: (open) => {

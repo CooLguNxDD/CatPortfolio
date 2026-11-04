@@ -3,6 +3,23 @@
  * Same visual system as matrix/text layout (no fixed cyan “foam” palette).
  */
 
+/*
+ * Tank tokens also live on the App shell (`.app-root`, which carries
+ * `data-accent`): the text view renders the same view pills, chips and flat
+ * grid *outside* `.ft-stage`, where these would otherwise be undefined —
+ * an invisible active "Text" pill and "All" chip. Same element as the
+ * accent attribute, so `--amber` here resolves to the picked accent.
+ */
+.app-root {
+  --ft-bg: var(--bg);
+  --ft-ink: var(--fg);
+  --ft-dim: var(--fg-muted);
+  --ft-accent: var(--amber);
+  --ft-line: var(--hairline);
+  --ft-glass: color-mix(in oklab, var(--card) 88%, transparent);
+  --ft-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 .ft-stage {
   --ft-bg: var(--bg);
   --ft-ink: var(--fg);
@@ -871,6 +888,17 @@
 
 .ft-flat .ft-eyebrow {
   margin-bottom: 8px;
+  max-width: 100%;
+  flex-wrap: wrap;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  /* A wrapped two-line pill reads as a broken capsule; soften it. */
+  .ft-flat .ft-eyebrow {
+    border-radius: 12px;
+    letter-spacing: 0.06em;
+  }
 }
 
 .ft-flat h2 {
@@ -930,6 +958,20 @@
   }
 }
 
+/* Text view: the grid shares the row with the Ask panel, so four-up cards
+   collapse titles and metrics into fragments. Two-up, three on wide screens. */
+@media (min-width: 1024px) {
+  .ft-flat--text .ft-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1440px) {
+  .ft-flat--text .ft-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .ft-card {
   border-radius: 20px;
   padding: 20px;
@@ -974,7 +1016,9 @@
 
 .ft-kv {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Reflow to fewer columns in narrow cards (4-up desktop grid) instead
+     of pushing long labels ("AUTOSCALING") past the card edge. */
+  grid-template-columns: repeat(auto-fit, minmax(min(5.75rem, 100%), 1fr));
   gap: 8px;
   padding: 10px 12px;
   border-radius: 14px;
@@ -984,8 +1028,23 @@
   border: 1px solid var(--ft-line);
 }
 
+.ft-kv div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.ft-kv div span,
+.ft-kv div b {
+  /* Break only a word that cannot fit on its own line. */
+  overflow-wrap: break-word;
+}
+
 .ft-kv div span {
   display: block;
+  line-height: 1.3;
   font-family: var(--ft-mono);
   font-size: 9px;
   color: var(--fg-subtle, var(--ft-dim));
@@ -1368,5 +1427,330 @@
     background: color-mix(in oklab, var(--card) 75%, transparent);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
+  }
+}
+
+/* ---------- Landscape gate (portrait phones, before any WebGL) ---------- */
+.ft-gate {
+  --ft-accent: var(--amber);
+  --ft-line: var(--hairline);
+  --ft-ink: var(--fg);
+  --ft-dim: var(--fg-muted);
+  --ft-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  min-height: calc(100svh - 3.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  color: var(--fg);
+  background:
+    radial-gradient(
+      120% 70% at 50% 100%,
+      color-mix(in oklab, var(--cyan, var(--amber)) 22%, transparent),
+      transparent 70%
+    ),
+    var(--bg);
+}
+
+.ft-gate-card {
+  width: min(420px, 100%);
+  border-radius: 22px;
+  padding: 28px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  background: color-mix(in oklab, var(--card) 70%, transparent);
+  border: 1px solid var(--ft-line);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.3);
+}
+
+.ft-gate-card h2 {
+  margin: 4px 0 0;
+  font-size: 1.9rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--fg);
+}
+
+.ft-gate-card p {
+  margin: 0;
+  color: var(--ft-dim);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.ft-gate-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.ft-gate-actions .ft-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.ft-gate-card .ft-gate-note {
+  font-family: var(--ft-mono);
+  font-size: 11px;
+  color: var(--fg-subtle, var(--ft-dim));
+}
+
+.ft-gate-phone {
+  align-self: center;
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+}
+
+.ft-gate-phone-body {
+  width: 40px;
+  height: 68px;
+  border-radius: 9px;
+  border: 2px solid var(--ft-accent);
+  background: color-mix(in oklab, var(--ft-accent) 12%, transparent);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+}
+
+.ft-gate-arrow {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  font-size: 20px;
+  color: var(--ft-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ft-gate-phone-body {
+    animation: ft-gate-rotate 2.8s ease-in-out infinite;
+  }
+}
+
+@keyframes ft-gate-rotate {
+  0%,
+  20% {
+    transform: rotate(0deg);
+  }
+  45%,
+  75% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* ---------- Portrait phone ("continue in portrait") ---------- */
+@media (max-width: 640px) {
+  .ft-hero {
+    padding: 16px 12px;
+  }
+
+  .ft-hero .ft-hero-card {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .ft-hero h2 {
+    font-size: 1.65rem;
+    margin: 12px 0 8px;
+  }
+
+  .ft-hero p {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* The CTA already says "dive"; the cue only collided with it. */
+  .ft-hero .ft-hero-more,
+  .ft-scenecue {
+    display: none;
+  }
+
+  .ft-hero .ft-row {
+    margin-top: 12px;
+  }
+
+  /* Submerged HUD: one widget per corner instead of a pile-up. */
+  .ft-bathymetry {
+    display: none;
+  }
+
+  .ft-waterline .ft-hint {
+    display: none;
+  }
+
+  .ft-waterline .ft-bar {
+    padding: 10px 14px;
+    gap: 4px;
+  }
+
+  .ft-sonar {
+    left: auto;
+    right: 12px;
+    top: 60px;
+    bottom: auto;
+    align-items: flex-end;
+  }
+
+  .ft-sonar-disc {
+    width: 88px;
+    height: 88px;
+  }
+
+  .ft-sonar-legend {
+    display: none;
+  }
+
+  .ft-waterline {
+    width: calc(100vw - 24px - 100px);
+  }
+
+  .ft-tankui {
+    bottom: 12px;
+    width: calc(100vw - 24px);
+  }
+
+  /* Domain chips scroll sideways instead of stacking three rows deep. */
+  .ft-toolbar .ft-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+
+  .ft-toolbar .ft-chip {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* Flat index starts below the floating corner pills. */
+  .ft-stage[data-view="flat"] .ft-flat {
+    padding-top: 64px;
+  }
+}
+
+/* ---------- Landscape phone (short + touch) ---------- */
+@media (max-height: 500px) and (pointer: coarse) {
+  .ft-stage,
+  .ft-stage[data-view="flat"] {
+    min-height: calc(100svh - 3.5rem);
+  }
+
+  .ft-hero {
+    width: min(440px, 50vw);
+    padding: 12px 16px;
+    justify-content: center;
+  }
+
+  .ft-hero .ft-hero-card {
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--card) 65%, transparent);
+  }
+
+  .ft-hero h2 {
+    font-size: 1.45rem;
+    margin: 10px 0 6px;
+  }
+
+  .ft-hero p {
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 0;
+  }
+
+  .ft-hero .ft-hero-more,
+  .ft-scenecue,
+  .ft-bathymetry,
+  .ft-sonar-legend,
+  .ft-waterline .ft-hint,
+  .ft-toolbar .ft-chips {
+    display: none;
+  }
+
+  .ft-hero .ft-row {
+    margin-top: 10px;
+  }
+
+  .ft-waterline {
+    top: 12px;
+    left: 12px;
+    width: min(260px, 34vw);
+  }
+
+  .ft-waterline .ft-bar {
+    padding: 8px 12px;
+    gap: 2px;
+  }
+
+  .ft-sonar {
+    left: 12px;
+    top: 84px;
+    bottom: auto;
+  }
+
+  .ft-sonar-disc {
+    width: 84px;
+    height: 84px;
+  }
+
+  /* Toolbar collapses to a single row: search + count | icon dock. */
+  .ft-tankui {
+    bottom: 10px;
+    width: min(760px, calc(100vw - 24px));
+  }
+
+  .ft-toolbar {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .ft-toolbar .ft-toolbar-row1 {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .ft-toolbar .ft-toolbar-row2 {
+    flex: 0 0 auto;
+    width: auto;
+    padding-top: 0;
+    border-top: 0;
+    flex-wrap: nowrap;
+  }
+
+  .ft-toolbar .ft-input {
+    min-width: 0;
+  }
+
+  .ft-dock-label {
+    display: none;
+  }
+
+  .ft-dock-btn {
+    padding: 6px 8px;
+  }
+
+  .ft-ask-dock {
+    top: 12px;
+    max-height: calc(100svh - 3.5rem - 24px);
+  }
+
+  .ft-stage[data-view="flat"] .ft-flat {
+    padding-top: 60px;
   }
 }

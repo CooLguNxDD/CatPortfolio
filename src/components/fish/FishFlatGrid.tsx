@@ -56,10 +56,11 @@ export function FishFlatGrid({
       <div className="mb-3">
         <span className="ft-eyebrow">⚡ Recruiter fast view · no WebGL required</span>
       </div>
-      <h2>Project index</h2>
+      <h2>Selected work</h2>
       <p className="ft-lead">
-        Same specimens as the 3D tank — size, depth, glow, and domain live in the
-        data contract, not the renderer.
+        Shipped projects across AI agents, cloud infrastructure, mobile and
+        platform, with employer work labeled by company. The 3D tank shows the
+        same projects as fish.
       </p>
       {curationLabel ? (
         <p className="ft-curation-inline">
@@ -138,9 +139,6 @@ export function FishFlatGrid({
                   }}
                 >
                   {DOMAIN_LABEL[f.species] || f.species}
-                </span>
-                <span className="ft-ref">
-                  size {(f.size * 100) | 0}% · depth {(f.depth * 100) | 0}%
                 </span>
               </div>
               <h3>{f.title}</h3>

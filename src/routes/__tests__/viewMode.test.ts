@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { resolveViewMode } from "../viewMode"
+import { resolveViewMode, shouldGateOrientation } from "../viewMode"
 
 const capable = { webgl2: true, reducedMotion: false }
 
@@ -31,5 +31,20 @@ describe("resolveViewMode", () => {
   it("default → tank when capable", () => {
     expect(resolveViewMode({}, capable, 3)).toBe("tank")
     expect(resolveViewMode({ v: "tank" }, capable, 3)).toBe("tank")
+  })
+})
+
+describe("shouldGateOrientation", () => {
+  it("gates a portrait phone in tank mode until acknowledged", () => {
+    expect(shouldGateOrientation("tank", { phonePortrait: true, acknowledged: false })).toBe(true)
+    expect(shouldGateOrientation("tank", { phonePortrait: true, acknowledged: true })).toBe(false)
+  })
+
+  it("never gates landscape / desktop", () => {
+    expect(shouldGateOrientation("tank", { phonePortrait: false, acknowledged: false })).toBe(false)
+  })
+
+  it("never gates the text view", () => {
+    expect(shouldGateOrientation("text", { phonePortrait: true, acknowledged: false })).toBe(false)
   })
 })

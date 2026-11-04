@@ -6,6 +6,8 @@
 - **Self-rendering:** the page is data. A Zod-validated layout spec (`src/content/layout.json`) flows through a whitelisted block registry (`src/render/registry.ts`). Layout grows; component code doesn't change. Unknown block type = skipped, never crashes.
 - **One front door on `/`:**
   - **Fish tank (default)** — a WebGL aquarium where each fish is a project/track. Falls back to the text layout when WebGL2 is missing, `prefers-reduced-motion` is set, no tank is authored and no fish exist, or `?v=text`. The default bake authors four WelTel specimens (`weltel-ai`, `weltel-devops`, `weltel-mobile`, `weltel-platform`). An authored `fishTank` with `fish: []` still opens an empty aquarium.
+  - **Landscape gate (portrait phones)** — when the tank would open on a touch device held upright (`PHONE_PORTRAIT_QUERY` in `routes/viewMode.ts`), `HomePage` renders `components/fish/LandscapeGate.tsx` *instead of* `FishTankStage`, so no WebGL or three chunk loads. Rotating opens the tank; buttons offer "Continue in portrait" or the text view. The answer is `fishTankSlice.orientationAck` (non-persisted, outside `DEFAULTS` so a stage reset keeps it); landscape once seen also counts, so rotating back never re-gates. A reload asks again. E2E: `e2e/landscapeGate.spec.ts`.
+  - **Fallback notice** — when the visitor did not ask for `?v=text` but WebGL2 is missing or reduced motion is set, the text view says why (`data-testid="tank-fallback-notice"`) and hides the 3D/Flat pills.
   - **Text matrix (`?v=text`)** — recruiter index (`FishFlatGrid`, highlight then timeline years) + chat panel + live layout. Ask questions are stored in `portfolio_ask_turns` (length-capped; that is not consent). Canonical/OG URL is the absolute `?v=text` link.
 - **`/ask`** — kept as a `beforeLoad` redirect to `/` (same search params) so old links still resolve. Bare `/ask` now opens the tank, matching the single front door.
 - Layout source of truth is `design/layout.yaml` → `npm run compile:layout` → `src/content/layout.json`. CI verifies sync (`check:layout`), never generates.
@@ -57,7 +59,7 @@
 
 - `/` → `routes/HomePage.tsx` — `usePageLayout` resolves demo (`?j=`), live default, or a patched working copy. Tank mode renders `FishTankStage` (Ask dock + chrome); text mode is the two-column ask + matrix.
 - `/ask` → `beforeLoad` redirect onto `/` with the same search params. No page component.
-- `App.tsx` shell — nav, theme + accent switchers, demo chip. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`). `data-accent` lives on this shell `<div>`, not `<html>` (ThemeProvider's inline theme vars on `documentElement` would beat an attribute selector there). Accent tokens are mode-aware: `html[data-light="true"]` in `index.css` tunes `--accent-*` for light themes that don't declare their own (only `paper` today). The fish tank reads CSS tokens from that same `[data-accent]` shell (`fishTankTokens.ts::accentScopeElement`), not `<html>`, so it inherits the picked accent instead of always seeing the theme's base amber.
+- `App.tsx` shell — nav, one "Appearance" popover (radix `Popover`: mode, accent, theme; portaled with `data-accent` spread so it follows the accent), demo chip. The dev-only `CatDOMCompanion` is `React.lazy` — a static import of the `@/object3D/Cat` barrel made every page modulepreload three. Re-bakes `?j=` into the URL if the session store has a short id but the URL lost it, preserving `v`/`f`/`scrollTo` via `lib/demoSearch.ts` (`mergeDemoSearch` / `clearDemoSearch`). `data-accent` lives on this shell `<div>`, not `<html>` (ThemeProvider's inline theme vars on `documentElement` would beat an attribute selector there). Accent tokens are mode-aware: `html[data-light="true"]` in `index.css` tunes `--accent-*` for light themes that don't declare their own (only `paper` today). The fish tank reads CSS tokens from that same `[data-accent]` shell (`fishTankTokens.ts::accentScopeElement`), not `<html>`, so it inherits the picked accent instead of always seeing the theme's base amber.
 
 ## Fish Tank
 
@@ -86,7 +88,8 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Sonar / bathymetry projection (pure) | `fish/sonarProjection.ts`, `fish/bathymetry.ts` |
 | Transient UI: scene, chrome, query, domain, bake dim, depth lock, sonar | `store/fishTankSlice.ts` (non-persisted; rAF smoothstep dive/surface) |
 | Controller & hotkeys composing all of the above | `hooks/{useFishTank,useTankHotkeys}.ts` |
-| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber,ShortcutsModal}.tsx` |
+| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber,ShortcutsModal,LandscapeGate}.tsx` |
+| Pure catalog lookups (no three) | `fish/modelInfo.ts` (`getModelInfo`, `resolveModelId`; re-exported by `modelLoader`). DOM views import this, never `modelLoader`, or three lands in the entry chunk. |
 | WebGL only — sole importer of `three` | `blocks/FishTankCanvas.tsx` (lazy chunk; `manualChunks` splits `three` out of index) |
 | Registry block | `blocks/FishTank.tsx` → registry `fishTank` |
 
@@ -216,12 +219,12 @@ CatPortfolio/
 │   ├── pipeline/               # timeline.ts (pure stop math) · PipelineMotion.tsx (lazy request-token rail)
 │   ├── components/
 │   │   ├── FishTankStage.tsx FishTankErrorBoundary.tsx
-│   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber
+│   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber LandscapeGate
 │   │   ├── chat/               # ChatPanel ChatMessage
 │   │   ├── ThemeProvider.tsx AgenticHeader.tsx SourceCitations.tsx AgentStatusPill.tsx
 │   │   └── ui/                 # shadcn: button card chart (Recharts ChartContainer)
 │   ├── store/                  # index.ts + preferences (persisted) / layout / fishTank / chat slices, applyLayout.ts
-│   ├── hooks/                  # useFishTank useDemoLayout usePageLayout useLayoutDag useLayoutTheme
+│   ├── hooks/                  # useFishTank useDemoLayout usePageLayout useLayoutDag useLayoutTheme usePhonePortrait
 │   │                           # useThemeRegistry useThemeTokens useLayoutSessionHydrated
 │   ├── api/                    # octClient harness instructions agentStatus
 │   ├── themes/                 # cozy / neon / paper + Catppuccin; globbed by registry.ts (isLight from --bg)

@@ -25,10 +25,10 @@ export function AgentStatusPill() {
     return (
       <div
         className="rounded-full border border-(--hairline) px-3 py-1 text-xs font-mono inline-flex items-center gap-2 w-fit text-(--fg-muted)"
-        title="Using cached layout snapshot (live agent offline)"
+        title="Job-agent activity could not be checked. The portfolio and chat are unaffected."
       >
-        <span className="h-2 w-2 rounded-full bg-(--amber)" />
-        <span>offline</span>
+        <span className="h-2 w-2 rounded-full bg-(--fg-subtle)" />
+        <span>agent status unavailable</span>
       </div>
     )
   }

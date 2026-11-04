@@ -93,6 +93,8 @@ test.describe("Fish tank low tier (mobile)", () => {
     })
 
     await page.goto("./")
+    // Portrait phone: answer the landscape gate first (see landscapeGate.spec.ts).
+    await page.getByRole("button", { name: "Continue in portrait" }).click()
     const canvas = page.locator('canvas[aria-label="Interactive portfolio fish tank"]')
     await expect(canvas).toBeVisible({ timeout: 20_000 })
     await expect(canvas).toHaveAttribute("data-tank-tier", "low")

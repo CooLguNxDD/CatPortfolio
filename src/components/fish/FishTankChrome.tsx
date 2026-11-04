@@ -88,7 +88,7 @@ export function FishTankChrome({
               agent orchestration to Kubernetes, Terraform, and CI/CD. My focus:
               useful automation, reliable deployments, and efficient infrastructure.
             </p>
-            <p>
+            <p className="ft-hero-more">
               <b className="text-(--fg)">Explore the work:</b> Each fish is a
               shipped project. Dive in for the architecture, engineering
               decisions, and impact.
@@ -144,9 +144,9 @@ export function FishTankChrome({
                 <span className="truncate">{curationLabel}</span>
               </div>
             ) : null}
-            <div className="ft-wave" />
+            <div className="ft-wave ft-hint" />
             <div
-              className="ft-sub"
+              className="ft-sub ft-hint"
               style={{ fontFamily: "var(--ft-mono)", fontSize: 11 }}
             >
               drag orbit · wheel zoom · click fish · dbl-click feed · esc surface
