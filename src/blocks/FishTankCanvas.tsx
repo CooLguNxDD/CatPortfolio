@@ -1281,7 +1281,7 @@ export default function FishTankCanvas({
     /** Last double-tap feed, so a browser-synthesised dblclick doesn't feed twice. */
     let lastTouchFeedAt = -Infinity
 
-    function setPointerFromEvent(e: PointerEvent) {
+    function setPointerFromEvent(e: MouseEvent) {
       updateCachedRect()
       const rect = cachedRect
       pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
@@ -1426,8 +1426,15 @@ export default function FishTankCanvas({
 
     function onWheel(e: WheelEvent) {
       if (progRef.current > CAMERA_CONFIG.surfaceReturnThreshold && !isSubmerged(progRef.current)) return
+      // At the surface only a wheel over the cat zooms. Anywhere else the
+      // event bubbles to FishTankStage, which turns a scroll down into a dive.
+      if (!isSubmerged(progRef.current)) {
+        if (!catParts) return
+        setPointerFromEvent(e)
+        raycaster.setFromCamera(pointer, camera)
+        if (raycaster.intersectObjects([catParts.hitBox], false).length === 0) return
+      }
       e.preventDefault()
-      // Wheel over the cat zooms; scrolling the surface card can still dive.
       e.stopPropagation()
       if (selected) return
       orbit.radiusT = clamp(

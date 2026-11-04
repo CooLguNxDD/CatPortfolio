@@ -1,4 +1,5 @@
 import { test, expect, devices } from "@playwright/test"
+import { swipeUp } from "./fixtures/swipe"
 
 // First-run tank tour on the reusable ScrollCards deck.
 // Phone landscape: no landscape gate, low tier (fast), touch wording.
@@ -44,7 +45,8 @@ test.describe("Tank tutorial", () => {
     await page.keyboard.press("Escape")
     await expect(page.getByTestId("tank-tutorial")).toHaveCount(0)
 
-    await page.getByRole("button", { name: /Dive into the tank/ }).click()
+    // Phone landscape swipes to dive (the button row is visually hidden there).
+    await swipeUp(page.locator(".ft-hero-card"))
     await expect(page.locator(".ft-stage")).toHaveAttribute("data-fishtank-stage", "tank", { timeout: 30_000 })
     await page.waitForTimeout(1500)
     await page.getByRole("toolbar", { name: "Aquarium controls" }).getByRole("button", { name: "Controls" }).click()
