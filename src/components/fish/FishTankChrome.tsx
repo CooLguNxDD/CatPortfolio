@@ -205,7 +205,7 @@ export function FishTankChrome({
                 type="button"
                 className="ft-dock-btn ft-dock-btn--main"
                 onClick={() => fishBus.emit("ask:toggle")}
-                title="Ask about a project — patches the tank live"
+                title="Ask a question about the work"
               >
                 <MessageCircle className="h-4 w-4" aria-hidden />
                 <span className="ft-dock-label">Ask</span>
