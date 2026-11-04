@@ -602,69 +602,73 @@
   z-index: 12;
 }
 
-/* --- Bathymetry scrubber: the depth axis read as a timeline --- */
+/* --- Timeline chips: the depth axis read as years (review v2: compact) --- */
+.ft-timeline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--ft-mono);
+}
+
+/* Floating copy: one slim strip under the corner pills, not a tall rail. */
 .ft-bathymetry {
   position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 12px;
+  top: 64px;
   z-index: 25;
-  font-family: var(--ft-mono);
-  font-size: 12px;
-  color: var(--ft-ink, var(--fg));
-  background: color-mix(in oklab, var(--card) 30%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  flex-wrap: nowrap;
+  padding: 4px 6px 4px 12px;
+  border-radius: 999px;
   border: 1px solid var(--ft-line);
-  border-radius: 16px;
-  padding: 18px 16px;
+  background: color-mix(in oklab, var(--card) 45%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  gap: 12vh;
   pointer-events: auto;
   transition: opacity 0.4s;
 }
 
-.ft-bathy-stop,
-.ft-bathy-clear {
-  pointer-events: auto;
-  background: transparent;
-  border: 0;
-  border-right: 2px solid transparent;
-  padding: 4px 8px 4px 0;
-  color: inherit;
-  font: inherit;
-  text-align: right;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  transition: color 0.2s, border-color 0.2s;
+.ft-timeline-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ft-dim);
+  margin-right: 4px;
 }
 
-.ft-bathy-stop:hover,
-.ft-bathy-clear:hover {
-  color: var(--ft-accent, var(--amber));
+.ft-bathy-stop {
+  font: inherit;
+  font-family: var(--ft-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--ft-ink, var(--fg));
+  background: transparent;
+  border: 1px solid var(--ft-line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.ft-bathy-stop:hover {
+  border-color: var(--ft-accent, var(--amber));
 }
 
 .ft-bathy-stop.is-on {
-  color: var(--ft-accent, var(--amber));
-  border-right-color: currentColor;
-}
-
-.ft-bathy-year {
-  font-size: 13px;
+  color: var(--bg);
+  background: var(--ft-accent, var(--amber));
+  border-color: var(--ft-accent, var(--amber));
   font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--ft-ink, var(--fg));
 }
 
-.ft-bathy-label {
-  font-size: 11px;
-  opacity: 0.85;
-  color: var(--ft-ink, var(--fg));
+.ft-bathy-stop:focus-visible {
+  outline: 2px solid var(--ft-accent, var(--amber));
+  outline-offset: 2px;
+}
+
+.ft-timeline--inline {
+  margin-top: 8px;
 }
 
 /* Both HUD widgets belong to the submerged scene only. */
@@ -1430,6 +1434,182 @@
   }
 }
 
+/* ---------- Underwater bar: Browse · Ask · Controls (review v2) ---------- */
+.ft-dock-btn--main {
+  font-size: 12px;
+  padding: 7px 14px;
+  gap: 8px;
+}
+
+.ft-dock-btn--primary {
+  color: var(--bg);
+  background: var(--ft-accent);
+  border-color: var(--ft-accent);
+  font-weight: 700;
+}
+
+.ft-dock-btn--primary:hover {
+  color: var(--bg);
+  filter: brightness(1.08);
+}
+
+.ft-dock-btn--main.on {
+  color: var(--ft-ink);
+  background: color-mix(in oklab, var(--ft-accent) 18%, transparent);
+  border-color: var(--ft-accent);
+}
+
+/* ---------- Scene controls panel ---------- */
+.ft-controls {
+  position: absolute;
+  right: 16px;
+  bottom: 150px;
+  z-index: 65;
+  width: min(360px, calc(100vw - 32px));
+  /* Starts below the timeline strip (top 64px + ~40px) and above the bar. */
+  max-height: calc(100% - 270px);
+  overflow-y: auto;
+  border-radius: 20px;
+  padding: 18px 18px 16px;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  border: 1px solid var(--ft-line);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: var(--ft-ink);
+  animation: ftAskFadeIn 0.18s ease-out;
+}
+
+.ft-controls-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.ft-controls-eyebrow {
+  margin: 0 0 4px;
+  font-family: var(--ft-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ft-accent);
+}
+
+.ft-controls h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+
+.ft-controls-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--ft-line);
+  background: transparent;
+  color: var(--ft-ink);
+  cursor: pointer;
+}
+
+.ft-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ft-line);
+}
+
+.ft-controls-block {
+  padding: 12px 0 10px;
+  border-bottom: 1px solid var(--ft-line);
+}
+
+.ft-controls-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ft-controls-hint {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ft-dim);
+}
+
+.ft-controls-btn {
+  font: inherit;
+  font-size: 12px;
+  font-family: var(--ft-mono);
+  white-space: nowrap;
+  min-height: 36px;
+  min-width: 76px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ft-line);
+  background: color-mix(in oklab, var(--bg) 50%, transparent);
+  color: var(--ft-ink);
+  cursor: pointer;
+}
+
+.ft-controls-btn[aria-pressed="true"] {
+  border-color: var(--ft-accent);
+  color: var(--ft-accent);
+}
+
+.ft-controls-btn:hover {
+  border-color: var(--ft-accent);
+}
+
+.ft-controls-btn:focus-visible,
+.ft-controls-close:focus-visible,
+.ft-controls-link:focus-visible {
+  outline: 2px solid var(--ft-accent);
+  outline-offset: 2px;
+}
+
+.ft-controls-gestures {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  font-size: 12px;
+  color: var(--ft-dim);
+}
+
+.ft-controls-gestures b {
+  color: var(--ft-ink);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.ft-controls-link {
+  margin-top: 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ft-accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ft-controls-done {
+  width: 100%;
+  justify-content: center;
+  margin-top: 14px;
+  padding: 11px 16px;
+}
+
 /* ---------- Landscape gate (portrait phones, before any WebGL) ---------- */
 .ft-gate {
   --ft-accent: var(--amber);
@@ -1634,6 +1814,47 @@
     white-space: nowrap;
   }
 
+  /* Review v2 mobile bar: Browse · Ask · Controls, nothing else. Search and
+     filters live in Browse (the flat index); scene toggles in Controls. */
+  .ft-toolbar {
+    padding: 8px;
+  }
+
+  .ft-toolbar .ft-toolbar-row1 {
+    display: none;
+  }
+
+  .ft-toolbar .ft-toolbar-row2 {
+    border-top: 0;
+    padding-top: 0;
+    gap: 6px;
+  }
+
+  .ft-dock-btn--main {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px 6px;
+    font-size: 13px;
+  }
+
+  .ft-dock-btn--main .ft-dock-label {
+    display: inline;
+  }
+
+  /* Sonar is switched from Scene controls on phones. */
+  .ft-sonar-toggle {
+    display: none;
+  }
+
+  .ft-controls {
+    left: 12px;
+    right: 12px;
+    bottom: 78px;
+    width: auto;
+    max-height: calc(100% - 150px);
+  }
+
   /* Flat index starts below the floating corner pills. */
   .ft-stage[data-view="flat"] .ft-flat {
     padding-top: 64px;
@@ -1705,44 +1926,47 @@
     height: 84px;
   }
 
-  /* Toolbar collapses to a single row: search + count | icon dock. */
+  /* Same three-button bar as portrait, centred and slimmer. */
   .ft-tankui {
     bottom: 10px;
-    width: min(760px, calc(100vw - 24px));
+    width: min(520px, calc(100vw - 24px));
   }
 
   .ft-toolbar {
-    flex-direction: row;
-    align-items: center;
-    padding: 6px 10px;
-    gap: 8px;
+    padding: 6px;
   }
 
   .ft-toolbar .ft-toolbar-row1 {
-    flex: 1 1 auto;
-    width: auto;
-    min-width: 0;
-    flex-wrap: nowrap;
-  }
-
-  .ft-toolbar .ft-toolbar-row2 {
-    flex: 0 0 auto;
-    width: auto;
-    padding-top: 0;
-    border-top: 0;
-    flex-wrap: nowrap;
-  }
-
-  .ft-toolbar .ft-input {
-    min-width: 0;
-  }
-
-  .ft-dock-label {
     display: none;
   }
 
-  .ft-dock-btn {
-    padding: 6px 8px;
+  .ft-toolbar .ft-toolbar-row2 {
+    border-top: 0;
+    padding-top: 0;
+    gap: 6px;
+  }
+
+  .ft-dock-btn--main {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  .ft-dock-btn--main .ft-dock-label {
+    display: inline;
+  }
+
+  .ft-sonar-toggle {
+    display: none;
+  }
+
+  .ft-controls {
+    right: 12px;
+    /* Below the Surface / 3D pills so they stay reachable. */
+    top: 60px;
+    bottom: 64px;
+    max-height: none;
+    width: min(360px, 46vw);
   }
 
   .ft-ask-dock {

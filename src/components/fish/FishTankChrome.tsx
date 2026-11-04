@@ -11,7 +11,8 @@
 
 import { useEffect, useRef } from "react"
 import { useShallow } from "zustand/react/shallow"
-import { usePreferencesStore, useFishTankStore } from "@/store"
+import { LayoutGrid, MessageCircle, SlidersHorizontal } from "lucide-react"
+import { useFishTankStore } from "@/store"
 import { fishBus } from "@/fish/fishBus"
 import { createFrameChannel } from "@/fish/frameChannel"
 import { DOMAIN_LABEL } from "@/blocks/fishTankTokens"
@@ -22,8 +23,8 @@ export interface FishTankChromeProps {
   total: number
   domains: string[]
   curationLabel: string | null
-  /** Simulated bake affordance — omitted when the caller has no bake demo. */
-  showBake?: boolean
+  /** Scene controls panel state, for the Controls button's aria-expanded. */
+  controlsOpen?: boolean
 }
 
 /** Fixed HUD layers over the WebGL canvas. */
@@ -32,19 +33,14 @@ export function FishTankChrome({
   total,
   domains,
   curationLabel,
-  showBake = true,
+  controlsOpen = false,
 }: FishTankChromeProps) {
-  const { query, domain, soundEnabled, toggleSound, dropFood } = useFishTankStore(
+  const { query, domain } = useFishTankStore(
     useShallow((s) => ({
       query: s.query,
       domain: s.domain,
-      soundEnabled: s.soundEnabled,
-      toggleSound: s.toggleSound,
-      dropFood: s.dropFood,
     })),
   )
-  const circadian = usePreferencesStore((s) => s.circadian)
-  const cycleCircadian = usePreferencesStore((s) => s.cycleCircadian)
 
   const rootRef = useRef<HTMLDivElement | null>(null)
   const surfaceSectionRef = useRef<HTMLElement | null>(null)
@@ -193,76 +189,36 @@ export function FishTankChrome({
               </div>
             </div>
 
-            <div className="ft-toolbar-row2 flex items-center gap-2 w-full pt-1.5 border-t border-(--hairline) flex-wrap">
+            <div className="ft-toolbar-row2 flex items-center gap-2 w-full pt-1.5 border-t border-(--hairline)">
+              {/* Find work · ask · tune the scene (design review v2). Scene
+                  toggles live in the Controls panel, one panel at a time. */}
               <button
                 type="button"
-                className="ft-dock-btn"
-                onClick={() => fishBus.emit("ask:toggle")}
-                title="Open Ask — live patch the tank"
+                className="ft-dock-btn ft-dock-btn--main ft-dock-btn--primary"
+                onClick={() => fishBus.emit("view:chrome", "flat")}
+                title="Browse every project as a list"
               >
-                <span className="ft-dock-icon">💬</span>
+                <LayoutGrid className="h-4 w-4" aria-hidden />
+                <span className="ft-dock-label">Browse projects</span>
+              </button>
+              <button
+                type="button"
+                className="ft-dock-btn ft-dock-btn--main"
+                onClick={() => fishBus.emit("ask:toggle")}
+                title="Ask about a project — patches the tank live"
+              >
+                <MessageCircle className="h-4 w-4" aria-hidden />
                 <span className="ft-dock-label">Ask</span>
               </button>
               <button
                 type="button"
-                className="ft-dock-btn"
-                onClick={() => dropFood()}
-                title="Drop food pellets into the tank (or double-click canvas)"
+                className={cn("ft-dock-btn ft-dock-btn--main", controlsOpen && "on")}
+                onClick={() => fishBus.emit("controls:toggle")}
+                aria-expanded={controlsOpen}
+                title="Lighting, sound, sonar, feeding and timeline"
               >
-                <span className="ft-dock-icon">🍲</span>
-                <span className="ft-dock-label">Feed</span>
-              </button>
-              <button
-                type="button"
-                className={cn("ft-dock-btn", soundEnabled && "on")}
-                onClick={() => toggleSound()}
-                title="Toggle hydro-acoustic sound synthesizer"
-              >
-                <span className="ft-dock-icon">
-                  {soundEnabled ? (
-                    <span className="ft-eq" aria-hidden="true">
-                      <span className="ft-eq-bar ft-eq-1" />
-                      <span className="ft-eq-bar ft-eq-2" />
-                      <span className="ft-eq-bar ft-eq-3" />
-                    </span>
-                  ) : (
-                    "🔇"
-                  )}
-                </span>
-                <span className="ft-dock-label">{soundEnabled ? "Audio" : "Muted"}</span>
-              </button>
-              <button
-                type="button"
-                className={cn("ft-dock-btn", circadian !== "auto" && "on")}
-                onClick={() => cycleCircadian()}
-                title="Day / night cycle (auto follows your local clock)"
-              >
-                <span className="ft-dock-icon">
-                  {circadian === "night" ? "🌙" : circadian === "day" ? "☀️" : "🕓"}
-                </span>
-                <span className="ft-dock-label">
-                  {circadian === "night" ? "Abyss" : circadian === "day" ? "Lagoon" : "Auto"}
-                </span>
-              </button>
-              {showBake ? (
-                <button
-                  type="button"
-                  className="ft-dock-btn"
-                  onClick={() => fishBus.emit("bake:apply")}
-                  title="Simulate a job-specific bake highlight"
-                >
-                  <span className="ft-dock-icon">⚡</span>
-                  <span className="ft-dock-label">Bake</span>
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="ft-dock-btn"
-                onClick={() => fishBus.emit("shortcuts:toggle")}
-                title="Keyboard shortcuts (?)"
-              >
-                <span className="ft-dock-icon">⌨</span>
-                <span className="ft-dock-label">Shortcuts</span>
+                <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                <span className="ft-dock-label">Controls</span>
               </button>
             </div>
           </div>

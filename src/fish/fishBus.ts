@@ -53,6 +53,9 @@ export type FishEvents = {
   "bake:apply": void
   "bake:dismiss": void
   "shortcuts:toggle": void
+  /** Underwater scene-controls panel (lighting, sound, sonar, feed, timeline). */
+  "controls:toggle": void
+  "controls:close": void
   "search:focus": void
   "ask:toggle": void
   "ask:open": { prompt?: string } | void
