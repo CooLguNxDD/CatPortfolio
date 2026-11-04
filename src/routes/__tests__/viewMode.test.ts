@@ -20,6 +20,21 @@ describe("resolveViewMode", () => {
     )
   })
 
+  it("reduced motion + explicit v=tank → tank", () => {
+    expect(
+      resolveViewMode({ v: "tank" }, { webgl2: true, reducedMotion: true }, 5),
+    ).toBe("tank")
+  })
+
+  it("explicit v=tank does not bypass missing WebGL or empty tank", () => {
+    expect(
+      resolveViewMode({ v: "tank" }, { webgl2: false, reducedMotion: true }, 5),
+    ).toBe("text")
+    expect(
+      resolveViewMode({ v: "tank" }, { webgl2: true, reducedMotion: true }, 0),
+    ).toBe("text")
+  })
+
   it("zero fish and no authored tank → text", () => {
     expect(resolveViewMode({}, capable, 0)).toBe("text")
   })
