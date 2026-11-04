@@ -36,6 +36,18 @@ test.describe("Landscape gate (portrait phone)", () => {
     expect(threeChunks).toEqual([])
   })
 
+  test("Tab stays inside the gate (aria-modal focus trap)", async ({ page }) => {
+    await page.goto("./")
+    const dialog = page.getByRole("dialog", { name: "Best in landscape" })
+    await expect(dialog).toBeVisible()
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press(i % 2 ? "Shift+Tab" : "Tab")
+      // The shell header (logo, nav link, Appearance) must never take focus.
+      const inside = await dialog.evaluate((el) => el.contains(document.activeElement))
+      expect(inside).toBe(true)
+    }
+  })
+
   test("continue in portrait mounts the tank", async ({ page }) => {
     await page.goto("./")
     await page.getByRole("button", { name: "Continue in portrait" }).click()

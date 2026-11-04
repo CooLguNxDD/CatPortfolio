@@ -7,6 +7,7 @@
  * cover visitors who would rather not rotate. Theme tokens only.
  */
 import { useEffect, useRef } from "react"
+import { useFocusTrap } from "@/hooks/useFocusTrap"
 
 export interface LandscapeGateProps {
   /** Enter the tank anyway, in portrait. */
@@ -18,6 +19,9 @@ export interface LandscapeGateProps {
 /** Full-bleed "best in landscape" prompt with portrait / text escape hatches. */
 export function LandscapeGate({ onContinue, onText }: LandscapeGateProps) {
   const firstRef = useRef<HTMLButtonElement>(null)
+  // aria-modal: keep Tab inside the gate (the shell header stays mounted).
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(true, dialogRef)
 
   useEffect(() => {
     firstRef.current?.focus({ preventScroll: true })
@@ -26,6 +30,7 @@ export function LandscapeGate({ onContinue, onText }: LandscapeGateProps) {
   return (
     <div className="ft-gate" data-testid="landscape-gate">
       <div
+        ref={dialogRef}
         className="ft-gate-card"
         role="dialog"
         aria-modal="true"

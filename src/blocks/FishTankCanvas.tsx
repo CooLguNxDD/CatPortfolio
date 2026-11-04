@@ -1324,6 +1324,10 @@ export default function FishTankCanvas({
 
     function onPointerUp(e: PointerEvent) {
       if (e.pointerType === "touch") {
+        // Already handled: a lifted finger's pointerleave follows its
+        // pointerup. Re-running here would clear orbit.dragging and undo the
+        // pinch hand-off just set up for the finger still down.
+        if (!touches.has(e.pointerId)) return
         touches.delete(e.pointerId)
         const wasPinching = pinch !== null
         if (touches.size < 2) pinch = null
