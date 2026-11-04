@@ -302,6 +302,7 @@ export function FishTankStage({
       data-view={tank.chrome}
       data-fishtank-stage={tank.tankScene}
       data-fishtank-chrome={tank.chrome}
+      data-ask-open={askOpen ? "true" : undefined}
     >
       {/* Floating view toggles — not a second sticky header */}
       <div className="ft-top-actions">
@@ -411,22 +412,8 @@ export function FishTankStage({
           className="ft-ask-dock glass"
           aria-label="Ask Agent"
         >
-          <div className="flex items-center justify-between border-b border-(--hairline) px-3 py-2">
-            <span className="text-xs font-mono font-bold text-(--amber) flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-(--neon) animate-pulse" />
-              Ask Tank Agent · Live Patch
-            </span>
-            <button
-              type="button"
-              className="ft-chip-btn text-xs px-2 py-0.5"
-              onClick={() => setAskOpen(false)}
-              title="Close Ask Panel (Esc)"
-            >
-              ✕ Close
-            </button>
-          </div>
-          <div className="p-2 overflow-y-auto max-h-[calc(100svh-190px)]" data-ask-panel>
-            <ChatPanel layout={layout} view="tank" />
+          <div className="ft-ask-body" data-ask-panel>
+            <ChatPanel layout={layout} view="tank" onClose={() => setAskOpen(false)} />
           </div>
         </aside>
       ) : null}

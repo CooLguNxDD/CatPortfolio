@@ -329,3 +329,15 @@ html[data-light="true"] {
     color: black !important;
   }
 }
+/* Chat panel scroll areas: thin, theme-tinted, no OS arrow buttons. */
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--fg-muted) 35%, transparent) transparent;
+}
+.chat-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.chat-scroll::-webkit-scrollbar-button { display: none; }
+.chat-scroll::-webkit-scrollbar-track { background: transparent; }
+.chat-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--fg-muted) 35%, transparent);
+}
