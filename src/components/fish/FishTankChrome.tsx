@@ -106,6 +106,10 @@ export function FishTankChrome({
                 💬 Ask
               </button>
             </div>
+            {/* Short touch screens (phone landscape) swipe instead of tapping the row above. */}
+            <p className="ft-swipe-hint" aria-hidden="true">
+              Swipe up to dive ↑
+            </p>
           </div>
         </div>
         <div className="ft-scenecue">scroll or Dive to submerge</div>
