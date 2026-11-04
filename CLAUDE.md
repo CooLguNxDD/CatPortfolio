@@ -184,7 +184,7 @@ CatPortfolio/
 ├── src/
 │   ├── main.tsx                # Root: runtime config gate → ThemeProvider > QueryClient > Router
 │   ├── router.tsx              # Route / + /ask→/ redirect + lazy /pipeline, demoSearchSchema (j / v / f)
-│   ├── App.tsx                 # Shell: nav, theme + accent switcher, demo chip, Outlet
+│   ├── App.tsx                 # Shell: nav, Appearance popover (mode/accent/theme), demo chip, Outlet
 │   ├── index.css               # Tailwind v4 CSS-first config + OKLCH tokens + shadcn bridge
 │   ├── config/runtimeConfig.ts # public/config.json fetch (octBaseUrl, askTimeoutMs; mcpApiKey from env only)
 │   ├── content/

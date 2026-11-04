@@ -48,11 +48,17 @@ export function FishTankStage({
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   // Scene controls panel — one expanded panel at a time with Ask / dossier.
   const [controlsOpen, setControlsOpen] = useState(false)
+  // Read by the bus handler so the toggle needs no impure state updater.
+  const controlsOpenRef = useRef(false)
+  controlsOpenRef.current = controlsOpen
   // First-run tour: once per device (persisted preference), skipped for
   // `?f=` deep links, which already point at one project.
   const [tutorialOpen, setTutorialOpen] = useState(
     () => !usePreferencesStore.getState().tankTutorialSeen && !demoSearch.f,
   )
+  // The tour only renders in the 3D view; in Flat it stays pending (it shows
+  // once the visitor switches to 3D) and must not swallow Escape or hotkeys.
+  const tutorialVisible = tutorialOpen && tank.chrome === "3d"
   const closeTutorial = () => {
     setTutorialOpen(false)
     usePreferencesStore.getState().setTankTutorialSeen(true)
@@ -85,7 +91,7 @@ export function FishTankStage({
   }
 
   useTankHotkeys({
-    enabled: tank.chrome === "3d" && !shortcutsOpen && !tutorialOpen,
+    enabled: tank.chrome === "3d" && !shortcutsOpen && !tutorialVisible,
     domains: tank.domains,
     onPrevSpecimen: tank.focusedSlug ? handlePrev : undefined,
     onNextSpecimen: tank.focusedSlug ? handleNext : undefined,
@@ -126,18 +132,16 @@ export function FishTankStage({
       setShortcutsOpen((prev) => !prev)
     }
     function onControlsToggle() {
-      setControlsOpen((prev) => {
-        const next = !prev
-        if (next) {
-          setAskOpen(false)
-          setShortcutsOpen(false)
-          // Phones: the dossier and the controls sheet would cover each other.
-          if (typeof window !== "undefined" && window.innerWidth < 960 && tank.focusedSlug) {
-            fishBus.emit("fish:release")
-          }
+      const next = !controlsOpenRef.current
+      setControlsOpen(next)
+      if (next) {
+        setAskOpen(false)
+        setShortcutsOpen(false)
+        // Phones: the dossier and the controls sheet would cover each other.
+        if (typeof window !== "undefined" && window.innerWidth < 960 && tank.focusedSlug) {
+          fishBus.emit("fish:release")
         }
-        return next
-      })
+      }
     }
     function onControlsClose() {
       setControlsOpen(false)
@@ -186,7 +190,7 @@ export function FishTankStage({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return
-      if (tutorialOpen) {
+      if (tutorialVisible) {
         closeTutorial()
         return
       }
@@ -213,7 +217,7 @@ export function FishTankStage({
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [tutorialOpen, shortcutsOpen, controlsOpen, askOpen, tank.focusedSlug, tank.tankScene])
+  }, [tutorialVisible, shortcutsOpen, controlsOpen, askOpen, tank.focusedSlug, tank.tankScene])
 
   // The panel belongs to the submerged scene (and the 3D view).
   useEffect(() => {
@@ -394,7 +398,7 @@ export function FishTankStage({
         showBake={Boolean(layout.meta?.tailored || demoSearch.j)}
       />
 
-      <TankTutorial open={tutorialOpen && tank.chrome === "3d"} onClose={closeTutorial} />
+      <TankTutorial open={tutorialVisible} onClose={closeTutorial} />
 
       <ShortcutsModal
         open={shortcutsOpen}

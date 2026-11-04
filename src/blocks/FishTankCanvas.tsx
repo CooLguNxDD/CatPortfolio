@@ -1325,7 +1325,23 @@ export default function FishTankCanvas({
     function onPointerUp(e: PointerEvent) {
       if (e.pointerType === "touch") {
         touches.delete(e.pointerId)
+        const wasPinching = pinch !== null
         if (touches.size < 2) pinch = null
+        // Lifting one finger of a pinch hands the gesture to the other finger:
+        // keep orbiting from where it is now (orbit.moved is still past the
+        // tap tolerance from the pinch, so this never counts as a tap).
+        if (wasPinching && touches.size === 1) {
+          const [rest] = [...touches.values()]
+          orbit.dragging = true
+          orbit.lx = rest.x
+          orbit.ly = rest.y
+          try {
+            renderer.domElement.releasePointerCapture?.(e.pointerId)
+          } catch {
+            /* ignore */
+          }
+          return
+        }
         // pointerleave follows pointerup for touch; only count the real lift.
         if (e.type === "pointerup" && touches.size === 0) {
           if (orbit.moved <= CAMERA_CONFIG.clickDragTolerancePx) {
