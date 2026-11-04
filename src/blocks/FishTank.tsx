@@ -65,7 +65,10 @@ export function FishTankView({
     return `${t}:${accent}`
   }, [prefTheme, accent, themeOverride, bakeTheme, isDemoSession])
 
-  if (reduced || !webgl2) {
+  // The immersive stage only mounts after HomePage's resolveViewMode chose the
+  // tank, which already applied the reduced-motion rule (explicit `?v=tank`
+  // overrides it). Inline blocks keep the hard reduced-motion gate.
+  if ((reduced && !immersive) || !webgl2) {
     return null
   }
   // Inline registry block with no specimens stays out of the text matrix.
