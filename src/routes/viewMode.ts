@@ -14,8 +14,10 @@ export interface ViewCaps {
  * Explicit `v=text` always wins. Tank when capable and either specimens
  * exist or a fishTank block is authored (including fish: []).
  * Reduced motion only changes the default: an explicit `v=tank` is an
- * opt-in, so it still opens the tank (frozen, via the quality tier's
- * `timeScale: 0`). WebGL2 and the fish checks still apply.
+ * opt-in to motion, so it still opens the tank. The quality tier's
+ * `timeScale: 0` stops shader clocks only (caustics, minnow shader, wobble
+ * off); fish, camera and mixers still move. WebGL2 and the fish checks
+ * still apply.
  */
 export function resolveViewMode(
   search: { v?: "text" | "tank" | undefined } | null | undefined,
