@@ -77,12 +77,14 @@ export function HomePage() {
 
   // Say why the tank was skipped, unless the visitor asked for text. A silent
   // fallback reads as a broken 3D button (design review 2026-11-04, P1).
-  const fallbackNotice =
+  // Reduced motion only changes the default: `?v=tank` is the explicit opt-in
+  // (resolveViewMode), so that notice offers it. No WebGL2 has no override.
+  const fallbackNotice: { text: string; offerTank: boolean } | null =
     mode === "text" && v !== "text"
       ? !caps.webgl2
-        ? "3D isn't available in this browser, so you're seeing the text portfolio."
+        ? { text: "3D isn't available in this browser, so you're seeing the text portfolio.", offerTank: false }
         : caps.reducedMotion
-          ? "Showing the text portfolio to respect your reduced-motion setting."
+          ? { text: "Showing the text portfolio to respect your reduced-motion setting.", offerTank: true }
           : null
       : null
 
@@ -277,7 +279,19 @@ export function HomePage() {
           data-testid="tank-fallback-notice"
           className="rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card)/60 px-4 py-3 text-sm text-(--fg-muted)"
         >
-          {fallbackNotice}
+          {fallbackNotice.text}
+          {fallbackNotice.offerTank ? (
+            <>
+              {" "}
+              <button
+                type="button"
+                className="font-medium text-(--amber) underline underline-offset-4"
+                onClick={() => setView("tank")}
+              >
+                Open the 3D tank anyway
+              </button>
+            </>
+          ) : null}
         </p>
       ) : null}
       {/* Top bar: status pills + pipeline link, then 3D / Flat / Text view pills */}
