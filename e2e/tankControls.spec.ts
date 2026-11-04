@@ -1,4 +1,5 @@
 import { test, expect, devices } from "@playwright/test"
+import { skipTankTutorial } from "./fixtures/tutorial"
 
 // Underwater bar (review v2): Browse projects · Ask · Controls, with scene
 // toggles in one Controls panel and a compact timeline.
@@ -13,6 +14,7 @@ async function dive(page: import("@playwright/test").Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  await skipTankTutorial(page)
   await page.route("**/profile-pieces/index.json", (route) => route.fulfill({ json: { pieces: [] } }))
 })
 

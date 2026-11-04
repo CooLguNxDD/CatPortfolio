@@ -33,6 +33,11 @@ export interface PreferencesSlice {
    */
   circadian: CircadianMode
   notifications: NotificationPreferences
+  /**
+   * First-run tank tutorial answered (finished or skipped) on this device.
+   * Persisted: a returning visitor should not be toured again.
+   */
+  tankTutorialSeen: boolean
   setTheme: (theme: Theme) => void
   setAccent: (accent: Accent) => void
   setDensity: (density: Density) => void
@@ -41,6 +46,7 @@ export interface PreferencesSlice {
   cycleCircadian: () => void
   setNotification: (key: keyof NotificationPreferences, enabled: boolean) => void
   toggleNotification: (key: keyof NotificationPreferences) => void
+  setTankTutorialSeen: (seen: boolean) => void
 }
 
 /** Selector: returns data-attribute props to spread on any `.ct-root` element. */
@@ -68,6 +74,7 @@ export const createPreferencesSlice: StateCreator<PreferencesSlice> = (set) => (
   density: "comfortable",
   circadian: "auto",
   notifications: DEFAULT_NOTIFICATIONS,
+  tankTutorialSeen: false,
   setTheme: (theme) => set({ theme }),
   setAccent: (accent) => set({ accent }),
   setDensity: (density) => set({ density }),
@@ -81,6 +88,7 @@ export const createPreferencesSlice: StateCreator<PreferencesSlice> = (set) => (
     set((state) => ({
       notifications: { ...state.notifications, [key]: enabled },
     })),
+  setTankTutorialSeen: (tankTutorialSeen) => set({ tankTutorialSeen }),
   toggleNotification: (key) =>
     set((state) => ({
       notifications: { ...state.notifications, [key]: !state.notifications[key] },

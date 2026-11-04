@@ -88,7 +88,8 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 | Sonar / bathymetry projection (pure) | `fish/sonarProjection.ts`, `fish/bathymetry.ts` |
 | Transient UI: scene, chrome, query, domain, bake dim, depth lock, sonar | `store/fishTankSlice.ts` (non-persisted; rAF smoothstep dive/surface) |
 | Controller & hotkeys composing all of the above | `hooks/{useFishTank,useTankHotkeys}.ts` |
-| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber,ShortcutsModal,LandscapeGate,SceneControls}.tsx` |
+| Views (DOM) | `components/FishTankStage.tsx`, `components/fish/{FishTankChrome,FishDossier,FishFlatGrid,SonarMiniMap,DepthScrubber,ShortcutsModal,LandscapeGate,SceneControls,TankTutorial}.tsx` |
+| Reusable swipe deck | `components/ui/scroll-cards.tsx` (`ScrollCards`: scroll-snap cards, dots, arrow keys, `renderActions`, controlled or not) |
 | Touch gestures (pure): pinch radius, double-tap | `fish/touchGestures.ts` (wired in `FishTankCanvas` pointer handlers) |
 | Pure catalog lookups (no three) | `fish/modelInfo.ts` (`getModelInfo`, `resolveModelId`; re-exported by `modelLoader`). DOM views import this, never `modelLoader`, or three lands in the entry chunk. |
 | WebGL only — sole importer of `three` | `blocks/FishTankCanvas.tsx` (lazy chunk; `manualChunks` splits `three` out of index) |
@@ -105,6 +106,7 @@ Ported from the Open Design `tank3d.html` prototype. See `design/fish/README.md`
 - **Feeding is a state machine.** `fish/fishBehavior.ts`: `cruise → hunt → feed → sated → cruise`, with `focused` outranking all of them. Sense 28 / release 34 gives hysteresis on a sinking pellet; a 6 s hunt timeout covers pellets resting below the swim band; the 2.5 s sated cooldown stops one pellet holding the whole shoal. Behaviour decides *what a fish wants*; locomotion decides how fast it can get there.
 - **Ambient shoal.** 240 (high) / 80 (low) GPU commit-minnows in one `InstancedMesh`; orbit path *and* spine wave run in the vertex shader. High tier also adds a small LayerLab ambient GLB shoal (`fish/ambientSchool.ts`). Hero specimens keep a CPU spine rig only while the procedural fallback is visible — after a GLB swap the mixer owns the body.
 - **Underwater bar + Scene controls (design review v2).** The submerged toolbar is search/filters (desktop only) over three primary actions: **Browse projects** (`view:chrome` → flat index), **Ask**, **Controls**. `SceneControls` (bus `controls:toggle` / `controls:close`) holds lighting, sound, sonar, feeding, job highlight, the inline timeline and a gesture/keys guide. `FishTankStage` keeps one panel open at a time (Controls closes Ask/shortcuts and, under 960px, releases the dossier; Ask, fish pick and shortcuts close Controls); Escape order is shortcuts → controls → ask → dossier → surface. Phones show only the three buttons, start with sonar hidden, and toggle it from the panel. `DepthScrubber` is compact chips ("All years" + one per band): a floating strip under the corner pills on desktop, inline in the panel everywhere. E2E: `e2e/tankControls.spec.ts`.
+- **First-run tutorial.** `TankTutorial` (four `ScrollCards`, touch or mouse wording) opens once per device when the 3D stage mounts, after the landscape gate; `?f=` deep links skip it. Seen = persisted preference `tankTutorialSeen` (any close counts). Scene controls → "Show tutorial" (bus `tutorial:open`) reopens it; it is first in the Escape order and pauses tank hotkeys. E2E suites that exercise other tank features call `e2e/fixtures/tutorial.ts::skipTankTutorial`; the tour itself is `e2e/tankTutorial.spec.ts`.
 - **Touch.** The canvas sets `touch-action: none`; one finger orbits, two fingers pinch-zoom (same gate and clamps as the wheel), a double-tap feeds (a synthesised `dblclick` within 600 ms is ignored), and a tap aims the raycast at the finger (taps fire no `pointermove`). `pointercancel` clears tracked touches.
 - **HUD observations.** Sonar contacts ride the bus at ~10Hz (`tank:sonar`), the dossier anchor and dive progress at 60fps; all three are written to DOM refs, never React state. `tank:depth` (bathymetry) and `view:sonar` are commands, handled in `useFishTank`.
 - **Depth is the timeline.** `fish/bathymetry.ts` maps the existing `depth` ∈ [0,1] to year bands — no per-fish year field, so the layout schema and its Python mirror are untouched.
@@ -222,10 +224,10 @@ CatPortfolio/
 │   ├── pipeline/               # timeline.ts (pure stop math) · PipelineMotion.tsx (lazy request-token rail)
 │   ├── components/
 │   │   ├── FishTankStage.tsx FishTankErrorBoundary.tsx
-│   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber LandscapeGate
+│   │   ├── fish/               # FishTankChrome FishDossier FishFlatGrid SonarMiniMap DepthScrubber LandscapeGate SceneControls TankTutorial
 │   │   ├── chat/               # ChatPanel ChatMessage
 │   │   ├── ThemeProvider.tsx AgenticHeader.tsx SourceCitations.tsx AgentStatusPill.tsx
-│   │   └── ui/                 # shadcn: button card chart (Recharts ChartContainer)
+│   │   └── ui/                 # shadcn: button card chart (Recharts ChartContainer) · scroll-cards (ScrollCards deck)
 │   ├── store/                  # index.ts + preferences (persisted) / layout / fishTank / chat slices, applyLayout.ts
 │   ├── hooks/                  # useFishTank useDemoLayout usePageLayout useLayoutDag useLayoutTheme usePhonePortrait
 │   │                           # useThemeRegistry useThemeTokens useLayoutSessionHydrated

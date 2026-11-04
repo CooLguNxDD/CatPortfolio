@@ -188,6 +188,16 @@ export function SceneControls({ open, onClose, showBake = false }: SceneControls
         )}
       </div>
 
+      <div className="ft-controls-row">
+        <div>
+          <p className="ft-controls-name">Tutorial</p>
+          <p className="ft-controls-hint">The 30-second tour again</p>
+        </div>
+        <button type="button" className="ft-controls-btn" onClick={() => fishBus.emit("tutorial:open")}>
+          Show tutorial
+        </button>
+      </div>
+
       <button type="button" className="ft-btn ft-cta ft-controls-done" onClick={onClose}>
         Back to exploring
       </button>

@@ -183,6 +183,13 @@
   border-color: var(--ft-accent);
 }
 
+/* .ft-btn:hover sets light ink and outranks .ft-cta: keep the dark label on
+   the accent fill (Dive into the tank, gate, tutorial, Back to exploring). */
+.ft-cta:hover {
+  color: var(--bg);
+  filter: brightness(1.08);
+}
+
 /* ---------- 3D overlay ---------- */
 .ft-ui3d {
   position: absolute;
@@ -1608,6 +1615,51 @@
   justify-content: center;
   margin-top: 14px;
   padding: 11px 16px;
+}
+
+/* ---------- First-run tank tutorial (ScrollCards) ---------- */
+.ft-tutorial {
+  position: absolute;
+  inset: 0;
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: color-mix(in oklab, var(--bg) 45%, transparent);
+}
+
+.ft-tutorial-card {
+  position: relative;
+  width: min(420px, 100%);
+  border-radius: 22px;
+  padding: 22px 20px 18px;
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  border: 1px solid var(--ft-line);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  animation: ftAskFadeIn 0.2s ease-out;
+}
+
+.ft-tutorial-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+}
+
+@media (max-width: 640px) {
+  .ft-tutorial {
+    align-items: flex-end;
+    padding: 12px;
+  }
+}
+
+@media (max-height: 500px) and (pointer: coarse) {
+  .ft-tutorial-card {
+    padding: 14px 16px 12px;
+  }
 }
 
 /* ---------- Landscape gate (portrait phones, before any WebGL) ---------- */

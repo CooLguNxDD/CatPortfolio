@@ -18,12 +18,13 @@ import { SonarMiniMap } from "@/components/fish/SonarMiniMap"
 import { DepthScrubber } from "@/components/fish/DepthScrubber"
 import { ShortcutsModal } from "@/components/fish/ShortcutsModal"
 import { SceneControls } from "@/components/fish/SceneControls"
+import { TankTutorial } from "@/components/fish/TankTutorial"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { useFishTank } from "@/hooks/useFishTank"
 import { useTankHotkeys } from "@/hooks/useTankHotkeys"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
 import { fishBus } from "@/fish/fishBus"
-import { useChatStore, useFishTankStore } from "@/store"
+import { useChatStore, useFishTankStore, usePreferencesStore } from "@/store"
 import { canDiveOnScroll } from "@/fish/tankMachine"
 import type { Layout } from "@/content/schema"
 import type { DemoSearch } from "@/router"
@@ -47,6 +48,15 @@ export function FishTankStage({
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   // Scene controls panel — one expanded panel at a time with Ask / dossier.
   const [controlsOpen, setControlsOpen] = useState(false)
+  // First-run tour: once per device (persisted preference), skipped for
+  // `?f=` deep links, which already point at one project.
+  const [tutorialOpen, setTutorialOpen] = useState(
+    () => !usePreferencesStore.getState().tankTutorialSeen && !demoSearch.f,
+  )
+  const closeTutorial = () => {
+    setTutorialOpen(false)
+    usePreferencesStore.getState().setTankTutorialSeen(true)
+  }
   const stageRef = useRef<HTMLDivElement | null>(null)
   const askDockRef = useRef<HTMLElement | null>(null)
 
@@ -75,7 +85,7 @@ export function FishTankStage({
   }
 
   useTankHotkeys({
-    enabled: tank.chrome === "3d" && !shortcutsOpen,
+    enabled: tank.chrome === "3d" && !shortcutsOpen && !tutorialOpen,
     domains: tank.domains,
     onPrevSpecimen: tank.focusedSlug ? handlePrev : undefined,
     onNextSpecimen: tank.focusedSlug ? handleNext : undefined,
@@ -132,6 +142,12 @@ export function FishTankStage({
     function onControlsClose() {
       setControlsOpen(false)
     }
+    function onTutorialOpen() {
+      setControlsOpen(false)
+      setAskOpen(false)
+      setShortcutsOpen(false)
+      setTutorialOpen(true)
+    }
     fishBus.on("ask:toggle", onAskToggle)
     fishBus.on("ask:open", onAskOpen)
     fishBus.on("ask:close", onAskClose)
@@ -139,6 +155,7 @@ export function FishTankStage({
     fishBus.on("shortcuts:toggle", onShortcutsToggle)
     fishBus.on("controls:toggle", onControlsToggle)
     fishBus.on("controls:close", onControlsClose)
+    fishBus.on("tutorial:open", onTutorialOpen)
     return () => {
       fishBus.off("ask:toggle", onAskToggle)
       fishBus.off("ask:open", onAskOpen)
@@ -147,6 +164,7 @@ export function FishTankStage({
       fishBus.off("shortcuts:toggle", onShortcutsToggle)
       fishBus.off("controls:toggle", onControlsToggle)
       fishBus.off("controls:close", onControlsClose)
+      fishBus.off("tutorial:open", onTutorialOpen)
     }
   }, [tank.focusedSlug])
 
@@ -168,6 +186,10 @@ export function FishTankStage({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return
+      if (tutorialOpen) {
+        closeTutorial()
+        return
+      }
       if (shortcutsOpen) {
         setShortcutsOpen(false)
         return
@@ -191,7 +213,7 @@ export function FishTankStage({
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [shortcutsOpen, controlsOpen, askOpen, tank.focusedSlug, tank.tankScene])
+  }, [tutorialOpen, shortcutsOpen, controlsOpen, askOpen, tank.focusedSlug, tank.tankScene])
 
   // The panel belongs to the submerged scene (and the 3D view).
   useEffect(() => {
@@ -371,6 +393,8 @@ export function FishTankStage({
         onClose={() => setControlsOpen(false)}
         showBake={Boolean(layout.meta?.tailored || demoSearch.j)}
       />
+
+      <TankTutorial open={tutorialOpen && tank.chrome === "3d"} onClose={closeTutorial} />
 
       <ShortcutsModal
         open={shortcutsOpen}

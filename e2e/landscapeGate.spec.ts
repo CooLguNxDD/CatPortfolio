@@ -1,4 +1,5 @@
 import { test, expect, devices } from "@playwright/test"
+import { skipTankTutorial } from "./fixtures/tutorial"
 
 // Portrait phones answer a "best in landscape" gate before any WebGL mounts.
 // Desktop projects have no coarse pointer, so the other suites never see it.
@@ -12,6 +13,7 @@ const LANDSCAPE = { width: PHONE.viewport.height, height: PHONE.viewport.width }
 const TANK = 'canvas[aria-label="Interactive portfolio fish tank"]'
 
 test.beforeEach(async ({ page }) => {
+  await skipTankTutorial(page)
   await page.route("**/profile-pieces/index.json", (route) => route.fulfill({ json: { pieces: [] } }))
 })
 

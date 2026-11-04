@@ -56,6 +56,8 @@ export type FishEvents = {
   /** Underwater scene-controls panel (lighting, sound, sonar, feed, timeline). */
   "controls:toggle": void
   "controls:close": void
+  /** Re-open the first-run tank tutorial (Scene controls → Show tutorial). */
+  "tutorial:open": void
   "search:focus": void
   "ask:toggle": void
   "ask:open": { prompt?: string } | void
