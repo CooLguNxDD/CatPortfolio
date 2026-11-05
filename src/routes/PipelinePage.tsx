@@ -84,7 +84,7 @@ export function PipelinePage() {
             <li key={k}><span className="pipeline-llm" data-llm={k}>{LLM_LABEL[k]}</span></li>
           ))}
         </ul>
-        <ol className="pipeline-stages pipeline-steps">
+        <ol className="pipeline-stages pipeline-steps" role="list">
           {tailor.stages.map((stage, i) => (
             <li key={stage.id} data-stop-id={stage.id}>
               <span className="pipeline-step-num" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
@@ -144,7 +144,7 @@ export function PipelinePage() {
         <p className="pipeline-eyebrow">The request you just saw</p>
         <h2 id="serve-title">Act 2 — Serve</h2>
         <p className="pipeline-section-intro">{serve.introduction}</p>
-        <ol className="pipeline-hops pipeline-steps">
+        <ol className="pipeline-hops pipeline-steps" role="list">
           {serve.hops.map((hop, i) => (
             <li key={hop.id} data-stop-id={hop.id}>
               <span className="pipeline-step-num" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>

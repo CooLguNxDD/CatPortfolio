@@ -299,7 +299,7 @@ export function ChatPanel({ layout = null, view = "text", onClose }: ChatPanelPr
     if (demoShortId) setLastBakeId(demoShortId);
   }, [demoShortId]);
 
-  const { data: tools, isSuccess } = useQuery({
+  const { data: tools, isSuccess, isPending: isConnecting } = useQuery({
     queryKey: ["oct", "tools"],
     queryFn: async () => {
       const client = await getSharedClient();
@@ -310,6 +310,8 @@ export function ChatPanel({ layout = null, view = "text", onClose }: ChatPanelPr
   });
 
   const isOnline = isSuccess && !!tools;
+  // Discovery settled without a tool list: only now is "unavailable" true.
+  const isOffline = !isOnline && !isConnecting;
 
   const lastAssistantMsg = messages.filter((m) => m.role === "assistant").slice(-1)[0];
 
@@ -571,6 +573,7 @@ export function ChatPanel({ layout = null, view = "text", onClose }: ChatPanelPr
 
   const docked = Boolean(onClose);
 
+
   /** Offline escape hatch: the work stays reachable without the agent. */
   const browseProjects = () => {
     if (view === "tank") {
@@ -582,6 +585,22 @@ export function ChatPanel({ layout = null, view = "text", onClose }: ChatPanelPr
       .querySelector("[data-fishtank-flat]")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  const offlineNotice = (
+    <div className="flex flex-col gap-3" data-testid="chat-offline">
+      <p className="text-sm leading-relaxed text-(--fg-muted)">
+        The agent can't be reached right now, so no question is sent or stored. Every project is
+        still here to explore.
+      </p>
+      <button
+        type="button"
+        onClick={browseProjects}
+        className="self-start min-h-11 rounded-xl bg-(--amber) px-4 text-sm font-semibold text-(--bg) hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) focus-visible:ring-offset-2 focus-visible:ring-offset-(--card) transition-all cursor-pointer"
+      >
+        Browse projects instead
+      </button>
+    </div>
+  );
+
   const iconBtn =
     "h-9 w-9 rounded-lg inline-flex items-center justify-center text-(--fg-muted) hover:text-(--fg) hover:bg-(--fg)/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0";
 
@@ -607,15 +626,19 @@ export function ChatPanel({ layout = null, view = "text", onClose }: ChatPanelPr
             Ask Portfolio
           </h2>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-(--fg-muted)">
-            <span className="inline-flex items-center gap-1.5" data-testid="chat-status">
+            <span className="inline-flex items-center gap-1.5" data-testid="chat-status" role="status">
               <span
                 aria-hidden="true"
                 className={cn(
                   "h-1.5 w-1.5 rounded-full",
-                  isOnline ? "bg-emerald-500 shadow-[0_0_0_3px] shadow-emerald-500/20" : "bg-red-500",
+                  isOnline
+                    ? "bg-emerald-500 shadow-[0_0_0_3px] shadow-emerald-500/20"
+                    : isConnecting
+                      ? "bg-(--fg-subtle) animate-pulse"
+                      : "bg-red-500",
                 )}
               />
-              {isOnline ? "Ask ready" : "Ask unavailable"}
+              {isOnline ? "Ask ready" : isConnecting ? "Connecting…" : "Ask unavailable"}
             </span>
             {docked ? (
               <span className="text-(--fg-subtle)">· live-patches the tank</span>
@@ -689,19 +712,14 @@ export function ChatPanel({ layout = null, view = "text", onClose }: ChatPanelPr
       >
         {messages.length === 0 ? (
           <div className="flex flex-col gap-5">
-            <p className="text-sm leading-relaxed text-(--fg-muted)">
-              {isOnline
-                ? "Ask about experience, projects or a job fit. The page re-renders live while the agent answers."
-                : "The agent can't be reached right now, so no question is sent or stored. Every project is still here to explore."}
-            </p>
-            {!isOnline && (
-              <button
-                type="button"
-                onClick={browseProjects}
-                className="self-start min-h-11 rounded-xl bg-(--amber) px-4 text-sm font-semibold text-(--bg) hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) focus-visible:ring-offset-2 focus-visible:ring-offset-(--card) transition-all cursor-pointer"
-              >
-                Browse projects instead
-              </button>
+            {isOffline ? (
+              offlineNotice
+            ) : (
+              <p className="text-sm leading-relaxed text-(--fg-muted)">
+                {isOnline
+                  ? "Ask about experience, projects or a job fit. The page re-renders live while the agent answers."
+                  : "Connecting to the agent…"}
+              </p>
             )}
             {isOnline && (
               <div className="flex flex-col gap-4">
@@ -751,6 +769,12 @@ export function ChatPanel({ layout = null, view = "text", onClose }: ChatPanelPr
             />
           ))
         )}
+        {/* Conversation already started: keep the offline guidance reachable. */}
+        {isOffline && messages.length > 0 ? (
+          <div className="rounded-xl border border-(--hairline) bg-(--bg-sunken)/60 p-3.5">
+            {offlineNotice}
+          </div>
+        ) : null}
         {pending && (
           <div className="flex w-full items-start gap-2.5">
             <span className="sr-only" aria-live="polite">
@@ -791,7 +815,13 @@ export function ChatPanel({ layout = null, view = "text", onClose }: ChatPanelPr
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             aria-label="Ask about Andrew's projects or experience"
-            placeholder={isOnline ? "Ask a question or paste a job post…" : "Ask is unavailable right now"}
+            placeholder={
+              isOnline
+                ? "Ask a question or paste a job post…"
+                : isConnecting
+                  ? "Connecting…"
+                  : "Ask is unavailable right now"
+            }
             disabled={pending || !isOnline}
             className="chat-scroll flex-1 min-w-0 resize-none bg-transparent py-1.5 text-sm leading-6 text-(--fg) outline-none placeholder:text-(--fg-subtle) disabled:cursor-not-allowed"
             style={{ maxHeight: COMPOSER_MAX_H }}

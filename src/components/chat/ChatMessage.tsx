@@ -181,7 +181,7 @@ export const ChatMessage = memo(function ChatMessage({
               ? action.target
               : undefined)
           }
-          title={action.title ?? action.label}
+          title={action.title ? `${action.label} — ${action.title}` : action.label}
           className={cn(
             "max-w-full rounded-lg border border-(--hairline) bg-(--bg-elevated) px-2 py-1 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors inline-flex items-center gap-1.5 cursor-pointer",
             action.kind === "add" && "ft-chip-add",
