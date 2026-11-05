@@ -398,7 +398,7 @@ export function HomePage() {
         ) : null}
         <aside
           data-ask-panel
-          className="order-2 rounded-[var(--radius-lg)] border border-(--hairline) bg-(--card)/40 p-3 lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-16"
+          className="order-2 min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-16"
         >
           <ChatPanel layout={layout} view="text" />
         </aside>

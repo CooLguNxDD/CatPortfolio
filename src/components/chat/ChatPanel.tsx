@@ -17,7 +17,18 @@ import {
 } from "@/api/harness";
 import { loadJobLayout } from "@/content/loadLayout";
 import { ChatMessage, type MessageAction } from "./ChatMessage";
-import { Button } from "@/components/ui/button";
+import {
+  ArrowUp,
+  Boxes,
+  Briefcase,
+  Cat,
+  Check,
+  Copy,
+  Fish,
+  Trash2,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/store/chatSlice";
 import { useFishTankStore, useLayoutStore } from "@/store";
@@ -196,7 +207,39 @@ export interface ChatPanelProps {
   layout?: Layout | null;
   /** Which canvas the visitor is looking at; decides fish vs text intents. */
   view?: "tank" | "text";
+  /** Close handler — when set (tank dock), the header shows a close button. */
+  onClose?: () => void;
 }
+
+/** Starter prompts on the empty state, grouped by what they show off. */
+const SUGGESTION_GROUPS: {
+  label: string;
+  icon: LucideIcon;
+  tone: "amber" | "neon";
+  prompts: string[];
+}[] = [
+  {
+    label: "Architecture & systems",
+    icon: Boxes,
+    tone: "amber",
+    prompts: ["Show me your infra / SRE work", "What is the deepest system you built?"],
+  },
+  {
+    label: "Live tank spawning",
+    icon: Fish,
+    tone: "neon",
+    prompts: ["Show all MCP agent tooling"],
+  },
+  {
+    label: "Job tailoring",
+    icon: Briefcase,
+    tone: "amber",
+    prompts: ["Bake a portfolio for an AI Developer role at DummyAI Labs"],
+  },
+];
+
+/** Composer textarea grows with its content up to this height (px), then scrolls. */
+const COMPOSER_MAX_H = 140;
 
 /** Poll cadence for an in-flight discovery job. */
 const DISCOVERY_POLL_MS = 3000;
@@ -207,7 +250,7 @@ const DISCOVERY_TIMEOUT_MS = 60_000;
  * Renders the interactive chat panel, managing the conversation state and
  * executing ask-mode layout patches or fish tank focus changes.
  */
-export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {}) {
+export function ChatPanel({ layout = null, view = "text", onClose }: ChatPanelProps = {}) {
   const messages = useChatStore((s) => s.messages);
   const setMessages = useChatStore((s) => s.setMessages);
   const pending = useChatStore((s) => s.pending);
@@ -233,6 +276,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
     () => useLayoutStore.getState().shortId,
   );
   const logContainerRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const queryClient = useQueryClient();
 
   const [copied, setCopied] = useState(false);
@@ -255,7 +299,7 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
     if (demoShortId) setLastBakeId(demoShortId);
   }, [demoShortId]);
 
-  const { data: tools, isSuccess } = useQuery({
+  const { data: tools, isSuccess, isPending: isConnecting } = useQuery({
     queryKey: ["oct", "tools"],
     queryFn: async () => {
       const client = await getSharedClient();
@@ -266,6 +310,8 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
   });
 
   const isOnline = isSuccess && !!tools;
+  // Discovery settled without a tool list: only now is "unavailable" true.
+  const isOffline = !isOnline && !isConnecting;
 
   const lastAssistantMsg = messages.filter((m) => m.role === "assistant").slice(-1)[0];
 
@@ -290,6 +336,14 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [messages, pending]);
+
+  // Grow the composer with its content instead of showing a one-row scroller.
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, COMPOSER_MAX_H)}px`;
+  }, [input]);
 
   const sendText = useCallback(
     async (userMessageText: string, extras?: { addSlugs?: string[] }) => {
@@ -517,155 +571,188 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
     }
   };
 
+  const docked = Boolean(onClose);
+
+
+  /** Offline escape hatch: the work stays reachable without the agent. */
+  const browseProjects = () => {
+    if (view === "tank") {
+      fishBus.emit("view:chrome", "flat");
+      onClose?.();
+      return;
+    }
+    document
+      .querySelector("[data-fishtank-flat]")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const offlineNotice = (
+    <div className="flex flex-col gap-3" data-testid="chat-offline">
+      <p className="text-sm leading-relaxed text-(--fg-muted)">
+        The agent can't be reached right now, so no question is sent or stored. Every project is
+        still here to explore.
+      </p>
+      <button
+        type="button"
+        onClick={browseProjects}
+        className="self-start min-h-11 rounded-xl bg-(--amber) px-4 text-sm font-semibold text-(--bg) hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) focus-visible:ring-offset-2 focus-visible:ring-offset-(--card) transition-all cursor-pointer"
+      >
+        Browse projects instead
+      </button>
+    </div>
+  );
+
+  const iconBtn =
+    "h-9 w-9 rounded-lg inline-flex items-center justify-center text-(--fg-muted) hover:text-(--fg) hover:bg-(--fg)/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0";
+
   return (
-    <div className="w-full border border-(--hairline) rounded-2xl bg-linear-to-b from-background to-(--bg-sunken) p-6 space-y-6 shadow-lg relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-radial from-(--amber)/5 to-transparent pointer-events-none rounded-full blur-3xl -z-10" />
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-(--hairline)">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-xl font-bold text-(--fg) tracking-tight">Ask Portfolio</h2>
-          <div
-            className={cn(
-              "rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium flex items-center gap-1.5 border uppercase tracking-wider whitespace-nowrap shrink-0",
-              isOnline
-                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                : "bg-red-500/10 text-red-500 border-red-500/20",
+    <section
+      className={cn(
+        "chat-panel w-full flex flex-col min-h-0 relative overflow-hidden",
+        docked
+          ? "h-full"
+          : "rounded-2xl border border-(--hairline) bg-(--card) shadow-lg lg:max-h-[calc(100svh-5rem)]",
+      )}
+      data-variant={docked ? "dock" : "card"}
+    >
+      <header className="flex items-start gap-3 px-4 pt-4 pb-3 border-b border-(--hairline)">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 h-9 w-9 rounded-xl bg-(--amber)/15 text-(--amber) inline-flex items-center justify-center shrink-0"
+        >
+          <Cat className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold text-(--fg) leading-tight tracking-tight">
+            Ask Portfolio
+          </h2>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-(--fg-muted)">
+            <span className="inline-flex items-center gap-1.5" data-testid="chat-status" role="status">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  isOnline
+                    ? "bg-emerald-500 shadow-[0_0_0_3px] shadow-emerald-500/20"
+                    : isConnecting
+                      ? "bg-(--fg-subtle) animate-pulse"
+                      : "bg-red-500",
+                )}
+              />
+              {isOnline ? "Ask ready" : isConnecting ? "Connecting…" : "Ask unavailable"}
+            </span>
+            {docked ? (
+              <span className="text-(--fg-subtle)">· live-patches the tank</span>
+            ) : null}
+            {cliMeta && (
+              <span
+                className="rounded-md px-1.5 py-px font-mono text-[10px] border bg-(--neon)/10 text-(--neon) border-(--neon)/30 whitespace-nowrap"
+                title="Whiskers core LLM is a headless CLI provider — this turn ran as a single CLI agent spawn."
+              >
+                {oneShotPillLabel(cliMeta)}
+              </span>
             )}
-          >
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full animate-pulse",
-                isOnline ? "bg-emerald-500" : "bg-red-500",
-              )}
-            />
-            {isOnline ? "whiskers online" : "whiskers offline"}
+            {lastBakeId && (
+              <a
+                href={`${import.meta.env.BASE_URL}?j=${encodeURIComponent(lastBakeId)}`}
+                className="rounded-md px-1.5 py-px font-mono text-[10px] border border-(--hairline) text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) transition-colors whitespace-nowrap max-w-full truncate"
+                title="Open the baked job layout on the home page"
+              >
+                baked · j={lastBakeId}
+              </a>
+            )}
           </div>
-          {cliMeta && (
-            <div
-              className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium flex items-center gap-1.5 border uppercase tracking-wider bg-(--neon)/10 text-(--neon) border-(--neon)/30 whitespace-nowrap shrink-0"
-              title="Whiskers core LLM is a headless CLI provider — this turn ran as a single CLI agent spawn."
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-(--neon) animate-pulse" />
-              {oneShotPillLabel(cliMeta)}
-            </div>
-          )}
-          {lastBakeId && (
-            <a
-              href={`${import.meta.env.BASE_URL}?j=${encodeURIComponent(lastBakeId)}`}
-              className="rounded-full px-2.5 py-0.5 text-[10px] font-mono font-medium border border-(--border) text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) transition-colors whitespace-nowrap shrink-0"
-              title="Open the baked job layout on the home page"
-            >
-              baked · j={lastBakeId}
-            </a>
-          )}
         </div>
-
-        <div className="flex items-center gap-2 self-end md:self-auto">
+        <div className="flex items-center gap-0.5 -mr-1.5">
           {messages.length > 0 && (
             <>
               <button
                 type="button"
                 onClick={() => void handleCopy()}
                 disabled={!lastAssistantMsg}
-                title={copied ? "Copied!" : "copy chat"}
+                title={copied ? "Copied!" : "Copy last answer"}
                 aria-label="copy chat"
-                className="h-7 w-7 rounded-full border border-(--border) bg-(--bg-elevated) inline-flex items-center justify-center text-xs font-mono text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0"
+                className={iconBtn}
               >
-                {copied ? "✓" : "📋"}
+                {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </button>
               <button
                 type="button"
                 onClick={handleClear}
-                title="clear chat"
+                title="Clear conversation"
                 aria-label="clear chat"
-                className="h-7 w-7 rounded-full border border-(--border) bg-(--bg-elevated) inline-flex items-center justify-center text-xs font-mono text-(--fg-muted) hover:text-(--amber) hover:border-(--amber) transition-colors cursor-pointer shrink-0"
+                className={iconBtn}
               >
-                🗑️
+                <Trash2 className="h-4 w-4" />
               </button>
             </>
           )}
-          <span className="rounded-full border border-(--hairline) bg-(--card)/85 px-2 py-0.5 text-[10px] font-mono text-(--fg-subtle) uppercase tracking-wider select-none shrink-0">
-            preview
-          </span>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close Ask Panel (Esc)"
+              aria-label="Close Ask panel"
+              className={iconBtn}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : null}
         </div>
-      </div>
+      </header>
 
       <div
         ref={logContainerRef}
-        className="min-h-48 max-h-[450px] overflow-y-auto pr-2 space-y-2 select-text"
+        className={cn(
+          "chat-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4 select-text",
+          !docked && "max-h-[min(60vh,520px)] lg:max-h-none",
+        )}
         role="log"
         aria-live="polite"
         aria-atomic="false"
       >
         {messages.length === 0 ? (
-          <div className="min-h-48 flex flex-col items-center justify-center text-center p-4 gap-4">
-            <p className="text-sm text-(--fg-muted) max-w-sm">
-              {isOnline
-                ? "Ask about experience, projects, or a job fit — the page re-renders live from fragments while the agent answers. Questions are stored (capped) in an ask-turn audit; the layout overlay is not."
-                : "Whiskers Agent connection is currently unavailable. Chat will activate when the server comes online."}
-            </p>
+          <div className="flex flex-col gap-5">
+            {isOffline ? (
+              offlineNotice
+            ) : (
+              <p className="text-sm leading-relaxed text-(--fg-muted)">
+                {isOnline
+                  ? "Ask about experience, projects or a job fit. The page re-renders live while the agent answers."
+                  : "Connecting to the agent…"}
+              </p>
+            )}
             {isOnline && (
-              <div className="space-y-3 w-full max-w-md text-left">
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-(--fg-subtle) text-center">
-                    Architecture & systems
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    {[
-                      "Show me your infra / SRE work",
-                      "What is the deepest system you built?",
-                    ].map((chip) => (
+              <div className="flex flex-col gap-4">
+                {SUGGESTION_GROUPS.map((group) => (
+                  <div key={group.label} className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-(--fg-subtle)">
+                      <group.icon className="h-3 w-3" aria-hidden="true" />
+                      {group.label}
+                    </div>
+                    {group.prompts.map((chip) => (
                       <button
                         key={chip}
                         type="button"
                         onClick={() => void sendText(chip)}
-                        className="rounded-full border border-(--border) bg-(--bg-elevated) px-3 py-1 text-xs text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors cursor-pointer"
+                        className={cn(
+                          "group w-full flex items-center justify-between gap-3 min-h-11 rounded-xl border border-(--hairline) bg-(--bg-sunken)/60 px-3.5 py-2.5 text-left text-sm text-(--fg) transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2",
+                          group.tone === "neon"
+                            ? "hover:border-(--neon)/60 hover:bg-(--neon)/8 focus-visible:ring-(--neon)"
+                            : "hover:border-(--amber)/60 hover:bg-(--amber)/8 focus-visible:ring-(--amber)",
+                        )}
                       >
-                        {chip}
+                        <span>{chip}</span>
+                        <ArrowUp
+                          aria-hidden="true"
+                          className={cn(
+                            "h-3.5 w-3.5 shrink-0 rotate-45 text-(--fg-subtle) transition-colors",
+                            group.tone === "neon" ? "group-hover:text-(--neon)" : "group-hover:text-(--amber)",
+                          )}
+                        />
                       </button>
                     ))}
                   </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-(--fg-subtle) text-center">
-                    Live tank spawning
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    {[
-                      "Show all MCP agent tooling",
-                    ].map((chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        onClick={() => void sendText(chip)}
-                        className="rounded-full border border-(--border) bg-(--bg-elevated) px-3 py-1 text-xs text-(--fg-muted) hover:border-(--neon) hover:text-(--neon) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--neon) transition-colors cursor-pointer"
-                      >
-                        {chip}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-(--fg-subtle) text-center">
-                    Job tailoring
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    {[
-                      "Bake a portfolio for an AI Developer role at DummyAI Labs",
-                    ].map((chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        onClick={() => void sendText(chip)}
-                        className="rounded-full border border-(--border) bg-(--bg-elevated) px-3 py-1 text-xs text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors cursor-pointer"
-                      >
-                        {chip}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
             )}
           </div>
@@ -682,12 +769,27 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
             />
           ))
         )}
+        {/* Conversation already started: keep the offline guidance reachable. */}
+        {isOffline && messages.length > 0 ? (
+          <div className="rounded-xl border border-(--hairline) bg-(--bg-sunken)/60 p-3.5">
+            {offlineNotice}
+          </div>
+        ) : null}
         {pending && (
-          <div className="flex w-full justify-start py-4">
+          <div className="flex w-full items-start gap-2.5">
             <span className="sr-only" aria-live="polite">
               composing fragments…
             </span>
-            <div className="bg-(--bg-sunken) border border-(--hairline) rounded-2xl rounded-tl-none px-4 py-3 shadow-xs text-(--fg) flex items-center gap-2" aria-hidden="true">
+            <span
+              aria-hidden="true"
+              className="h-7 w-7 rounded-lg bg-(--amber)/15 text-(--amber) inline-flex items-center justify-center shrink-0"
+            >
+              <Cat className="h-4 w-4" />
+            </span>
+            <div
+              className="bg-(--bg-sunken) border border-(--hairline) rounded-2xl rounded-tl-md px-3.5 py-2.5 text-(--fg) flex items-center gap-2"
+              aria-hidden="true"
+            >
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce [animation-delay:-0.3s]" />
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce [animation-delay:-0.15s]" />
               <span className="h-1.5 w-1.5 rounded-full bg-(--amber) animate-bounce" />
@@ -699,33 +801,50 @@ export function ChatPanel({ layout = null, view = "text" }: ChatPanelProps = {})
         )}
       </div>
 
-      <div className="flex gap-2">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          aria-label="Ask about Andrew's projects or experience"
-          placeholder={
-            isOnline
-              ? "Ask about projects, or paste a job description to bake a layout…"
-              : "Chat offline"
-          }
-          disabled={pending || !isOnline}
-          className="flex-1 min-h-10 max-h-24 p-2 text-sm bg-background border border-(--hairline) rounded-xl resize-none outline-none focus:border-(--amber) focus:ring-1 focus:ring-(--amber) disabled:opacity-50 text-(--fg) placeholder:text-(--fg-subtle) transition-all"
-          rows={1}
-        />
-        <Button
-          onClick={handleSend}
-          disabled={pending || !input.trim() || !isOnline}
-          className="bg-(--amber) text-(--bg) hover:bg-(--amber) hover:brightness-110 rounded-xl font-semibold px-4 h-10 transition-all select-none"
+      <footer className="px-4 pt-3 pb-4 border-t border-(--hairline)">
+        <div
+          className={cn(
+            "flex items-end gap-2 rounded-2xl border border-(--hairline) bg-(--bg) pl-3.5 pr-1.5 py-1.5 transition-colors",
+            "focus-within:border-(--amber) focus-within:ring-2 focus-within:ring-(--amber)/25",
+            !isOnline && "opacity-60",
+          )}
         >
-          Send
-        </Button>
-      </div>
-      <p className="text-[11px] text-(--fg-subtle) font-mono">
-        The question is persisted in <code>portfolio_ask_turns</code> (length-capped).
-        That is not consent to keep a conversation — overlays die on reload.
-      </p>
-    </div>
+          <textarea
+            ref={composerRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            aria-label="Ask about Andrew's projects or experience"
+            placeholder={
+              isOnline
+                ? "Ask a question or paste a job post…"
+                : isConnecting
+                  ? "Connecting…"
+                  : "Ask is unavailable right now"
+            }
+            disabled={pending || !isOnline}
+            className="chat-scroll flex-1 min-w-0 resize-none bg-transparent py-1.5 text-sm leading-6 text-(--fg) outline-none placeholder:text-(--fg-subtle) disabled:cursor-not-allowed"
+            style={{ maxHeight: COMPOSER_MAX_H }}
+            rows={1}
+          />
+          <button
+            type="button"
+            onClick={() => void handleSend()}
+            disabled={pending || !input.trim() || !isOnline}
+            aria-label="Send"
+            title="Send (Enter) · new line (Shift+Enter)"
+            className="h-9 w-9 shrink-0 rounded-xl bg-(--amber) text-(--bg) inline-flex items-center justify-center transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg) disabled:bg-(--fg)/10 disabled:text-(--fg-subtle) disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        </div>
+        {isOnline ? (
+          <p className="mt-2 text-[11px] leading-snug text-(--fg-subtle)">
+            Questions are logged (length-capped) in <code className="font-mono">portfolio_ask_turns</code>;
+            page changes vanish on reload.
+          </p>
+        ) : null}
+      </footer>
+    </section>
   );
 }

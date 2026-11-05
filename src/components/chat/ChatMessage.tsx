@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { fishBus } from "@/fish/fishBus";
 import { useFishTankStore } from "@/store";
+import { AlertTriangle, Cat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** A follow-up the visitor can take on what this turn changed. */
@@ -59,19 +60,19 @@ export function runMessageAction(
 // Destructure `node` (react-markdown AST) so it is not spread onto DOM elements.
 const mdComponents = {
   h2({ node: _node, ...props }: any) {
-    return <h2 className="text-lg font-semibold text-(--fg) mt-4 mb-2" {...props} />;
+    return <h2 className="text-[15px] font-semibold text-(--fg) mt-3 mb-1.5 first:mt-0" {...props} />;
   },
   h3({ node: _node, ...props }: any) {
-    return <h3 className="text-base font-semibold text-(--fg) mt-3 mb-1.5" {...props} />;
+    return <h3 className="text-sm font-semibold text-(--fg) mt-3 mb-1 first:mt-0" {...props} />;
   },
   p({ node: _node, ...props }: any) {
-    return <p className="text-sm text-(--fg-muted) leading-relaxed mb-3 last:mb-0" {...props} />;
+    return <p className="text-sm text-(--fg) leading-relaxed mb-2.5 last:mb-0" {...props} />;
   },
   ul({ node: _node, ...props }: any) {
-    return <ul className="list-disc list-inside space-y-1 mb-3 text-xs text-(--fg-muted)" {...props} />;
+    return <ul className="list-disc pl-4 space-y-1 mb-2.5 last:mb-0 text-sm text-(--fg-muted) marker:text-(--fg-subtle)" {...props} />;
   },
   ol({ node: _node, ...props }: any) {
-    return <ol className="list-decimal list-inside space-y-1 mb-3 text-xs text-(--fg-muted)" {...props} />;
+    return <ol className="list-decimal pl-4 space-y-1 mb-2.5 last:mb-0 text-sm text-(--fg-muted) marker:text-(--fg-subtle)" {...props} />;
   },
   li({ node: _node, ...props }: any) {
     return <li className="pl-0.5" {...props} />;
@@ -115,7 +116,7 @@ const mdComponents = {
     if (isInline) {
       return (
         <code
-          className="font-mono text-xs bg-(--bg-sunken) px-1 py-0.5 rounded text-(--fg) border border-(--hairline)"
+          className="font-mono text-[12px] bg-(--fg)/8 px-1 py-px rounded text-(--fg) [overflow-wrap:anywhere]"
           {...props}
         />
       );
@@ -167,64 +168,73 @@ export const ChatMessage = memo(function ChatMessage({
     });
   };
 
+  const chips = !isUser && actions?.length ? (
+    <div className="mt-2.5 flex flex-wrap gap-1.5">
+      {actions.map((action) => (
+        <button
+          key={`${action.kind}-${action.target}`}
+          type="button"
+          onClick={() => runAction(action)}
+          data-slug={
+            action.slug ??
+            (action.kind === "focus" || action.kind === "add"
+              ? action.target
+              : undefined)
+          }
+          title={action.title ? `${action.label} — ${action.title}` : action.label}
+          className={cn(
+            "max-w-full rounded-lg border border-(--hairline) bg-(--bg-elevated) px-2 py-1 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors inline-flex items-center gap-1.5 cursor-pointer",
+            action.kind === "add" && "ft-chip-add",
+            action.kind === "ask" && "ft-chip-ask",
+            action.kind === "focus" && "ft-chip-focus",
+          )}
+        >
+          {action.kind === "focus" ? (
+            <span className="h-1.5 w-1.5 rounded-full bg-(--accent-devops,var(--neon)) shrink-0" />
+          ) : null}
+          <span className="truncate">{action.label}</span>
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  if (isUser) {
+    return (
+      <div className="flex w-full justify-end">
+        <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-(--amber) px-3.5 py-2 text-(--bg) shadow-xs selection:bg-(--fg) selection:text-(--bg)">
+          <span className="sr-only">You: </span>
+          <div className="text-sm whitespace-pre-wrap break-words select-text">{markdown}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        "flex w-full gap-3 py-4 first:pt-0 border-b border-(--hairline) last:border-0",
-        isUser ? "justify-end" : "justify-start"
-      )}
-    >
-      <div
+    <div className="flex w-full items-start gap-2.5">
+      <span
+        aria-hidden="true"
         className={cn(
-          "max-w-[85%] rounded-2xl px-4 py-3 shadow-xs transition-all duration-300",
-          isUser
-            ? "bg-linear-to-br from-(--amber) to-orange-500 text-white rounded-tr-none font-medium selection:bg-orange-800"
-            : isError
-            ? "bg-red-500/10 border border-red-500/30 text-red-500 rounded-tl-none"
-            : "bg-(--bg-sunken) border border-(--hairline) rounded-tl-none text-(--fg)"
+          "h-7 w-7 rounded-lg inline-flex items-center justify-center shrink-0",
+          isError ? "bg-red-500/15 text-red-500" : "bg-(--amber)/15 text-(--amber)",
         )}
       >
-        <div className="text-xs font-mono opacity-60 mb-1">
-          {isUser ? "You" : "Andrew's AI"}
-        </div>
-        {isUser ? (
-          <div className="text-sm whitespace-pre-wrap select-text selection:text-white">{markdown}</div>
-        ) : (
-          <div className="select-text prose-sm">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-              {markdown}
-            </ReactMarkdown>
-          </div>
+        {isError ? <AlertTriangle className="h-4 w-4" /> : <Cat className="h-4 w-4" />}
+      </span>
+      <div
+        className={cn(
+          "min-w-0 max-w-[calc(100%-2.25rem)] rounded-2xl rounded-tl-md px-3.5 py-2.5",
+          isError
+            ? "bg-red-500/10 border border-red-500/30 text-red-500"
+            : "bg-(--bg-sunken) border border-(--hairline) text-(--fg)",
         )}
-        {!isUser && actions?.length ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {actions.map((action) => (
-              <button
-                key={`${action.kind}-${action.target}`}
-                type="button"
-                onClick={() => runAction(action)}
-                data-slug={
-                  action.slug ??
-                  (action.kind === "focus" || action.kind === "add"
-                    ? action.target
-                    : undefined)
-                }
-                title={action.title}
-                className={cn(
-                  "rounded-full border border-(--border) bg-(--bg-elevated) px-2.5 py-0.5 text-[11px] font-mono text-(--fg-muted) hover:border-(--amber) hover:text-(--amber) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--amber) transition-colors inline-flex items-center gap-1.5",
-                  action.kind === "add" && "ft-chip-add",
-                  action.kind === "ask" && "ft-chip-ask",
-                  action.kind === "focus" && "ft-chip-focus",
-                )}
-              >
-                {action.kind === "focus" ? (
-                  <span className="h-1.5 w-1.5 rounded-full bg-(--accent-devops,var(--neon)) shrink-0" />
-                ) : null}
-                {action.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
+      >
+        <span className="sr-only">Andrew's AI: </span>
+        <div className="select-text prose-sm break-words">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+            {markdown}
+          </ReactMarkdown>
+        </div>
+        {chips}
       </div>
     </div>
   );
